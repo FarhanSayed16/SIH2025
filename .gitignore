@@ -56,9 +56,4 @@ mobile/ios/Flutter/Flutter.podspec
 mobile/ios/Flutter/Generated.xcconfig
 mobile/ios/Flutter/flutter_export_environment.sh
 
-# Ignore everything
-*
-
-# But keep the .gitignore file itself
-!.gitignore
 
