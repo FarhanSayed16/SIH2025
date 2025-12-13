@@ -1,0 +1,28 @@
+{
+  "name": "kavach",
+  "version": "1.0.0",
+  "description": "Disaster Preparedness & Response Education System for Schools and Colleges",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "install:all": "npm install && cd backend && npm install && cd ../web && npm install",
+    "setup": "npm run install:all"
+  },
+  "keywords": [
+    "disaster-management",
+    "education",
+    "safety",
+    "emergency-response",
+    "hackathon"
+  ],
+  "author": "Kavach Team",
+  "license": "MIT",
+  "dependencies": {
+    "framer-motion": "^12.23.25"
+  }
+}
