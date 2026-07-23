@@ -58,3 +58,4 @@ mobile/ios/Flutter/flutter_export_environment.sh
 
 docs/
 mobile/assets
+web/.next/cache/webpack
