@@ -19,11 +19,9 @@ const httpServer = createServer(app);
 
 // Socket.io setup
 // Allow localhost and dev tunnels for development
-const allowedOrigins = process.env.CORS_ORIGIN?.split(',') || [
+const allowedOrigins = process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) || [
   'http://localhost:3001',
-  'http://localhost:3000',
-  'https://bnc51nt1-3000.inc1.devtunnels.ms',
-  'http://bnc51nt1-3000.inc1.devtunnels.ms'
+  'http://localhost:3000'
 ];
 
 const io = new Server(httpServer, {
@@ -74,11 +72,9 @@ app.use(helmet({
 }));
 
 // CORS configuration - allow localhost and dev tunnels
-const corsOrigins = process.env.CORS_ORIGIN?.split(',') || [
+const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) || [
   'http://localhost:3001',
-  'http://localhost:3000',
-  'https://bnc51nt1-3000.inc1.devtunnels.ms',
-  'http://bnc51nt1-3000.inc1.devtunnels.ms'
+  'http://localhost:3000'
 ];
 
 app.use(cors({
@@ -141,12 +137,25 @@ app.use('/uploads/qr-codes', express.static(path.join(__dirname, '../uploads/qr-
 import healthRoutes from './routes/health.routes.js';
 app.use('/api/health', healthRoutes);
 // Legacy health check (backward compatibility)
-app.get('/health', (req, res) => {
+app.get('/health', async (req, res) => {
+  const { isIotEnabled, isNdmaEnabled } = await import('./config/features.js');
+  let email = { preferredProvider: 'unknown' };
+  try {
+    const { getEmailServiceStatus } = await import('./services/email.service.js');
+    email = await getEmailServiceStatus();
+  } catch {
+    /* ignore */
+  }
   res.json({
     status: 'OK',
     message: 'Kavach API is running',
     timestamp: new Date().toISOString(),
-    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+    db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    features: {
+      iotEnabled: isIotEnabled(),
+      ndmaEnabled: isNdmaEnabled(),
+      emailProvider: email.preferredProvider || 'none'
+    }
   });
 });
 
@@ -281,25 +290,30 @@ try {
   logger.warn('⚠️ FCM service load failed:', error.message);
 }
 
-// Phase 4.4: Initialize Dead Man's Switch service
-try {
-  const { startDeadManSwitch } = await import('./services/deadManSwitch.service.js');
-  startDeadManSwitch();
-  logger.info('🚨 Dead Man Switch service started');
-} catch (error) {
-  logger.warn('⚠️ Dead Man Switch service load failed:', error.message);
-}
+if (process.env.NODE_ENV !== 'test') {
+  // Phase 4.4: Initialize Dead Man's Switch service
+  try {
+    const { startDeadManSwitch } = await import('./services/deadManSwitch.service.js');
+    startDeadManSwitch();
+    logger.info('🚨 Dead Man Switch service started');
+  } catch (error) {
+    logger.warn('⚠️ Dead Man Switch service load failed:', error.message);
+  }
 
-// Phase 4.10: Initialize NDMA/IMD polling service
-try {
-  const { startNDMAPolling } = await import('./services/ndmaIntegration.service.js');
-  const stopNDMAPolling = startNDMAPolling();
-  logger.info('🌐 NDMA/IMD polling service started');
-  
-  // Store stop function for graceful shutdown
-  app.set('stopNDMAPolling', stopNDMAPolling);
-} catch (error) {
-  logger.warn('⚠️ NDMA/IMD polling service load failed:', error.message);
+  // Phase 4.10: NDMA/IMD polling (off by default — enable with NDMA_ENABLED=true)
+  try {
+    const { isNdmaEnabled } = await import('./config/features.js');
+    if (isNdmaEnabled()) {
+      const { startNDMAPolling } = await import('./services/ndmaIntegration.service.js');
+      const stopNDMAPolling = startNDMAPolling();
+      logger.info('🌐 NDMA/IMD polling service started');
+      app.set('stopNDMAPolling', stopNDMAPolling);
+    } else {
+      logger.info('ℹ️  NDMA/IMD polling disabled (NDMA_ENABLED=false)');
+    }
+  } catch (error) {
+    logger.warn('⚠️ NDMA/IMD polling service load failed:', error.message);
+  }
 }
 
 // Error handling middleware
@@ -313,12 +327,13 @@ app.use((req, res) => {
   });
 });
 
-// Connect to MongoDB and start server
+// Connect to MongoDB and start HTTP server (skipped under Jest — tests use supertest on `app`)
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0'; // Listen on all interfaces for port forwarding
 
-connectDB()
-  .then(async () => {
+if (process.env.NODE_ENV !== 'test') {
+  connectDB()
+    .then(async () => {
     // Run database migrations (one-time fixes for schema updates)
     try {
       const { runMigrations } = await import('./utils/migrations.js');
@@ -327,17 +342,23 @@ connectDB()
       logger.warn('Database migrations warning:', error.message);
     }
 
-    // Phase 3.3.5: Connect to Redis (optional, leaderboards work without it)
-    // Only attempt connection if REDIS_URL is set, otherwise skip silently
-    if (process.env.REDIS_URL) {
+    // Redis: Upstash REST and/or REDIS_URL (optional — Mongo fallback if missing)
+    if (process.env.REDIS_URL || (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN)) {
       try {
         await connectRedis();
       } catch (error) {
-        // Connection failed, but that's OK - leaderboards will use MongoDB
         logger.debug('Redis connection skipped (not configured or unavailable)');
       }
     } else {
       logger.info('ℹ️  Redis not configured - leaderboards will use MongoDB (this is OK)');
+    }
+
+    // Warm email (Resend / SendGrid / SMTP) so boot logs show status
+    try {
+      const { warmEmailService } = await import('./services/email.service.js');
+      await warmEmailService();
+    } catch (error) {
+      logger.warn('Email service warm-up skipped:', error.message);
     }
 
     // Check if port is available before listening
@@ -372,5 +393,6 @@ connectDB()
     logger.error('❌ Failed to start server:', error);
     process.exit(1);
   });
+}
 
 export default app;

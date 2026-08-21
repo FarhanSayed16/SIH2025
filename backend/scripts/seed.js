@@ -164,6 +164,7 @@ const seedDatabase = async () => {
       password: 'admin123', // Will be hashed automatically
       name: 'Admin User',
       role: 'admin',
+      institutionId: school._id, // Required for school-scoped APIs (drills/alerts)
       safetyStatus: 'safe',
       progress: {
         completedModules: [],
@@ -275,7 +276,8 @@ const seedDatabase = async () => {
       }
     ]);
 
-    logger.info(`✅ Created ${students.length} students`);
+    logger.info(`✅ Created ${students.length} students (each has institutionId + classId — required for drills/alerts)`);
+    logger.info('   Self-registered students must Join Class so institutionId is set.');
 
     // Update class with student IDs
     studentClass.studentIds = students.map(s => s._id);

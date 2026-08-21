@@ -290,6 +290,7 @@ const seedDatabase = async () => {
         institutionId: school._id,
         grade: '8',
         section: 'B',
+        classId: studentClass._id,
         accessLevel: 'shared', // 6th-8th grade - shared access
         currentLocation: {
           type: 'Point',
@@ -310,6 +311,7 @@ const seedDatabase = async () => {
         institutionId: school._id,
         grade: '5',
         section: 'A',
+        classId: studentClass._id,
         accessLevel: 'teacher_led', // KG-5th grade - teacher led
         currentLocation: {
           type: 'Point',
@@ -326,7 +328,7 @@ const seedDatabase = async () => {
 
     logger.info(`✅ Created ${students.length} students:`);
     students.forEach(student => {
-      logger.info(`   - ${student.email} (Password: student123, Access: ${student.accessLevel})`);
+      logger.info(`   - ${student.email} (Password: student123, Access: ${student.accessLevel}, institutionId set)`);
     });
 
     // Update class with student IDs

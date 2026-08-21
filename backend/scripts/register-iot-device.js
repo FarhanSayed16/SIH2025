@@ -81,7 +81,7 @@ async function registerDevice() {
         thresholds: {
           waterWarning: 1500,
           waterDanger: 2000,
-          earthquake: 2.5
+          earthquake: 3.0 // m/s² above 1g (not raw vector length)
         }
       },
       status: 'active',
