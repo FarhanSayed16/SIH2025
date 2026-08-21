@@ -21,7 +21,8 @@ try {
     twilioConfigured = true;
     logger.info('✅ Twilio SMS service initialized');
   } else {
-    logger.warn('⚠️ Twilio credentials not configured - SMS service will be disabled');
+    // Optional channel — email/FCM cover demos without Twilio
+    logger.info('ℹ️  SMS disabled (optional). Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER to enable');
   }
 } catch (error) {
   logger.warn('⚠️ Twilio not installed or initialization failed - SMS service disabled');

@@ -168,6 +168,45 @@ export const initializeSocket = (io) => {
       });
     });
 
+    const relaySos = (eventName) => async (data = {}) => {
+      try {
+        const schoolId = data.institutionId || socket.institutionId;
+        if (!schoolId) {
+          socket.emit('ERROR', { message: 'Institution ID is required for SOS' });
+          return;
+        }
+        const payload = {
+          ...data,
+          userId: data.userId || socket.userId,
+          userName: data.userName || socket.user?.name,
+          role: data.role || socket.userRole,
+          institutionId: schoolId,
+          timestamp: data.timestamp || new Date().toISOString()
+        };
+        io.to(`school:${schoolId}`).emit(eventName, payload);
+        logger.info(`${eventName} from ${payload.userId} school:${schoolId}`);
+
+        const role = String(payload.role || '').toLowerCase();
+        if (role === 'student' && payload.userId) {
+          try {
+            const { sendSosFanout } = await import('../services/fcm.service.js');
+            await sendSosFanout({
+              studentId: payload.userId,
+              studentName: payload.userName,
+              status: eventName === 'SOS_SAFE' ? 'safe' : 'danger',
+              institutionId: schoolId
+            });
+          } catch (fcmErr) {
+            logger.warn('SOS FCM fan-out skipped:', fcmErr.message);
+          }
+        }
+      } catch (error) {
+        logger.error(`${eventName} error:`, error);
+      }
+    };
+    socket.on('SOS_ALERT', relaySos('SOS_ALERT'));
+    socket.on('SOS_SAFE', relaySos('SOS_SAFE'));
+
     // Phase 4.0: Handle USER_SAFE - User marks themselves safe
     socket.on('USER_SAFE', async (data) => {
       try {
