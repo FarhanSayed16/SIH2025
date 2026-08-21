@@ -8,14 +8,14 @@
 ## 📝 **CONFIGURATION APPLIED**
 
 ### **Network Settings:**
-- ✅ **Wi-Fi SSID:** `Password-manas007`
-- ✅ **Wi-Fi Password:** `ghebihkari`
-- ✅ **Backend URL:** `https://bnc51nt1-3000.inc1.devtunnels.ms`
+- **Wi-Fi SSID:** `YOUR_WIFI_SSID`
+- **Wi-Fi Password:** `YOUR_WIFI_PASSWORD`
+- **Backend URL:** `https://YOUR_TUNNEL_OR_HOST`
 
 ### **Device Settings:**
 - ✅ **Device ID:** `KAV-NODE-001`
 - ✅ **Device Name:** `Safety Node 001`
-- ✅ **Institution ID:** `6924de10a721bc018818253c` (Delhi Public School)
+- ✅ **Institution ID:** `your-mongodb-institution-id` (Delhi Public School)
 - ✅ **Room:** `Lab` (you can change this in code if needed)
 
 ---
@@ -24,16 +24,16 @@
 
 ### **1. Network Configuration:**
 ```cpp
-const char* WIFI_SSID = "Password-manas007";
-const char* WIFI_PASSWORD = "ghebihkari";
-const char* BACKEND_URL = "https://bnc51nt1-3000.inc1.devtunnels.ms";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* BACKEND_URL = "https://YOUR_TUNNEL_OR_HOST";
 ```
 
 ### **2. Device Configuration:**
 ```cpp
 const char* DEVICE_ID = "KAV-NODE-001";
 const char* DEVICE_NAME = "Safety Node 001";
-const char* INSTITUTION_ID = "6924de10a721bc018818253c";
+const char* INSTITUTION_ID = "your-mongodb-institution-id";
 const char* ROOM = "Lab";
 ```
 
@@ -53,7 +53,7 @@ Since device registration requires admin authentication, you need to register th
 **Option A: Using Registration Script:**
 ```bash
 cd backend
-node scripts/register-iot-device.js KAV-NODE-001 "Safety Node 001" 6924de10a721bc018818253c "Lab"
+node scripts/register-iot-device.js KAV-NODE-001 "Safety Node 001" your-mongodb-institution-id "Lab"
 ```
 
 **Option B: Using Admin Dashboard:**
@@ -79,7 +79,7 @@ Expected output:
 --- KAVACH SYSTEM BOOTING ---
 Initializing Sensors... ✅ MPU6050 Connected.
 ✅ MPU6050 Connected.
-Connecting to Wi-Fi: Password-manas007
+Connecting to Wi-Fi: YOUR_WIFI_SSID
 ✅ Wi-Fi Connected!
 IP Address: 192.168.x.x
 Registering device with backend...

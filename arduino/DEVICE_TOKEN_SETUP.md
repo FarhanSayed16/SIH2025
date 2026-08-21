@@ -19,7 +19,7 @@ Your device has been successfully registered in the backend!
 
 **Device Token:**
 ```
-dev_ie3TLE45MtxvXjpLUkFwuZFFbhaieu1c
+YOUR_DEVICE_TOKEN_FROM_REGISTER_SCRIPT
 ```
 
 ---
@@ -35,12 +35,12 @@ The ESP32 code will automatically store the token after first successful connect
 ```cpp
 // Phase 201: Manual token entry for testing (if device pre-registered)
 // Uncomment and set token if device was registered via admin/script
-// deviceToken = "dev_ie3TLE45MtxvXjpLUkFwuZFFbhaieu1c"; // Pre-registered token
+// deviceToken = "YOUR_DEVICE_TOKEN"; // Pre-registered token
 ```
 
 3. Uncomment and update:
 ```cpp
-deviceToken = "dev_ie3TLE45MtxvXjpLUkFwuZFFbhaieu1c"; // Pre-registered token
+deviceToken = "YOUR_DEVICE_TOKEN"; // Pre-registered token
 if (deviceToken.length() > 0) {
   preferences.begin("kavach", false);
   preferences.putString("deviceToken", deviceToken);
@@ -71,7 +71,7 @@ The ESP32 will try to register, fail (401), but that's OK. The device already ex
 ```
 --- KAVACH SYSTEM BOOTING ---
 Initializing Sensors... ✅ MPU6050 Connected.
-Connecting to Wi-Fi: Password-manas007
+Connecting to Wi-Fi: YOUR_WIFI_SSID
 ✅ Wi-Fi Connected!
 ✅ Using pre-registered token.
 ✅ System Ready. Monitoring Environment...

@@ -29,11 +29,8 @@ The ESP32 code requires a **device token** to communicate with the backend. Devi
 
 4. **Set Token in ESP32 Code:**
    ```cpp
-   // Option A: Hardcode token (for testing)
-   String deviceToken = "your-token-here";
-   
-   // Option B: Use Preferences (already implemented)
-   // Token will be stored automatically after first registration
+   // Paste token from register-iot-device.js (ESP32 cannot self-register)
+   const char* DEVICE_TOKEN_PRESET = "your-token-here";
    ```
 
 ---
@@ -60,7 +57,7 @@ curl -X POST http://your-server:3000/api/devices/register \
       "thresholds": {
         "waterWarning": 1500,
         "waterDanger": 2000,
-        "earthquake": 2.5
+        "earthquake": 3.0
       }
     }
   }'
@@ -97,12 +94,12 @@ deviceToken = "your-token-here";
 
 ## 📋 **QUICK REGISTRATION CHECKLIST**
 
-- [ ] Device registered in admin dashboard
-- [ ] Device token copied
-- [ ] Token set in ESP32 code (or will be stored automatically)
-- [ ] Institution ID configured in ESP32 code
-- [ ] Backend URL configured in ESP32 code
-- [ ] Wi-Fi credentials configured
+- [ ] Device registered via **backend script or admin** (not from the ESP32)
+- [ ] Device token copied into `DEVICE_TOKEN_PRESET`
+- [ ] Token stored in NVS after first successful boot
+- [ ] Institution ID used in the **register script** (MongoDB ObjectId)
+- [ ] Backend URL configured (`http://PC_LAN_IP:3000` or tunnel)
+- [ ] Wi-Fi credentials configured locally
 
 ---
 
@@ -111,7 +108,7 @@ deviceToken = "your-token-here";
 Once device is registered:
 1. ESP32 will use stored token for all requests
 2. Token persists after ESP32 reboot
-3. If token is invalid, ESP32 will attempt re-registration
+3. ESP32 does **not** re-register itself; if the token is invalid, re-run the server script and update `DEVICE_TOKEN_PRESET`
 4. All telemetry and alerts will use this token
 
 ---

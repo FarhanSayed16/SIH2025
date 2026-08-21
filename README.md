@@ -203,12 +203,14 @@ cd kavach
 npm run install:all
 ```
 
+Replace `YOUR_USERNAME` with your GitHub username or organization. Screenshots in this README are placeholders until you add files under `docs/images/`.
+
 ### 2️⃣ Environment
 
 | App | Config |
 | :--- | :--- |
 | **Backend** | Copy `backend/env.example` → `backend/.env`. Set `MONGODB_URI`, `JWT_SECRET`, optional `GEMINI_API_KEY`. |
-| **Web** | Copy `web/.env.example` → `web/.env.local`. Set `NEXT_PUBLIC_API_URL` (e.g. `http://localhost:3000`). |
+| **Web** | Copy `web/.env.example` → `web/.env.local`. Set `NEXT_PUBLIC_API_URL`. **Mapbox / Google Maps tokens are optional** — without them the map uses OpenStreetMap. |
 | **Mobile** | Set base URL in `mobile/lib/core/config/env.dart` (see [RUN guide](docs/project/RUN.md)). |
 
 ### 3️⃣ Run
@@ -225,11 +227,16 @@ npm run install:all
 
 ## 📡 IoT Setup (ESP32)
 
+Flash **`arduino/esp_code_enhanced.ino`**. Registration is **not** done on the board.
+
 | Step | Action |
 | :--- | :--- |
-| **Firmware** | `arduino/esp_code_enhanced.ino` |
-| **Config** | Wi-Fi SSID/password, backend URL, device ID, institution ID, room |
-| **Token** | Register device via backend script or admin dashboard → set token in firmware |
+| **1. Register** | `cd backend && node scripts/register-iot-device.js KAV-NODE-001 "Lab Node" <institutionObjectId> "Lab"` |
+| **2. Token** | Copy printed `deviceToken` into `DEVICE_TOKEN_PRESET` in the sketch |
+| **3. Wi-Fi / URL** | Set SSID, password, `BACKEND_URL` (`http://YOUR_PC_LAN_IP:3000` or a tunnel) |
+| **4. Flash** | Serial should show token ready, then telemetry HTTP 200 — **not** constant SHAKING at rest |
+
+MPU6050 readings are **m/s²** (~9.8 at rest). Earthquake uses **excess over 1g**, not `|a| > 2.5`.
 
 📄 **Guides:** [Device Registration](arduino/DEVICE_REGISTRATION_GUIDE.md) · [Connection & API](docs/project/IOT_CONNECTION_AND_FINAL_CODE.md)
 
@@ -239,6 +246,9 @@ npm run install:all
 
 | Document | Description |
 | :--- | :--- |
+| [**Production readiness**](docs/project/PRODUCTION_READINESS.md) | What’s left before real production |
+| [**Implementation plan**](docs/project/IMPLEMENTATION_PLAN_PHASES.md) | Current 4-phase work plan |
+| [**Audit & required fixes**](docs/project/PROJECT_AUDIT_AND_REQUIRED_FIXES.md) | Gap list (P0/P1/P2 IDs) |
 | [**RUN.md**](docs/project/RUN.md) | How to run backend, web, mobile |
 | [**Docs index**](docs/README.md) | Phases, shared docs |
 | [**IoT connection**](docs/project/IOT_CONNECTION_AND_FINAL_CODE.md) | Endpoints & code locations |
