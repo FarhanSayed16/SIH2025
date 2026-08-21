@@ -13,9 +13,13 @@ import {
 } from '../controllers/meshGateway.controller.js'; // Phase 5.9
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireAdmin } from '../middleware/rbac.middleware.js';
+import { requireIotEnabled } from '../middleware/iotEnabled.middleware.js';
 import { validate } from '../middleware/validator.js';
 
 const router = express.Router();
+
+// Mesh / gateway hardware path — same gate as IoT sensors
+router.use(requireIotEnabled);
 
 // All routes require authentication
 router.use(authenticate);

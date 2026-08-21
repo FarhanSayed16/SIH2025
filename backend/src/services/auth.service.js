@@ -107,9 +107,10 @@ export const registerUser = async (userData) => {
         // Store classData for later use (to add student to class's studentIds array)
         userDataToCreate._tempClassData = classData;
       } else {
-        // No classCode provided - student can join class later
-        // Start as registered; approval is explicit later
+        // No classCode — student can join later via /api/student/join-class.
+        // Until they join, institutionId is missing and drills/alerts return empty.
         userDataToCreate.approvalStatus = 'registered';
+        logger.warn(`Student ${userData.email} registered without classCode; they must Join Class for institution-scoped APIs`);
       }
     } else if (userData.role === 'teacher') {
       // Teachers start as registered; admin approves explicitly

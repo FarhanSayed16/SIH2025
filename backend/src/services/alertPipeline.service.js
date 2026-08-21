@@ -188,6 +188,13 @@ export const processAlert = async (alertData, source, sourceDetails = {}, option
  * @returns {Promise<Object>} - Processed alert
  */
 export const processIoTAlert = async (deviceAlertData) => {
+  const { isIotEnabled } = await import('../config/features.js');
+  if (!isIotEnabled()) {
+    const err = new Error('IoT is disabled (IOT_ENABLED=false)');
+    err.statusCode = 503;
+    throw err;
+  }
+
   const sourceDetails = {
     deviceId: deviceAlertData.deviceId,
     deviceType: deviceAlertData.deviceType,

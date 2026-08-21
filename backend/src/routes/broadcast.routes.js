@@ -12,13 +12,16 @@ import {
   scheduleBroadcastEndpoint,
   getBroadcasts,
   getBroadcastById,
-  getBroadcastStatistics
+  getBroadcastStatistics,
+  getBroadcastCapabilities
 } from '../controllers/broadcast.controller.js';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+router.get('/capabilities', getBroadcastCapabilities);
 
 /**
  * Send broadcast

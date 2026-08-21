@@ -6,18 +6,34 @@ import {
   getHealthMonitoring,
   getHistoricalData
 } from '../controllers/iotDevice.controller.js';
-import { deviceAlert } from '../controllers/device.controller.js'; // Phase 4.3
+import { deviceAlert } from '../controllers/device.controller.js';
 import Device from '../models/Device.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { authenticateDevice } from '../middleware/deviceAuth.middleware.js';
+import { requireIotEnabled } from '../middleware/iotEnabled.middleware.js';
+import { isIotEnabled } from '../config/features.js';
 import { validate } from '../middleware/validator.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import logger from '../config/logger.js';
 
 const router = express.Router();
 
+/**
+ * Feature flag for clients (web/mobile/ESP32).
+ * GET /api/devices/iot/status
+ */
+router.get('/iot/status', (req, res) => {
+  const enabled = isIotEnabled();
+  return successResponse(
+    res,
+    { iotEnabled: enabled },
+    enabled
+      ? 'IoT is enabled'
+      : 'IoT is disabled — set IOT_ENABLED=true in backend/.env to accept sensor traffic'
+  );
+});
+
 // Register device (requires auth - admin)
-// Phase 201: Allow 'multi-sensor' device type for IoT nodes
 router.post(
   '/register',
   authenticate,
@@ -25,8 +41,7 @@ router.post(
   body('deviceName').notEmpty().withMessage('Device name is required'),
   body('deviceType').isIn([
     'class_tablet', 'projector_device', 'teacher_device', 'personal',
-    // Phase 201: Multi-sensor IoT nodes
-    'multi-sensor', 'fire-sensor', 'flood-sensor', 'motion-sensor', 
+    'multi-sensor', 'fire-sensor', 'flood-sensor', 'motion-sensor',
     'temperature-sensor', 'smoke-sensor', 'panic-button', 'siren', 'led-strip'
   ]).withMessage('Invalid device type'),
   body('institutionId').isMongoId().withMessage('Valid institution ID is required'),
@@ -35,7 +50,7 @@ router.post(
   register
 );
 
-// Device login (public - uses device token)
+// Device login (public - uses device token) — tablets + sensors
 router.post(
   '/login',
   body('deviceToken').notEmpty().withMessage('Device token is required'),
@@ -57,7 +72,6 @@ router.get(
       if (deviceType) query.deviceType = deviceType;
       if (isActive !== undefined) query.isActive = isActive === 'true';
 
-      // Non-admin users can only see devices from their institution
       if (req.userRole !== 'admin' && req.user?.institutionId) {
         query.institutionId = req.user.institutionId;
       }
@@ -75,6 +89,61 @@ router.get(
   }
 );
 
+// --- Static IoT paths MUST be before /:deviceId ---
+
+/**
+ * GET /api/devices/health/monitoring
+ */
+router.get(
+  '/health/monitoring',
+  authenticate,
+  getHealthMonitoring
+);
+
+/**
+ * POST /api/devices/:deviceId/telemetry — ESP32 ingest (gated)
+ */
+router.post(
+  '/:deviceId/telemetry',
+  requireIotEnabled,
+  authenticateDevice,
+  validate,
+  processTelemetry
+);
+
+/**
+ * GET /api/devices/:deviceId/history
+ */
+router.get(
+  '/:deviceId/history',
+  authenticate,
+  getHistoricalData
+);
+
+/**
+ * POST /api/devices/:deviceId/alert — ESP32 emergency (gated)
+ */
+router.post(
+  '/:deviceId/alert',
+  requireIotEnabled,
+  authenticateDevice,
+  param('deviceId').notEmpty().withMessage('Device ID is required'),
+  body('alertType')
+    .optional()
+    .customSanitizer((v) => (typeof v === 'string' ? v.trim().toUpperCase() : v))
+    .isIn(['FIRE', 'SMOKE', 'EARTHQUAKE', 'FLOOD', 'MANUAL'])
+    .withMessage('Invalid alert type'),
+  body('severity')
+    .optional()
+    .customSanitizer((v) => (typeof v === 'string' ? v.trim().toUpperCase() : v))
+    .isIn(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
+    .withMessage('Invalid severity'),
+  body('sensorData').optional().isObject().withMessage('Sensor data must be an object'),
+  body('location').optional().isObject().withMessage('Location must be an object'),
+  validate,
+  deviceAlert
+);
+
 // Get device info (requires auth)
 router.get(
   '/:deviceId',
@@ -86,10 +155,19 @@ router.get(
         .populate('classId', 'grade section classCode');
 
       if (!device) {
-        return errorResponse(res, 'Device not found', 404);
+        // Also allow lookup by business deviceId string
+        const byKey = await Device.findOne({ deviceId: req.params.deviceId })
+          .populate('institutionId', 'name')
+          .populate('classId', 'grade section classCode');
+        if (!byKey) {
+          return errorResponse(res, 'Device not found', 404);
+        }
+        if (req.userRole !== 'admin' && byKey.institutionId?.toString() !== req.user?.institutionId?.toString()) {
+          return errorResponse(res, 'Access denied', 403);
+        }
+        return successResponse(res, byKey, 'Device retrieved successfully');
       }
 
-      // Non-admin users can only see devices from their institution
       if (req.userRole !== 'admin' && device.institutionId?.toString() !== req.user?.institutionId?.toString()) {
         return errorResponse(res, 'Access denied', 403);
       }
@@ -108,17 +186,27 @@ router.put(
   authenticate,
   async (req, res) => {
     try {
-      const device = await Device.findById(req.params.deviceId);
+      let device = await Device.findById(req.params.deviceId);
+      if (!device) {
+        device = await Device.findOne({ deviceId: req.params.deviceId });
+      }
 
       if (!device) {
         return errorResponse(res, 'Device not found', 404);
       }
 
-      const { deviceName, classId, isActive, metadata } = req.body;
+      const { deviceName, classId, isActive, metadata, status, room, configuration } = req.body;
 
       if (deviceName) device.deviceName = deviceName;
       if (classId !== undefined) device.classId = classId || null;
-      if (isActive !== undefined) device.isActive = isActive;
+      if (isActive !== undefined) {
+        device.isActive = isActive;
+        if (isActive === false && device.status === 'active') device.status = 'inactive';
+        if (isActive === true && device.status === 'inactive') device.status = 'active';
+      }
+      if (status) device.status = status;
+      if (room !== undefined) device.room = room;
+      if (configuration) device.configuration = { ...device.configuration, ...configuration };
       if (metadata) device.metadata = { ...device.metadata, ...metadata };
 
       await device.save();
@@ -129,61 +217,6 @@ router.put(
       return errorResponse(res, error.message || 'Failed to update device', 500);
     }
   }
-);
-
-// Phase 3.4.2: Enhanced IoT endpoints
-
-/**
- * Process sensor telemetry
- * POST /api/devices/:deviceId/telemetry
- * Requires: Device authentication
- */
-// Phase 201: Telemetry endpoint - readings can be nested or flat
-router.post(
-  '/:deviceId/telemetry',
-  authenticateDevice,
-  // Phase 201: Readings can be in body.readings or body directly (for ESP32 compatibility)
-  validate,
-  processTelemetry
-);
-
-/**
- * Get device health monitoring
- * GET /api/devices/health/monitoring
- * Requires: User authentication
- */
-router.get(
-  '/health/monitoring',
-  authenticate,
-  getHealthMonitoring
-);
-
-/**
- * Get historical sensor data
- * GET /api/devices/:deviceId/history
- * Requires: User authentication
- */
-router.get(
-  '/:deviceId/history',
-  authenticate,
-  getHistoricalData
-);
-
-/**
- * Phase 4.3: IoT Emergency Trigger - Device Alert Endpoint
- * POST /api/devices/:deviceId/alert
- * Requires: Device authentication (Bearer token)
- */
-router.post(
-  '/:deviceId/alert',
-  authenticateDevice,
-  param('deviceId').notEmpty().withMessage('Device ID is required'),
-  body('alertType').optional().isIn(['FIRE', 'SMOKE', 'EARTHQUAKE', 'FLOOD', 'MANUAL']).withMessage('Invalid alert type'),
-  body('severity').optional().isIn(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).withMessage('Invalid severity'),
-  body('sensorData').optional().isObject().withMessage('Sensor data must be an object'),
-  body('location').optional().isObject().withMessage('Location must be an object'),
-  validate,
-  deviceAlert
 );
 
 export default router;

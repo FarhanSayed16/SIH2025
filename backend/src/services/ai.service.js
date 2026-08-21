@@ -57,7 +57,11 @@ Return a JSON response with:
   "severity": "low" | "medium" | "high" | null,
   "description": "Detailed description of the hazard",
   "recommendations": ["recommendation1", "recommendation2"],
-  "confidence": 0.0-1.0
+  "confidence": 0.0-1.0,
+  "score": 1-10,
+  "summary": "max 5 words",
+  "action": "concise advice",
+  "color": "green" | "yellow" | "red"
 }`;
 
     // Generate content
@@ -399,6 +403,47 @@ const getTextModel = () => {
   return genAI.getGenerativeModel({ model: modelName });
 };
 
+let geminiCooldownUntil = 0;
+const GEMINI_COOLDOWN_MS = 60_000;
+
+export const isGeminiQuotaError = (error) => {
+  const msg = `${error?.message || ''} ${error?.status || ''}`.toLowerCase();
+  return (
+    error?.status === 429 ||
+    error?.statusCode === 429 ||
+    msg.includes('429') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('quota') ||
+    msg.includes('too many requests')
+  );
+};
+
+export const isGeminiCoolingDown = () => Date.now() < geminiCooldownUntil;
+
+export const markGeminiQuotaHit = () => {
+  geminiCooldownUntil = Date.now() + GEMINI_COOLDOWN_MS;
+  logger.warn(`Gemini quota/429: cooling down ${GEMINI_COOLDOWN_MS / 1000}s`);
+};
+
+const ASK_FALLBACK =
+  'AI is temporarily limited (quota). Stay calm, follow your school evacuation plan, and ask a teacher if you are unsure. Try again in about a minute.';
+
+const SCENARIO_FALLBACK = {
+  nextScenario:
+    'Practice mode (AI quota paused): You smell smoke in the school corridor. What do you do first?',
+  consequence: null,
+  options: [
+    'Alert the nearest teacher',
+    'Pull the fire alarm',
+    'Run out without telling anyone',
+    'Hide in a closet'
+  ],
+  isGameOver: false,
+  safetyScoreSentence: null,
+  tip: 'Alert adults and use designated exits. Never hide from fire.',
+  quotaLimited: true
+};
+
 /**
  * B1: Drill report auto-summary (2-3 sentences + one improvement tip)
  */
@@ -464,6 +509,13 @@ export const getTodaysSafetyTip = async (lang = 'en') => {
     return { tip: englishTip || fallback, date: dateStr };
   }
 
+  if (isGeminiCoolingDown() && !englishTip) {
+    const fb = (tipMemory.date === dateStr && tipMemory.text)
+      ? tipMemory.text
+      : 'Keep evacuation routes clear and practice drills regularly.';
+    return { tip: fb, date: dateStr, quotaLimited: true };
+  }
+
   try {
     if (!englishTip) {
       const model = getTextModel();
@@ -499,6 +551,9 @@ export const getTodaysSafetyTip = async (lang = 'en') => {
  * O6: Optional preferredResponseLang (en, hi, mr) – answer in that language; else auto-detect from question (Hindi/Marathi/Hinglish → same language).
  */
 export const answerSafetyQuestion = async (question, preferredResponseLang) => {
+  if (isGeminiCoolingDown()) {
+    return { answer: ASK_FALLBACK, quotaLimited: true };
+  }
   try {
     const model = getTextModel();
     const langHint = preferredResponseLang && ['hi', 'mr', 'en'].includes(String(preferredResponseLang).toLowerCase())
@@ -511,6 +566,10 @@ export const answerSafetyQuestion = async (question, preferredResponseLang) => {
     return { answer };
   } catch (error) {
     logger.error('Ask Kavach error:', error);
+    if (isGeminiQuotaError(error)) {
+      markGeminiQuotaHit();
+      return { answer: ASK_FALLBACK, quotaLimited: true };
+    }
     throw new Error(`Answer failed: ${error.message}`);
   }
 };
@@ -705,6 +764,9 @@ export const simplifyContentForGrade = async (text, ageOrGrade = 8) => {
  * Later calls: stepIndex, userChoice, previousContext → returns consequence + next scenario (or game over).
  */
 export const scenarioNext = async ({ scenarioId, stepIndex = 0, userChoice, previousContext = [] }) => {
+  if (isGeminiCoolingDown()) {
+    return { ...SCENARIO_FALLBACK };
+  }
   try {
     const model = getTextModel();
     const isFirstStep = stepIndex === 0 && !userChoice && (!previousContext || previousContext.length === 0);
@@ -778,6 +840,10 @@ Limit to 3-5 steps total; after 2-4 choices set isGameOver true. Keep options to
     return data;
   } catch (error) {
     logger.error('Scenario next error:', error);
+    if (isGeminiQuotaError(error)) {
+      markGeminiQuotaHit();
+      return { ...SCENARIO_FALLBACK };
+    }
     throw new Error(`Scenario failed: ${error.message}`);
   }
 };
@@ -819,6 +885,31 @@ Be constructive and specific. strengths and improvements must be arrays of 2-3 s
   } catch (error) {
     logger.error('Report card error:', error);
     throw new Error(`Report card failed: ${error.message}`);
+  }
+};
+
+/**
+ * Game turn: keep Gemini on the server (mobile games must not use on-device API keys).
+ */
+export const gameTurn = async ({ systemPrompt, message, history = [] }) => {
+  if (isGeminiCoolingDown()) {
+    return { text: JSON.stringify({ type: 'error', evaluation: ASK_FALLBACK, question: ASK_FALLBACK }) };
+  }
+  try {
+    const model = getTextModel();
+    const hist = Array.isArray(history) ? history.slice(-16) : [];
+    const histStr = hist.map((h) => `${h.role || 'user'}: ${h.text || ''}`).join('\n');
+    const prompt = `${systemPrompt || ''}\n\nConversation so far:\n${histStr}\n\nLatest user message: ${message}\n\nReply with ONLY the JSON the client expects. No markdown fences.`;
+    const result = await model.generateContent(prompt);
+    const text = (result.response?.text() || '').trim();
+    return { text };
+  } catch (error) {
+    logger.error('Game turn error:', error);
+    if (isGeminiQuotaError(error)) {
+      markGeminiQuotaHit();
+      return { text: JSON.stringify({ type: 'error', evaluation: ASK_FALLBACK, question: ASK_FALLBACK }) };
+    }
+    throw new Error(`Game turn failed: ${error.message}`);
   }
 };
 
