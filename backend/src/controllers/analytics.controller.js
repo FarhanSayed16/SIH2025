@@ -30,7 +30,7 @@ export const getDrillMetrics = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin') {
+    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -64,7 +64,7 @@ export const getStudentProgress = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin') {
+    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -104,12 +104,12 @@ export const getInstitutionMetrics = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin') {
+    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
     // Only admins and institution admins can view institution analytics
-    if (req.user?.role !== 'admin' && req.user?.role !== 'institution_admin') {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'system_admin' && req.user?.role !== 'institution_admin') {
       return errorResponse(res, 'Unauthorized: Only admins can view institution analytics', 403);
     }
 
@@ -134,7 +134,7 @@ export const getModuleCompletion = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin') {
+    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -164,7 +164,7 @@ export const getGameAnalytics = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin') {
+    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -198,7 +198,7 @@ export const getQuizAccuracy = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin') {
+    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 

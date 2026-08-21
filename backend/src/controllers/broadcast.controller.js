@@ -12,6 +12,21 @@ import BroadcastMessage from '../models/BroadcastMessage.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/response.js';
 import logger from '../config/logger.js';
 
+export const getBroadcastCapabilities = async (req, res) => {
+  try {
+    const sms = (await import('../services/sms.service.js')).default;
+    const email = (await import('../services/email.service.js')).default;
+    return successResponse(res, {
+      sms: Boolean(sms.isConfigured?.()),
+      email: Boolean(email.isConfigured?.()),
+      push: true
+    }, 'Broadcast channels');
+  } catch (error) {
+    logger.error('Broadcast capabilities error:', error);
+    return successResponse(res, { sms: false, email: true, push: true }, 'Broadcast channels');
+  }
+};
+
 /**
  * Send broadcast message
  * POST /api/broadcast/send

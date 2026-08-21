@@ -43,8 +43,16 @@ export const detailedHealthCheck = async (req, res) => {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       version: process.env.npm_package_version || '1.0.0',
+      features: {},
       dependencies: {}
     };
+
+    try {
+      const { isIotEnabled } = await import('../config/features.js');
+      health.features.iotEnabled = isIotEnabled();
+    } catch {
+      health.features.iotEnabled = false;
+    }
 
     // Check MongoDB connection
     try {

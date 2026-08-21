@@ -55,7 +55,8 @@ export const registerDevice = async (req, res) => {
         thresholds: configuration.thresholds || {
           waterWarning: 1500,
           waterDanger: 2000,
-          earthquake: 2.5
+          // Excess over 1g in m/s² (MPU6050 rest ≈ 9.81). Not raw |a|.
+          earthquake: 3.0
         }
       };
     }
@@ -243,7 +244,7 @@ export const deviceAlert = async (req, res) => {
       description
     } = req.body;
 
-    // Map alertType to Alert model enum (convert to lowercase)
+    // Map alertType to Alert model enum (fire/FIRE both work via toUpperCase)
     const alertTypeMap = {
       'FIRE': 'fire',
       'SMOKE': 'fire', // Smoke alerts are fire type
@@ -251,9 +252,9 @@ export const deviceAlert = async (req, res) => {
       'FLOOD': 'flood',
       'MANUAL': 'other'
     };
-    
-    const alertTypeLower = alertTypeMap[alertType?.toUpperCase()] || 
-                          getAlertTypeFromDeviceType(device.deviceType) || 
+
+    const alertTypeLower = alertTypeMap[String(alertType || '').trim().toUpperCase()] ||
+                          getAlertTypeFromDeviceType(device.deviceType) ||
                           'other';
 
     // Map severity to lowercase
