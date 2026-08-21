@@ -33,6 +33,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.2.1",
     "@sendgrid/mail": "^8.1.6",
+    "@upstash/redis": "^1.38.2",
     "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
@@ -54,6 +55,7 @@
     "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
     "redis": "^4.6.0",
+    "resend": "^6.21.0",
     "sharp": "^0.33.5",
     "socket.io": "^4.7.0",
     "uuid": "^13.0.0",
