@@ -89,7 +89,7 @@ export const requireRole = (...allowedRoles) => {
 /**
  * Require admin role (admin or SYSTEM_ADMIN)
  */
-export const requireAdmin = requireRole('admin', 'SYSTEM_ADMIN');
+export const requireAdmin = requireRole('admin', 'system_admin', 'SYSTEM_ADMIN');
 
 /**
  * Require SYSTEM_ADMIN role (highest level)
@@ -99,7 +99,7 @@ export const requireSuperAdmin = requireRole('SYSTEM_ADMIN');
 /**
  * Require teacher or admin
  */
-export const requireTeacher = requireRole('teacher', 'admin');
+export const requireTeacher = requireRole('teacher', 'admin', 'system_admin');
 
 /**
  * Require teacher access (approved + has institution)
@@ -197,7 +197,7 @@ export const requireTeacherAccess = async (req, res, next) => {
 /**
  * Require student, teacher, or admin
  */
-export const requireUser = requireRole('student', 'teacher', 'admin', 'parent');
+export const requireUser = requireRole('student', 'teacher', 'admin', 'parent', 'system_admin');
 
 /**
  * Check if user owns resource or is admin

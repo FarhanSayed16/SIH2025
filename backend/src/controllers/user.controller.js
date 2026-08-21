@@ -315,7 +315,13 @@ export const registerFCMToken = async (req, res) => {
       return errorResponse(res, 'User not found', 404);
     }
 
-    // Update deviceToken (FCM token) in user model
+    if (user.deviceToken === fcmToken) {
+      return successResponse(res, {
+        message: 'FCM token already registered',
+        userId: user._id
+      }, 'FCM token already registered');
+    }
+
     user.deviceToken = fcmToken;
     await user.save();
 

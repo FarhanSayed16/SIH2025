@@ -19,7 +19,8 @@ import {
   translateController,
   simplifyController,
   scenarioNextController,
-  reportCardController
+  reportCardController,
+  gameTurnController
 } from '../controllers/ai.controller.js';
 import { generateQuiz, getCachedQuizForModule } from '../controllers/quiz.controller.js';
 import { optionalAuth, authenticate } from '../middleware/auth.middleware.js';
@@ -238,6 +239,17 @@ router.post(
   body('institutionId').optional().isString(),
   validate,
   reportCardController
+);
+
+router.post(
+  '/game/turn',
+  apiLimiter,
+  optionalAuth,
+  body('message').notEmpty().withMessage('Message is required'),
+  body('systemPrompt').optional().isString(),
+  body('history').optional().isArray(),
+  validate,
+  gameTurnController
 );
 
 export default router;

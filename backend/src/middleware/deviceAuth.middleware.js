@@ -2,50 +2,56 @@ import Device from '../models/Device.js';
 import { errorResponse } from '../utils/response.js';
 import logger from '../config/logger.js';
 
+const LAST_SEEN_MIN_INTERVAL_MS = 30_000;
+
 /**
  * Device authentication middleware
- * Validates device token for IoT device requests
+ * Validates device token for IoT / device requests
  */
 export const authenticateDevice = async (req, res, next) => {
   try {
-    // Phase 4.3: Support both Bearer token format and custom headers
     let deviceToken = null;
-    
-    // Check Bearer token format (Phase 4.3 requirement)
+
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      deviceToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+      deviceToken = authHeader.substring(7);
     }
-    
-    // Fallback to custom headers (existing format)
+
     if (!deviceToken) {
       deviceToken = req.headers['x-device-token'] || req.headers['device-token'];
     }
-    
+
     if (!deviceToken) {
-      return errorResponse(res, 'Device token required. Use Authorization: Bearer <token> or x-device-token header', 401);
+      return errorResponse(
+        res,
+        'Device token required. Use Authorization: Bearer <token> or x-device-token header',
+        401
+      );
     }
 
-    // Find device by token
     const device = await Device.findOne({ deviceToken });
-    
+
     if (!device) {
-      logger.warn(`Device authentication failed: Invalid token`);
+      logger.warn('Device authentication failed: Invalid token');
       return errorResponse(res, 'Invalid device token', 401);
     }
 
-    // Check if device is active
-    if (device.status !== 'active') {
-      logger.warn(`Device authentication failed: Device ${device.deviceId} is ${device.status}`);
+    if (device.isActive === false || device.status === 'inactive' || device.status === 'maintenance') {
+      logger.warn(
+        `Device authentication failed: Device ${device.deviceId} is ${device.status} (isActive=${device.isActive})`
+      );
       return errorResponse(res, 'Device is not active', 403);
     }
 
-    // Update last seen
-    device.lastSeen = new Date();
-    device.status = 'active';
-    await device.save();
+    // Throttle lastSeen writes — telemetry can be very frequent
+    const now = Date.now();
+    const last = device.lastSeen ? new Date(device.lastSeen).getTime() : 0;
+    if (!last || now - last >= LAST_SEEN_MIN_INTERVAL_MS) {
+      device.lastSeen = new Date();
+      if (device.status === 'offline') device.status = 'active';
+      await device.save();
+    }
 
-    // Attach device to request
     req.device = device;
     req.deviceId = device._id;
     req.institutionId = device.institutionId;
@@ -59,27 +65,33 @@ export const authenticateDevice = async (req, res, next) => {
 
 /**
  * Optional device authentication
- * Attaches device if token is present, but doesn't fail if missing
  */
 export const optionalDeviceAuth = async (req, res, next) => {
   try {
-    const deviceToken = req.headers['x-device-token'] || req.headers['device-token'];
-    
+    const deviceToken =
+      req.headers['x-device-token'] ||
+      req.headers['device-token'] ||
+      (req.headers.authorization?.startsWith('Bearer ')
+        ? req.headers.authorization.substring(7)
+        : null);
+
     if (deviceToken) {
       const device = await Device.findOne({ deviceToken });
-      if (device && device.status === 'active') {
+      if (device && device.isActive !== false && device.status !== 'inactive') {
         req.device = device;
         req.deviceId = device._id;
         req.institutionId = device.institutionId;
-        device.lastSeen = new Date();
-        await device.save();
+        const now = Date.now();
+        const last = device.lastSeen ? new Date(device.lastSeen).getTime() : 0;
+        if (!last || now - last >= LAST_SEEN_MIN_INTERVAL_MS) {
+          device.lastSeen = new Date();
+          await device.save();
+        }
       }
     }
-    
+
     next();
   } catch (error) {
-    // Continue without device authentication
     next();
   }
 };
-
