@@ -27,7 +27,7 @@ I've enhanced the Wi-Fi connection code in `esp_code_integrated.ino` with:
 
 **You'll now see:**
 ```
-Connecting to Wi-Fi: Password-manas007
+Connecting to Wi-Fi: YOUR_WIFI_SSID
 Password: ********
 Starting connection...
 ..........
@@ -72,13 +72,13 @@ This will tell you exactly what's wrong!
 
 Double-check these in the code:
 ```cpp
-const char* WIFI_SSID = "Password-manas007";     // Exact spelling?
-const char* WIFI_PASSWORD = "ghebihkari";        // Exact password?
+const char* WIFI_SSID = "YOUR_WIFI_SSID";     // Exact spelling?
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";        // Exact password?
 ```
 
 **Test on your phone:**
 1. Forget the network
-2. Reconnect with password `ghebihkari`
+2. Reconnect with password `YOUR_WIFI_PASSWORD`
 3. Does it work? If yes, ESP32 should work too
 
 ---

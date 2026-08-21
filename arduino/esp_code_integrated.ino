@@ -1,7 +1,11 @@
 /*
- * KAVACH - Disaster Management IoT Node (Final Stable Version)
+ * KAVACH - Disaster Management IoT Node (HTTPS / tunnel)
  * -------------------------------------------------------------
  * Hardware: ESP32 WROOM, MPU6050, IR Flame Sensor, Water Level Sensor, Active Buzzer
+ *
+ * Register the device on the SERVER (not from this sketch):
+ *   node scripts/register-iot-device.js <deviceId> "<name>" <institutionId> "<room>"
+ * Then set DEVICE_TOKEN_PRESET. Do not commit real Wi-Fi or tokens.
  */
 
  #include <Wire.h>
@@ -12,27 +16,24 @@
  #include <WiFiClientSecure.h>
  #include <ArduinoJson.h>
  
- // --- PIN DEFINITIONS ---
- const int PIN_FLAME = 35;     // IR Flame Sensor (Digital Input)
- const int PIN_WATER = 33;     // Water Level Sensor (Analog Input)
- const int PIN_BUZZER = 25;    // Active Buzzer (Digital Output)
+ const int PIN_FLAME = 35;
+ const int PIN_WATER = 33;
+ const int PIN_BUZZER = 25;
  
- // --- NETWORK CONFIGURATION ---
- const char* WIFI_SSID = "Password-manas007";        
- const char* WIFI_PASSWORD = "ghebhikari";           
- const char* BACKEND_URL = "https://bnc51nt1-3000.inc1.devtunnels.ms"; // UPDATE THIS DAILY
+ // ============ CONFIG (fill locally) ============
+ const char* WIFI_SSID = "YOUR_WIFI_SSID";
+ const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+ const char* BACKEND_URL = "https://YOUR_TUNNEL_OR_HOST"; // no trailing slash
  const char* API_VERSION = "/api";
+ const char* DEVICE_ID = "KAV-NODE-001";
+ const char* DEVICE_TOKEN_PRESET = ""; // from register-iot-device.js
+ // ===============================================
+
+ String deviceToken = String(DEVICE_TOKEN_PRESET);
  
- // --- DEVICE CONFIGURATION ---
- const char* DEVICE_ID = "KAV-NODE-001";             
- // FALLBACK TOKEN: If registration fails, use this (from your previous logs)
- String deviceToken = "dev_ie3TLE45MtxvXjpLUkFwuZFFbhaieu1c"; 
- 
- // --- THRESHOLDS ---
- const int WATER_FLOOD_LEVEL = 2000; 
- // Earthquake: We look for vibration force ABOVE gravity (9.8m/s^2)
- const float GRAVITY = 9.8;
- const float SHAKE_THRESHOLD = 3.0; // Trigger if shaking adds 3.0 m/s^2 force
+ const int WATER_FLOOD_LEVEL = 2000;
+ const float GRAVITY = 9.81f;
+ const float SHAKE_THRESHOLD = 3.0f; // | |a| - g | in m/s²
  
  // --- TIMERS ---
  unsigned long lastTelemetry = 0;
@@ -79,7 +80,11 @@ void playSound(String type);
    
    // 4. Connect to Wi-Fi
    connectToWiFi();
-   
+
+   if (deviceToken.length() == 0) {
+     Serial.println("NO DEVICE TOKEN. Set DEVICE_TOKEN_PRESET from register-iot-device.js");
+   }
+
    Serial.println("✅ System Ready. Monitoring Environment...");
  }
  

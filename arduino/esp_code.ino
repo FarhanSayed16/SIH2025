@@ -13,9 +13,10 @@ const int PIN_FLAME = 35;     // IR Flame Sensor (Digital Input)
 const int PIN_WATER = 33;     // Water Level Sensor (Analog Input)
 const int PIN_BUZZER = 25;    // Active Buzzer (Digital Output)
 
-// --- THRESHOLDS ---
-const int WATER_FLOOD_LEVEL = 2000; // Value > 2000 triggers Flood Alert
-const float EARTHQUAKE_G_FORCE = 2.5; // Acceleration > 2.5G triggers Quake Alert
+// MPU6050 getEvent() is m/s² (~9.81 at rest). Compare excess over 1g, not |a| > 2.5.
+const int WATER_FLOOD_LEVEL = 2000;
+const float GRAVITY_MS2 = 9.81f;
+const float EARTHQUAKE_EXCESS_MS2 = 3.0f;
 
 // --- OBJECTS ---
 Adafruit_MPU6050 mpu;
@@ -87,9 +88,9 @@ void loop() {
   }
   
   // ⚠️ PRIORITY 3: EARTHQUAKE (SILENT MONITOR)
-  else if (abs(a.acceleration.x) > EARTHQUAKE_G_FORCE || abs(a.acceleration.y) > EARTHQUAKE_G_FORCE) {
-     Serial.print("⚠️ SHAKING DETECTED! Force: ");
-     Serial.println(abs(a.acceleration.x));
+  else if (fabs(sqrt(sq(a.acceleration.x) + sq(a.acceleration.y) + sq(a.acceleration.z)) - GRAVITY_MS2) > EARTHQUAKE_EXCESS_MS2) {
+     Serial.print("SHAKING DETECTED! excess m/s2: ");
+     Serial.println(fabs(sqrt(sq(a.acceleration.x) + sq(a.acceleration.y) + sq(a.acceleration.z)) - GRAVITY_MS2));
      
      // NO BUZZER HERE (Silent Mode)
      digitalWrite(PIN_BUZZER, LOW);

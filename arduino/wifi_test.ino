@@ -6,8 +6,8 @@
 #include <WiFi.h>
 
 // --- NETWORK CONFIGURATION ---
-const char* WIFI_SSID = "Password-manas007";
-const char* WIFI_PASSWORD = "ghebihkari";
+const char* WIFI_SSID = "YOUR_WIFI_SSID";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 void setup() {
   Serial.begin(115200);

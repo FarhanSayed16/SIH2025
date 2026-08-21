@@ -27,7 +27,7 @@ ESP32 is not connecting to Wi-Fi network:
 ```
 === KAVACH Wi-Fi Connection Test ===
 
-SSID: Password-manas007
+SSID: YOUR_WIFI_SSID
 Password: ********
 
 Starting Wi-Fi connection...
@@ -35,7 +35,7 @@ Connecting..........
 ✅ Wi-Fi Connected Successfully!
 
 Connection Details:
-  SSID: Password-manas007
+  SSID: YOUR_WIFI_SSID
   IP Address: 192.168.x.x
   Gateway: 192.168.x.1
   RSSI: -45 dBm
@@ -55,8 +55,8 @@ Check the error status:
 ### **2.1 Verify Wi-Fi Settings:**
 
 **Current Configuration:**
-- SSID: `Password-manas007`
-- Password: `ghebihkari`
+- SSID: `YOUR_WIFI_SSID`
+- Password: `YOUR_WIFI_PASSWORD`
 
 **Check:**
 - [ ] SSID spelling is exact (case-sensitive)
@@ -67,8 +67,8 @@ Check the error status:
 ### **2.2 Check Wi-Fi Network:**
 
 **On Your Phone/Computer:**
-1. Connect to `Password-manas007` network
-2. Verify password `ghebihkari` works
+1. Connect to `YOUR_WIFI_SSID` network
+2. Verify password `YOUR_WIFI_PASSWORD` works
 3. Check if network is visible
 4. Note the signal strength
 
