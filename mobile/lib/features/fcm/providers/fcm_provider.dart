@@ -34,6 +34,8 @@ class FcmNotifier extends StateNotifier<FcmState> {
   final FcmService _fcmService;
   final ApiService _apiService;
   final StorageService _storageService;
+  String? _lastPostedToken;
+  String? _lastPostedUserId;
 
   FcmNotifier(this._fcmService, this._apiService, this._storageService)
       : super(FcmState()) {
@@ -42,15 +44,20 @@ class FcmNotifier extends StateNotifier<FcmState> {
 
   void _setupCallbacks() {
     _fcmService.onTokenReceived = (token) {
+      if (state.token == token) return;
       state = state.copyWith(token: token);
-      // Auto-register token with backend
       _registerTokenWithBackend(token);
     };
 
     _fcmService.onMessageReceived = (message) {
-      // Handle message received
-      // This will trigger navigation in the app via FcmMessageHandler
+      _onNotificationTap?.call(message);
     };
+  }
+
+  void Function(dynamic)? _onNotificationTap;
+
+  void setNotificationTapHandler(void Function(dynamic) handler) {
+    _onNotificationTap = handler;
   }
 
   /// Initialize FCM
@@ -69,6 +76,7 @@ class FcmNotifier extends StateNotifier<FcmState> {
   /// Register FCM token with backend
   Future<void> registerTokenWithBackend(String? userId) async {
     if (userId == null || state.token == null) return;
+    if (_lastPostedToken == state.token && _lastPostedUserId == userId) return;
 
     try {
       // Wait a bit to ensure auth token is set in API service
@@ -90,6 +98,8 @@ class FcmNotifier extends StateNotifier<FcmState> {
         ApiEndpoints.userFcmToken(userId),
         data: {'fcmToken': state.token},
       );
+      _lastPostedToken = state.token;
+      _lastPostedUserId = userId;
       print('✅ FCM token registered successfully');
     } catch (e) {
       // Log error but don't fail - token will be registered on next app open
@@ -115,6 +125,8 @@ class FcmNotifier extends StateNotifier<FcmState> {
   }
 
   /// Subscribe to school topic
+  String? _lastSchoolTopic;
+
   Future<void> subscribeToSchool(String? schoolId) async {
     if (schoolId == null || schoolId.isEmpty) {
       print('⚠️ Cannot subscribe to topic: schoolId is null or empty');
@@ -125,6 +137,7 @@ class FcmNotifier extends StateNotifier<FcmState> {
     // Remove any invalid characters
     final sanitizedId = schoolId.replaceAll(RegExp(r'[^a-zA-Z0-9\-_.~%]'), '_');
     final topicName = 'school_$sanitizedId';
+    if (_lastSchoolTopic == topicName) return;
 
     // Validate topic name length (FCM has a limit)
     if (topicName.length > 100) {
@@ -134,6 +147,7 @@ class FcmNotifier extends StateNotifier<FcmState> {
 
     try {
       await _fcmService.subscribeToTopic(topicName);
+      _lastSchoolTopic = topicName;
       print('✅ Subscribed to FCM topic: $topicName');
     } catch (e) {
       print('⚠️ Failed to subscribe to topic: $e');

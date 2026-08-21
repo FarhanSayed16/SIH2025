@@ -1,8 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../emergency/screens/crisis_mode_screen.dart'; // Phase 4.1: Enhanced crisis mode
-import '../../emergency/screens/red_alert_screen.dart'; // Legacy fallback
+import '../../emergency/screens/crisis_mode_screen.dart';
+import '../../emergency/screens/red_alert_screen.dart';
+import '../../drills/screens/drill_detail_screen.dart';
+import '../screens/broadcast_detail_screen.dart';
 
 /// FCM Message Handler - Handles FCM messages and navigates accordingly
 class FcmMessageHandler {
@@ -56,8 +58,17 @@ class FcmMessageHandler {
 
       case 'BROADCAST':
       case 'broadcast':
-        // Phase 3.4.3: Handle broadcast messages
+      case 'notification':
         _handleBroadcast(data, notification);
+        break;
+
+      case 'SOS_ALERT':
+      case 'sos_alert':
+        _handleCrisisAlert({...data, 'alertType': 'emergency'}, notification);
+        break;
+
+      case 'SOS_SAFE':
+        _handleGenericNotification(notification);
         break;
 
       default:
@@ -110,17 +121,21 @@ class FcmMessageHandler {
       Map<String, dynamic> data, RemoteNotification? notification) {
     final drillType =
         (data['drillType'] as String?) ?? (data['type'] as String?) ?? 'drill';
+    final drillId = data['drillId']?.toString() ?? '';
+
+    if (drillId.isNotEmpty && context.mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => DrillDetailScreen(drillId: drillId),
+        ),
+      );
+      return;
+    }
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Drill scheduled: ${_formatDrillType(drillType)}'),
-          action: SnackBarAction(
-            label: 'View',
-            onPressed: () {
-              // TODO: Navigate to drill details (Phase 3)
-            },
-          ),
           duration: const Duration(seconds: 5),
         ),
       );
@@ -207,7 +222,7 @@ class FcmMessageHandler {
     }
   }
 
-  /// Phase 3.4.3: Handle broadcast messages
+  /// Handle broadcast messages — open the broadcast screen (tap or foreground).
   void _handleBroadcast(
       Map<String, dynamic> data, RemoteNotification? notification) {
     final priority = (data['priority'] as String?) ?? 'medium';
@@ -218,86 +233,15 @@ class FcmMessageHandler {
         notification?.title ?? (data['title'] as String?) ?? 'Broadcast';
 
     if (context.mounted) {
-      // Show notification with appropriate styling based on priority
-      Color backgroundColor;
-      Duration duration;
-
-      switch (priority.toLowerCase()) {
-        case 'urgent':
-          backgroundColor = Colors.red;
-          duration = const Duration(seconds: 10);
-          break;
-        case 'high':
-          backgroundColor = Colors.orange;
-          duration = const Duration(seconds: 7);
-          break;
-        default:
-          backgroundColor = Colors.blue;
-          duration = const Duration(seconds: 5);
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(message),
-            ],
-          ),
-          backgroundColor: backgroundColor,
-          duration: duration,
-          action: SnackBarAction(
-            label: 'View',
-            textColor: Colors.white,
-            onPressed: () {
-              // TODO: Navigate to broadcast details screen (Phase 3.4.3)
-              // For now, just show a dialog
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(title),
-                  content: Text(message),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Close'),
-                    ),
-                  ],
-                ),
-              );
-            },
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => BroadcastDetailScreen(
+            title: title,
+            message: message,
+            priority: priority,
           ),
         ),
       );
-
-      // For urgent broadcasts, also show dialog immediately
-      if (priority.toLowerCase() == 'urgent') {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => AlertDialog(
-            title: Row(
-              children: [
-                const Icon(Icons.warning, color: Colors.red),
-                const SizedBox(width: 8),
-                Expanded(child: Text(title)),
-              ],
-            ),
-            content: Text(message),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Acknowledge'),
-              ),
-            ],
-          ),
-        );
-      }
     }
   }
 
