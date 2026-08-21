@@ -1,5 +1,13 @@
 # 📚 Kavach Documentation Index
 
+**Current source of truth (what to build, and in what order):**
+
+- [Implementation plan (phases 1–4)](project/IMPLEMENTATION_PLAN_PHASES.md)
+- [Project audit and required fixes](project/PROJECT_AUDIT_AND_REQUIRED_FIXES.md)
+- [Production readiness checklist](project/PRODUCTION_READINESS.md)
+
+Older `docs/phase-*` folders are **history**. Do not delete them; they are not the active checklist.
+
 ## 📁 Documentation Structure
 
 All project documentation is organized by phase and purpose.
@@ -169,6 +177,6 @@ All documentation follows these standards:
 
 ---
 
-**Last Updated**: Phase 2 Planning  
+**Last Updated**: Phases 1–4 implementation plan (see `docs/project/`)  
 **Maintained By**: Development Team
 
