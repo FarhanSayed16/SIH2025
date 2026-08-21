@@ -1,35 +1,49 @@
 /**
- * Phase 3.4.3: Email Service (Nodemailer Integration + SendGrid)
- * Handles sending email notifications with rate limiting and multiple providers
+ * Phase 3.4.3: Email Service (Resend + Nodemailer SMTP + SendGrid)
+ * Prefer Resend when RESEND_API_KEY is set (best free-tier DX for Kavach).
  */
 
 import logger from '../config/logger.js';
 import { getRedisClient } from '../config/redis.js';
 
-// Email transporter (supports multiple providers)
 let nodemailer = null;
 let emailTransporter = null;
 let sendGridClient = null;
+let resendClient = null;
 let emailConfigured = false;
 let sendGridConfigured = false;
+let resendConfigured = false;
 let initializationAttempted = false;
 
-// Email rate limiting constants
-const MAX_DAILY_EMAILS_GMAIL = 500; // Gmail free account limit
-const MAX_DAILY_EMAILS_SENDGRID = 100; // SendGrid free tier limit
-const EMAIL_BATCH_SIZE = 50; // Send emails in batches
-const EMAIL_BATCH_DELAY = 1000; // 1 second delay between batches
+const MAX_DAILY_EMAILS_GMAIL = 500;
+const MAX_DAILY_EMAILS_SENDGRID = 100;
+const MAX_DAILY_EMAILS_RESEND = 100; // Resend free tier (approx)
+const EMAIL_BATCH_SIZE = 50;
+const EMAIL_BATCH_DELAY = 1000;
 
 /**
- * Initialize email transporter (lazy initialization)
- * Supports both SMTP (Gmail) and SendGrid
+ * Initialize email transporters (lazy)
+ * Priority when sending: Resend → SMTP → SendGrid
  */
 const initializeEmailService = async () => {
-  if (initializationAttempted) return; // Already attempted
+  if (initializationAttempted) return;
   initializationAttempted = true;
-  
+
   try {
-    // Initialize SendGrid if API key is provided
+    // --- Resend (preferred for this project) ---
+    if (process.env.RESEND_API_KEY) {
+      try {
+        const { Resend } = await import('resend');
+        resendClient = new Resend(process.env.RESEND_API_KEY);
+        resendConfigured = true;
+        logger.info('✅ Resend email service initialized');
+      } catch (error) {
+        logger.warn('⚠️ Resend init failed:', error.message);
+        logger.warn('   Install with: npm install resend');
+      }
+    }
+
+    // --- SendGrid ---
     if (process.env.SENDGRID_API_KEY) {
       try {
         const sendGridModule = await import('@sendgrid/mail').catch(() => null);
@@ -44,19 +58,18 @@ const initializeEmailService = async () => {
       }
     }
 
-    // Initialize SMTP (Gmail) if credentials are provided
-    const nodemailerModule = await import('nodemailer').catch((err) => {
+    // --- SMTP (Gmail etc.) ---
+    const nodemailerModule = await import('nodemailer').catch(() => {
       logger.warn('⚠️ Nodemailer not installed - SMTP email service will be disabled');
-      logger.warn('   Install with: npm install nodemailer');
       return null;
     });
-    
+
     if (nodemailerModule && nodemailerModule.default) {
       nodemailer = nodemailerModule.default;
 
       const emailConfig = {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT || '587'),
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
         secure: process.env.SMTP_SECURE === 'true',
         auth: {
           user: process.env.SMTP_USER,
@@ -64,13 +77,11 @@ const initializeEmailService = async () => {
         }
       };
 
-      // Check if SMTP is configured
       if (emailConfig.auth.user && emailConfig.auth.pass) {
         emailTransporter = nodemailer.createTransport(emailConfig);
         emailConfigured = true;
         logger.info('✅ SMTP email service initialized');
-        
-        // Verify connection (async, don't block)
+
         emailTransporter.verify((error) => {
           if (error) {
             logger.warn('⚠️ SMTP email service verification failed:', error.message);
@@ -82,14 +93,15 @@ const initializeEmailService = async () => {
       }
     }
 
-    if (!emailConfigured && !sendGridConfigured) {
+    if (!emailConfigured && !sendGridConfigured && !resendConfigured) {
       logger.warn('⚠️ No email service configured - Email notifications will be disabled');
-      logger.warn('   Configure either SENDGRID_API_KEY or SMTP_USER/SMTP_PASS');
+      logger.warn('   Set RESEND_API_KEY (recommended), or SENDGRID_API_KEY, or SMTP_USER/SMTP_PASS');
     }
   } catch (error) {
     logger.warn('⚠️ Email service initialization failed:', error.message);
     emailConfigured = false;
     sendGridConfigured = false;
+    resendConfigured = false;
   }
 };
 
@@ -147,7 +159,12 @@ const incrementDailyEmailCount = async () => {
  */
 const checkEmailRateLimit = async (provider = 'smtp') => {
   const dailyCount = await getDailyEmailCount();
-  const limit = provider === 'sendgrid' ? MAX_DAILY_EMAILS_SENDGRID : MAX_DAILY_EMAILS_GMAIL;
+  const limit =
+    provider === 'resend'
+      ? MAX_DAILY_EMAILS_RESEND
+      : provider === 'sendgrid'
+        ? MAX_DAILY_EMAILS_SENDGRID
+        : MAX_DAILY_EMAILS_GMAIL;
 
   if (dailyCount >= limit) {
     return {
@@ -163,6 +180,47 @@ const checkEmailRateLimit = async (provider = 'smtp') => {
     count: dailyCount,
     limit
   };
+};
+
+/**
+ * Send email via Resend
+ */
+const sendEmailViaResend = async (to, subject, text, html = null) => {
+  if (!resendConfigured || !resendClient) {
+    return { success: false, error: 'Resend not configured' };
+  }
+
+  try {
+    // Without a verified domain, Resend allows onboarding@resend.dev for tests
+    const from =
+      process.env.RESEND_FROM_EMAIL ||
+      process.env.SMTP_FROM ||
+      'Kavach <onboarding@resend.dev>';
+
+    const { data, error } = await resendClient.emails.send({
+      from,
+      to: Array.isArray(to) ? to : [to],
+      subject,
+      text: text || undefined,
+      html: html || undefined
+    });
+
+    if (error) {
+      const msg = error.message || (typeof error === 'string' ? error : JSON.stringify(error));
+      logger.error(`❌ Resend failed to ${to}: ${msg}`);
+      return { success: false, error: msg, provider: 'resend' };
+    }
+
+    logger.info(`✅ Email sent via Resend to ${to}: ${data?.id || 'ok'}`);
+    return {
+      success: true,
+      providerId: data?.id || null,
+      provider: 'resend'
+    };
+  } catch (error) {
+    logger.error(`❌ Failed to send email via Resend to ${to}:`, error);
+    return { success: false, error: error.message, provider: 'resend' };
+  }
 };
 
 /**
@@ -279,12 +337,11 @@ const sendEmailViaSMTP = async (to, subject, text, html = null, options = {}) =>
  * @returns {Promise<Object>} Send result
  */
 export const sendEmail = async (to, subject, text, html = null, options = {}) => {
-  // Lazy initialize email service
   if (!initializationAttempted) {
     await initializeEmailService();
   }
-  
-  if (!emailConfigured && !sendGridConfigured) {
+
+  if (!emailConfigured && !sendGridConfigured && !resendConfigured) {
     logger.warn('Email service not configured - message not sent');
     return {
       success: false,
@@ -294,16 +351,50 @@ export const sendEmail = async (to, subject, text, html = null, options = {}) =>
     };
   }
 
-  // Try SendGrid first (if configured), then SMTP as fallback
   let result = null;
-  let provider = 'none';
 
-  // Try SendGrid first
+  // 1) Resend (preferred)
+  if (resendConfigured) {
+    const rateLimit = await checkEmailRateLimit('resend');
+    if (rateLimit.canSend) {
+      result = await sendEmailViaResend(to, subject, text, html);
+      if (result.success) {
+        await incrementDailyEmailCount();
+        return result;
+      }
+      logger.warn(`Resend send failed (${result.error}); trying fallback`);
+    } else {
+      logger.warn(`Resend rate limit reached: ${rateLimit.reason}`);
+    }
+  }
+
+  // 2) SMTP (Gmail etc.) — best demo fallback when Resend domain not verified
+  if (emailConfigured) {
+    const rateLimit = await checkEmailRateLimit('smtp');
+    if (rateLimit.canSend) {
+      result = await sendEmailViaSMTP(to, subject, text, html, options);
+      if (result.success) {
+        await incrementDailyEmailCount();
+        return result;
+      }
+    } else {
+      logger.warn(`SMTP rate limit reached: ${rateLimit.reason}`);
+      return {
+        success: false,
+        error: rateLimit.reason,
+        providerId: null,
+        queued: true,
+        count: rateLimit.count,
+        limit: rateLimit.limit
+      };
+    }
+  }
+
+  // 3) SendGrid
   if (sendGridConfigured) {
     const rateLimit = await checkEmailRateLimit('sendgrid');
     if (rateLimit.canSend) {
       result = await sendEmailViaSendGrid(to, subject, text, html);
-      provider = 'sendgrid';
       if (result.success) {
         await incrementDailyEmailCount();
         return result;
@@ -313,53 +404,12 @@ export const sendEmail = async (to, subject, text, html = null, options = {}) =>
     }
   }
 
-  // Fallback to SMTP if SendGrid failed or not configured
-  if (emailConfigured && (!result || !result.success)) {
-    const rateLimit = await checkEmailRateLimit('smtp');
-    if (rateLimit.canSend) {
-      result = await sendEmailViaSMTP(to, subject, text, html, options);
-      provider = 'smtp';
-      if (result.success) {
-        await incrementDailyEmailCount();
-        return result;
-      } else if (result.rateLimitExceeded) {
-        // Gmail limit hit, try SendGrid if available
-        if (sendGridConfigured && provider !== 'sendgrid') {
-          logger.info('Gmail limit exceeded, trying SendGrid as fallback');
-          const sendGridRateLimit = await checkEmailRateLimit('sendgrid');
-          if (sendGridRateLimit.canSend) {
-            result = await sendEmailViaSendGrid(to, subject, text, html);
-            if (result.success) {
-              await incrementDailyEmailCount();
-              return result;
-            }
-          }
-        }
-      }
-    } else {
-      logger.warn(`SMTP rate limit reached: ${rateLimit.reason}`);
-      return {
-        success: false,
-        error: rateLimit.reason,
-        providerId: null,
-        queued: true, // Can be queued for later
-        count: rateLimit.count,
-        limit: rateLimit.limit
-      };
-    }
-  }
-
-  // If all providers failed
-  if (!result || !result.success) {
-    return {
-      success: false,
-      error: result?.error || 'All email providers failed',
-      providerId: null,
-      queued: true
-    };
-  }
-
-  return result;
+  return {
+    success: false,
+    error: result?.error || 'All email providers failed',
+    providerId: null,
+    queued: true
+  };
 };
 
 /**
@@ -377,7 +427,7 @@ export const sendBulkEmail = async (recipients, subject, text, html = null, opti
     await initializeEmailService();
   }
   
-  if (!emailConfigured && !sendGridConfigured) {
+  if (!emailConfigured && !sendGridConfigured && !resendConfigured) {
     logger.warn('Email service not configured - bulk emails not sent');
     return {
       success: false,
@@ -396,7 +446,9 @@ export const sendBulkEmail = async (recipients, subject, text, html = null, opti
     const batch = recipients.slice(i, i + EMAIL_BATCH_SIZE);
     
     // Check rate limit before sending batch
-    const rateLimit = await checkEmailRateLimit(sendGridConfigured ? 'sendgrid' : 'smtp');
+    const rateLimit = await checkEmailRateLimit(
+      resendConfigured ? 'resend' : sendGridConfigured ? 'sendgrid' : 'smtp'
+    );
     if (!rateLimit.canSend) {
       logger.warn(`Rate limit reached, queuing remaining ${recipients.length - i} emails`);
       // Queue remaining emails
@@ -484,27 +536,45 @@ export const getEmailServiceStatus = async () => {
   }
 
   const dailyCount = await getDailyEmailCount();
+  const resendLimit = resendConfigured ? MAX_DAILY_EMAILS_RESEND : 0;
   const smtpLimit = emailConfigured ? MAX_DAILY_EMAILS_GMAIL : 0;
   const sendGridLimit = sendGridConfigured ? MAX_DAILY_EMAILS_SENDGRID : 0;
-  const effectiveLimit = sendGridConfigured ? sendGridLimit : smtpLimit;
+  const effectiveLimit = resendConfigured
+    ? resendLimit
+    : sendGridConfigured
+      ? sendGridLimit
+      : smtpLimit;
   const remaining = Math.max(0, effectiveLimit - dailyCount);
 
   return {
+    resendConfigured,
     smtpConfigured: emailConfigured,
-    sendGridConfigured: sendGridConfigured,
+    sendGridConfigured,
+    preferredProvider: resendConfigured
+      ? 'resend'
+      : sendGridConfigured
+        ? 'sendgrid'
+        : emailConfigured
+          ? 'smtp'
+          : 'none',
     dailyCount,
+    resendLimit,
     smtpLimit,
     sendGridLimit,
     effectiveLimit,
     remaining,
-    canSend: remaining > 0
+    canSend: remaining > 0 && (resendConfigured || emailConfigured || sendGridConfigured)
   };
 };
+
+/** Warm email providers at boot (logs Resend/SMTP status) */
+export const warmEmailService = async () => initializeEmailService();
 
 export default {
   sendEmail,
   sendBulkEmail,
   sendHTMLEmail,
   getEmailServiceStatus,
-  isConfigured: () => emailConfigured || sendGridConfigured
+  warmEmailService,
+  isConfigured: () => emailConfigured || sendGridConfigured || resendConfigured
 };

@@ -124,7 +124,13 @@ export const sendNotification = async (options) => {
         result = await sendNotificationToUser(
           recipient.fcmToken,
           { title, body },
-          { type: 'notification', ...metadata }
+          {
+            type: 'BROADCAST',
+            broadcastId: String(metadata?.broadcastId || messageId || ''),
+            priority: String(metadata?.priority || 'medium'),
+            title: String(title || ''),
+            message: String(body || '')
+          }
         );
         break;
 

@@ -16,9 +16,19 @@ import logger from '../config/logger.js';
  */
 export const processSensorTelemetry = async (deviceId, telemetryData) => {
   try {
+    const { isIotEnabled } = await import('../config/features.js');
+    if (!isIotEnabled()) {
+      const err = new Error('IoT is disabled (IOT_ENABLED=false)');
+      err.statusCode = 503;
+      throw err;
+    }
+
     const device = await Device.findOne({ deviceId });
     if (!device) {
       throw new Error('Device not found');
+    }
+    if (device.isActive === false) {
+      throw new Error('Device is not active');
     }
 
     // Phase 201: Handle ESP32 telemetry format (readings nested or flat)
@@ -88,42 +98,54 @@ const checkThresholds = async (device, readings) => {
   // Phase 201: Multi-sensor device (flame, water, earthquake)
   if (device.deviceType === 'multi-sensor') {
     // Fire detection (flame sensor)
-    if (readings.flame === true || readings.flame === 1) {
+    if (readings.flame === true || readings.flame === 1 || readings.flame === '1') {
       breached = true;
       alertType = 'fire';
       severity = 'high';
     }
 
-    // Flood detection (water level sensor)
-    // Note: Lower water level reading = more water detected (sensor submerged)
+    // Flood: typical resistive probe — dry = high ADC, wet = low ADC.
+    // Override with configuration.waterHighMeansFlood=true if your probe is inverted.
     const waterDangerLevel = thresholds.waterDanger || config.waterDanger || 2000;
-    const waterWarningLevel = thresholds.waterWarning || config.waterWarning || 1500;
-    
+    const waterWarningLevel = thresholds.waterWarning || config.waterWarning || 2500;
+    const waterHighMeansFlood = config.waterHighMeansFlood === true;
+
     if (readings.water !== undefined && readings.water !== null) {
-      if (readings.water > waterDangerLevel) {
+      const water = Number(readings.water);
+      const isDanger = waterHighMeansFlood
+        ? water > waterDangerLevel
+        : water < waterDangerLevel;
+      const isWarning = waterHighMeansFlood
+        ? water > waterWarningLevel
+        : water < waterWarningLevel;
+
+      if (isDanger) {
         breached = true;
         alertType = 'flood';
         severity = 'high';
-      } else if (readings.water > waterWarningLevel) {
-        // Warning level - log but don't create alert
-        logger.warn(`Device ${device.deviceId} water level warning: ${readings.water}`);
+      } else if (isWarning) {
+        logger.warn(`Device ${device.deviceId} water level warning: ${water}`);
       }
     }
 
-    // Earthquake detection (MPU-6050)
-    const earthquakeThreshold = thresholds.earthquake || config.earthquake || 2.5;
-    const magnitude = readings.magnitude || 
-      (readings.acceleration ? 
-        Math.sqrt(
-          Math.pow(readings.acceleration.x || 0, 2) +
-          Math.pow(readings.acceleration.y || 0, 2) +
-          Math.pow(readings.acceleration.z || 0, 2)
-        ) : 0);
-    
-    if (magnitude > earthquakeThreshold) {
+    // Earthquake: MPU6050 getEvent() is m/s² (~9.81 at rest). Compare *excess over 1g*,
+    // never raw magnitude > 2.5 (that fires constantly). thresholds.earthquake = m/s² over g.
+    const GRAVITY_MS2 = 9.81;
+    const earthquakeExcessMs2 = thresholds.earthquake || config.earthquake || 3.0;
+    const magnitude = readings.magnitude ||
+      (readings.acceleration
+        ? Math.sqrt(
+            Math.pow(readings.acceleration.x || 0, 2) +
+            Math.pow(readings.acceleration.y || 0, 2) +
+            Math.pow(readings.acceleration.z || 0, 2)
+          )
+        : 0);
+    const excess = Math.abs(magnitude - GRAVITY_MS2);
+
+    if (magnitude > 1 && excess > earthquakeExcessMs2) {
       breached = true;
       alertType = 'earthquake';
-      severity = magnitude > earthquakeThreshold * 2 ? 'critical' : 'high';
+      severity = excess > earthquakeExcessMs2 * 2 ? 'critical' : 'high';
     }
   }
 
@@ -256,16 +278,18 @@ export const getDeviceInfo = async (deviceId) => {
  */
 const getDeviceHealthStatus = (device) => {
   const now = new Date();
-  const lastSeen = new Date(device.lastSeen);
+  const lastSeen = device.lastSeen ? new Date(device.lastSeen) : null;
+  if (!lastSeen || Number.isNaN(lastSeen.getTime())) {
+    return 'offline';
+  }
   const minutesSinceLastSeen = (now - lastSeen) / (1000 * 60);
 
   if (minutesSinceLastSeen > 60) {
     return 'offline';
   } else if (minutesSinceLastSeen > 30) {
     return 'warning';
-  } else {
-    return 'healthy';
   }
+  return 'healthy';
 };
 
 /**

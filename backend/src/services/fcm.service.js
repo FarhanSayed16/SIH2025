@@ -183,6 +183,54 @@ export const sendNotificationToMultipleUsers = async (fcmTokens, notification, d
 };
 
 /**
+ * SOS fan-out: FCM to verified parents and class teacher of that student (not the whole school).
+ */
+export const sendSosFanout = async ({ studentId, studentName, status, institutionId }) => {
+  try {
+    if (!studentId) return { success: false, error: 'No studentId' };
+    const { getNotificationRecipients } = await import('./activity-tracking.service.js');
+    const { parentIds, teacherIds } = await getNotificationRecipients(studentId);
+    const ids = [...(parentIds || []), ...(teacherIds || [])]
+      .map((id) => (id && id.toString ? id.toString() : String(id)))
+      .filter(Boolean);
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) {
+      logger.info(`SOS FCM: no parent/teacher recipients for ${studentId}`);
+      return { success: true, successCount: 0 };
+    }
+    const users = await User.find({
+      _id: { $in: unique },
+      deviceToken: { $exists: true, $ne: '' }
+    }).select('deviceToken');
+    const tokens = users.map((u) => u.deviceToken).filter(Boolean);
+    if (tokens.length === 0) {
+      logger.info(`SOS FCM: recipients have no device tokens for ${studentId}`);
+      return { success: true, successCount: 0 };
+    }
+    const isSafe = status === 'safe';
+    const name = studentName || 'A student';
+    return await sendNotificationToMultipleUsers(
+      tokens,
+      {
+        title: isSafe ? `${name} marked safe` : `SOS from ${name}`,
+        body: isSafe
+          ? 'Open Kavach — your student marked themselves safe.'
+          : 'Open Kavach — your student sent an SOS.'
+      },
+      {
+        type: isSafe ? 'SOS_SAFE' : 'SOS_ALERT',
+        userId: String(studentId),
+        schoolId: institutionId ? String(institutionId) : '',
+        screen: isSafe ? 'home' : 'crisis'
+      }
+    );
+  } catch (error) {
+    logger.error('SOS fan-out error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
  * Send push notification to all users in a school
  * @param {string} schoolId - School ID
  * @param {object} notification - Notification payload
