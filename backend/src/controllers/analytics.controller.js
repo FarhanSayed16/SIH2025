@@ -30,7 +30,8 @@ export const getDrillMetrics = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
+    const role = req.user?.role?.toLowerCase();
+    if (!targetInstitutionId && role !== 'admin' && role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -64,7 +65,8 @@ export const getStudentProgress = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
+    const role = req.user?.role?.toLowerCase();
+    if (!targetInstitutionId && role !== 'admin' && role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -104,7 +106,8 @@ export const getInstitutionMetrics = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
+    const role = req.user?.role?.toLowerCase();
+    if (!targetInstitutionId && role !== 'admin' && role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -134,7 +137,8 @@ export const getModuleCompletion = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
+    const role = req.user?.role?.toLowerCase();
+    if (!targetInstitutionId && role !== 'admin' && role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -164,7 +168,8 @@ export const getGameAnalytics = async (req, res) => {
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
+    const role = req.user?.role?.toLowerCase();
+    if (!targetInstitutionId && role !== 'admin' && role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
@@ -194,11 +199,11 @@ export const getQuizAccuracy = async (req, res) => {
       end: new Date(endDate)
     } : null;
 
-    // Use user's institutionId if not provided
     const userInstitutionId = req.user?.institutionId?.toString() || req.institutionId;
     const targetInstitutionId = institutionId || userInstitutionId;
     
-    if (!targetInstitutionId && req.user?.role !== 'admin' && req.user?.role !== 'system_admin') {
+    const role = req.user?.role?.toLowerCase();
+    if (!targetInstitutionId && role !== 'admin' && role !== 'system_admin') {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 

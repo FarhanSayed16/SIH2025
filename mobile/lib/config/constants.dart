@@ -1,7 +1,6 @@
 import '../core/config/env.dart';
 
-/// Get Gemini API Key from environment (with fallback)
-/// Uses Env.geminiApiKey which reads from .env file or falls back to hardcoded key
+/// Gemini API key from Env (`.env` only; never hardcoded).
 String get apiKey => Env.geminiApiKey; 
 
 const String baseSystemPrompt = '''

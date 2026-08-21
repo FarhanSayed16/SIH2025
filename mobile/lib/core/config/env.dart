@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Environment configuration loader
@@ -42,20 +41,9 @@ class Env {
   /// Full API base URL (backend uses /api, not /api/v1)
   static String get apiBaseUrl => '$baseUrl/api';
 
-  /// Gemini API Key for AI features.
-  /// In release/profile builds, only uses GEMINI_API_KEY from .env (no fallback).
-  /// In debug builds, falls back to a dev key if .env is not set.
+  /// Gemini API key from `.env` only (never hardcoded).
   static String get geminiApiKey {
-    final envKey = dotenv.env['GEMINI_API_KEY'];
-    if (envKey != null && envKey.isNotEmpty) {
-      return envKey;
-    }
-    // Production: never expose a hardcoded key
-    if (kReleaseMode) {
-      return '';
-    }
-    // Debug only: allow dev without .env (set GEMINI_API_KEY in .env for production)
-    return 'AIzaSyD-tHB35vQ1gha3pwMIQ8naeTqLAS9mpsE';
+    return dotenv.env['GEMINI_API_KEY'] ?? '';
   }
 }
 

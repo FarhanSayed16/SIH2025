@@ -3,33 +3,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:image_picker/image_picker.dart';
-import 'core/config/env.dart';
-import 'core/widgets/disaster_alert_widget.dart';
-
-// --- Global Configuration for HazardLens ---
-// API Key is loaded from .env file via Env.geminiApiKey
-const String modelName = 'gemini-2.5-flash';
-
-const String systemPrompt = '''
-You are HazardLens, an expert AI safety inspector. 
-Analyze the image for man-made physical hazards (electrical, structural, fire, chemical, trip hazards). 
-You MUST respond in valid, raw JSON format only (no markdown code blocks).
-Structure: { "score": int (1-10), "summary": "string (max 5 words)", "action": "string (concise advice)", "color": "string (green|yellow|red)" }
-
-Scoring Logic:
-1-3: Low Risk (Cosmetic, minor clutter, or Safe)
-4-7: Moderate Risk (Potential injury, exposed wires but not live, leaks)
-8-10: Critical Danger (Immediate threat to life, fire, collapse, live sparks)
-
-If the image is unclear or safe, return score 1.
-''';
+import 'core/constants/api_endpoints.dart';
+import 'core/services/api_service.dart';
 
 class ScannerScreen extends StatefulWidget {
   final CameraDescription camera;
@@ -89,42 +70,25 @@ class _ScannerScreenState extends State<ScannerScreen>
     _scanAnimationController.repeat(reverse: false);
 
     try {
-      // 1. Convert image to bytes
       final Uint8List imageBytes = await imageFile.readAsBytes();
+      final api = ApiService();
+      final res = await api.post(
+        ApiEndpoints.aiAnalyze,
+        data: {
+          'image': base64Encode(imageBytes),
+          'mimeType': 'image/jpeg',
+        },
+        options: Options(receiveTimeout: const Duration(seconds: 90)),
+      );
 
-      // 2. Initialize Gemini Model
-      final apiKey = Env.geminiApiKey;
-      if (apiKey.isEmpty) {
-        throw 'API Key is missing. Set GEMINI_API_KEY in .env file.';
-      }
-      final model = GenerativeModel(model: modelName, apiKey: apiKey);
-
-      // 3. Prepare Prompt & Content
-      final content = [
-        Content.multi([
-          TextPart(systemPrompt),
-          DataPart('image/jpeg', imageBytes),
-        ])
-      ];
-
-      // 4. Send to API
-      final response = await model.generateContent(content);
-
-      if (response.text == null) throw 'No response from AI';
-
-      // 5. Parse JSON
-      // Clean up markdown fences if Gemini adds them
-      String cleanJson =
-          response.text!.replaceAll('```json', '').replaceAll('```', '').trim();
-
-      final Map<String, dynamic> data =
-          jsonDecode(cleanJson) as Map<String, dynamic>;
+      final analysis = _extractAnalysis(res.data);
+      if (analysis == null) throw 'No response from AI';
+      final data = _mapAnalysisToUi(analysis);
 
       setState(() {
         _result = data;
       });
 
-      // Haptic feedback based on severity
       final int score = (data['score'] as int?) ?? 0;
       if (score >= 8) {
         HapticFeedback.heavyImpact();
@@ -142,6 +106,74 @@ class _ScannerScreenState extends State<ScannerScreen>
         _isScanning = false;
       });
     }
+  }
+
+  Map<String, dynamic>? _extractAnalysis(dynamic body) {
+    Map<String, dynamic>? asMap(dynamic v) {
+      if (v is Map<String, dynamic>) return v;
+      if (v is Map) return Map<String, dynamic>.from(v);
+      return null;
+    }
+
+    final root = asMap(body);
+    if (root == null) return null;
+    final data = asMap(root['data']) ?? root;
+    return asMap(data['analysis']) ?? data;
+  }
+
+  Map<String, dynamic> _mapAnalysisToUi(Map<String, dynamic> analysis) {
+    if (analysis['score'] != null && analysis['summary'] != null) {
+      final scoreRaw = analysis['score'];
+      final score = scoreRaw is int
+          ? scoreRaw
+          : int.tryParse(scoreRaw.toString()) ?? 1;
+      return {
+        'score': score,
+        'summary': analysis['summary'].toString(),
+        'action': (analysis['action'] ?? analysis['description'] ?? 'Stay aware.')
+            .toString(),
+        'color': (analysis['color'] ?? _colorForScore(score)).toString(),
+      };
+    }
+
+    final detected = analysis['hazardDetected'] == true;
+    final severity = (analysis['severity'] as String?)?.toLowerCase() ?? '';
+    int score;
+    if (!detected) {
+      score = 1;
+    } else if (severity == 'high' || severity == 'critical') {
+      score = 9;
+    } else if (severity == 'medium') {
+      score = 6;
+    } else {
+      score = 3;
+    }
+
+    final recs = analysis['recommendations'];
+    String action = 'Stay aware.';
+    if (recs is List && recs.isNotEmpty) {
+      action = recs.first.toString();
+    } else if (analysis['description'] != null) {
+      action = analysis['description'].toString();
+    }
+
+    final summaryRaw =
+        (analysis['hazardType'] ?? analysis['description'] ?? 'Safe').toString();
+    final summary =
+        summaryRaw.length > 40 ? '${summaryRaw.substring(0, 40)}…' : summaryRaw;
+
+    return {
+      'score': score,
+      'summary': summary,
+      'action': action,
+      'color': _colorForScore(score),
+    };
+  }
+
+  String _colorForScore(int score) {
+    if (score >= 8) return 'red';
+    if (score >= 4) return 'yellow';
+    return 'green';
   }
 
   Future<void> _captureAndAnalyze() async {
@@ -402,7 +434,6 @@ class _ScannerScreenState extends State<ScannerScreen>
                 ],
               ),
             ),
-            const DisasterAlertWidget(),
           ],
         ),
       ),

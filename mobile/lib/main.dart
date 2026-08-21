@@ -275,6 +275,9 @@ class _KavachAppState extends ConsumerState<KavachApp> {
     final context = this.context;
     if (context.mounted) {
       _fcmMessageHandler = FcmMessageHandler(context, ref);
+      ref.read(fcmProvider.notifier).setNotificationTapHandler((message) {
+        _fcmMessageHandler?.handleMessage(message);
+      });
     }
   }
 

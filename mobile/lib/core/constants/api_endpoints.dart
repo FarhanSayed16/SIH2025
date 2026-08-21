@@ -7,6 +7,9 @@ class ApiEndpoints {
   static String get refresh => '/auth/refresh';
   static String get logout => '/auth/logout';
   static String get profile => '/auth/profile';
+  static String get settings => '/settings';
+  static String get settingsAccessibility => '/settings/accessibility';
+  static String get settingsLanguage => '/settings/language';
   static String get forgotPassword => '/auth/forgot-password';
   static String get resetPassword => '/auth/reset-password';
   // Phase 2.5: Multi-Access Authentication
@@ -244,6 +247,7 @@ class ApiEndpoints {
   static String get aiDrillSummarise => '/ai/drill/summarise';
   static String get aiTipToday => '/ai/tip/today';
   static String get aiAsk => '/ai/ask';
+  static String get aiGameTurn => '/ai/game/turn';
   static String get aiDrillFeedback => '/ai/drill/feedback';
 
   // Category E: Personalisation
