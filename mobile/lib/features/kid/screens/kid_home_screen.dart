@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/widgets/kavach_logo.dart';
 import '../../../core/theme/kid_theme.dart';
 
 /// Kid Home Screen
@@ -31,10 +32,13 @@ class KidHomeScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    const Icon(
-                      Icons.shield,
-                      size: 80,
-                      color: Colors.white,
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.all(8),
+                      child: const KavachLogo(size: KavachLogoSize.login),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -126,7 +130,7 @@ class KidHomeScreen extends ConsumerWidget {
                 child: ElevatedButton.icon(
                   onPressed: () {
                     // Show help/instructions
-                    showDialog(
+                    showDialog<void>(
                       context: context,
                       builder: (context) => AlertDialog(
                         title: const Text('Need Help?'),

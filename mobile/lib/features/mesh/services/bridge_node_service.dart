@@ -138,7 +138,7 @@ class BridgeNodeService {
     if (_socketService == null) return;
 
     // Listen to crisis alerts from server
-    _socketService.onEventCallback = (event, data) {
+    _socketService!.onEventCallback = (event, data) {
       if (!_isBridgeMode) return;
 
       // Broadcast critical events to mesh

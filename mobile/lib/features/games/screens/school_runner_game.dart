@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert'; // Added for JSON parsing
 import 'dart:math';
 import 'package:flame/components.dart';
@@ -178,7 +178,7 @@ class SchoolRunnerGame extends FlameGame
           await FlameAudio.bgm.stop();
         }
         String nextTrack = _musicTracks[Random().nextInt(_musicTracks.length)];
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         try {
           await FlameAudio.bgm.play(nextTrack, volume: 0.5);
@@ -402,7 +402,7 @@ class SchoolRunnerGame extends FlameGame
     isGameOver = true;
     _player.current = PlayerState.dead;
 
-    Future.delayed(const Duration(milliseconds: 500), () {
+    Future<void>.delayed(const Duration(milliseconds: 500), () {
       pauseEngine();
       GameManager().updateScores(score, score);
       overlays.add('GameOverMenu');
@@ -479,7 +479,7 @@ class PlayerComponent extends PositionComponent
   @override
   Future<void> onLoad() async {
     String rawChar = GameManager().selectedCharacter;
-    if (['Boy', 'लड़का', 'मुलगा', 'ਮੁੰਡਾ'].contains(rawChar)) {
+    if (['Boy', '\u0932\u0921\u093C\u0915\u093E', '\u092E\u0941\u0932\u0917\u093E', '\u0A2E\u0A41\u0A70\u0A21\u0A3E'].contains(rawChar)) {
       charType = 'Boy';
     } else {
       charType = 'Girl';
@@ -846,11 +846,11 @@ class _QuizMenuState extends State<QuizMenu> {
     String langCode = 'eng';
     String selectedLang = GameManager().selectedLanguage;
 
-    if (selectedLang == 'Hindi' || selectedLang == 'हिंदी')
+    if (selectedLang == 'Hindi' || selectedLang == '\u0939\u093F\u0902\u0926\u0940')
       langCode = 'hin';
-    else if (selectedLang == 'Marathi' || selectedLang == 'मराठी')
+    else if (selectedLang == 'Marathi' || selectedLang == '\u092E\u0930\u093E\u0920\u0940')
       langCode = 'mar';
-    else if (selectedLang == 'Punjabi' || selectedLang == 'ਪੰਜਾਬੀ')
+    else if (selectedLang == 'Punjabi' || selectedLang == '\u0A2A\u0A70\u0A1C\u0A3E\u0A21\u0A40')
       langCode = 'pun';
 
     String fileName = 'assets/quiz/quiz_$langCode.json';

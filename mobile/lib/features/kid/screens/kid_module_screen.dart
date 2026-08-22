@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../core/theme/kid_theme.dart';
@@ -60,7 +60,7 @@ class _KidModuleScreenState extends ConsumerState<KidModuleScreen> {
 
     // In a real implementation, you would use text-to-speech here
     // For now, we'll just simulate it
-    await Future.delayed(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(seconds: 2));
 
     setState(() {
       _isSpeaking = false;

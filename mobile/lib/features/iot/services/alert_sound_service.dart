@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Phase 201: IoT Alert Sound Service
  * Plays sound alerts for IoT device disasters
  */
@@ -56,9 +56,9 @@ class AlertSoundService {
     // Pattern: High-low siren
     for (int i = 0; i < 3; i++) {
       await SystemSound.play(SystemSoundType.alert);
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       await SystemSound.play(SystemSoundType.alert);
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
     }
   }
 
@@ -67,7 +67,7 @@ class AlertSoundService {
     // Use system sound for flood
     for (int i = 0; i < 2; i++) {
       await SystemSound.play(SystemSoundType.alert);
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
   }
 
@@ -75,7 +75,7 @@ class AlertSoundService {
   Future<void> _playEarthquakeSound() async {
     // Use system sound for earthquake
     await SystemSound.play(SystemSoundType.alert);
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future<void>.delayed(const Duration(milliseconds: 300));
     await SystemSound.play(SystemSoundType.alert);
   }
 
