@@ -1,4 +1,4 @@
-// --- FINAL WORKING FIRE EXTINGUISHER DRILL SIMULATION ---
+﻿// --- FINAL WORKING FIRE EXTINGUISHER DRILL SIMULATION ---
 // Place this entire file in lib/main.dart
 
 // ignore_for_file: unused_field
@@ -443,7 +443,7 @@ class _PASS_SimulationScreenState extends State<PASS_SimulationScreen>
   }
 
   void _showEndDialog(bool success, {String? reason}) {
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
@@ -464,7 +464,7 @@ class _PASS_SimulationScreenState extends State<PASS_SimulationScreen>
             ),
             const SizedBox(width: 12),
             Text(
-              success ? 'DRILL PASSED ✓' : 'DRILL FAILED ✗',
+              success ? 'DRILL PASSED âœ“' : 'DRILL FAILED âœ—',
               style: TextStyle(
                 color: success ? Colors.green : Colors.red,
                 fontWeight: FontWeight.bold,
@@ -1299,7 +1299,7 @@ class RealisticFirePainter extends CustomPainter {
 
     TextPainter tp = TextPainter(
       text: const TextSpan(
-        text: '🔥 FIRE TARGET ZONE',
+        text: 'ðŸ”¥ FIRE TARGET ZONE',
         style: TextStyle(
           color: Colors.orange,
           fontWeight: FontWeight.bold,

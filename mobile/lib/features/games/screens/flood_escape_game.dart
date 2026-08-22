@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert'; // Added for JSON parsing
 import 'dart:math';
 import 'package:flame/collisions.dart';
@@ -236,7 +236,7 @@ class FloodEscapeGame extends FlameGame
         }
 
         // Add a tiny delay to let the Android native player release the 'DrmState'
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 100));
 
         String track = _getRandomMusic();
         await FlameAudio.bgm.play(track, volume: 0.5);
@@ -854,11 +854,11 @@ class _QuizMenuState extends State<QuizMenu> {
     String langCode = 'eng';
     String selectedLang = GameManager().selectedLanguage;
 
-    if (selectedLang == 'Hindi' || selectedLang == 'हिंदी') {
+    if (selectedLang == 'Hindi' || selectedLang == '\u0939\u093F\u0902\u0926\u0940') {
       langCode = 'hin';
-    } else if (selectedLang == 'Marathi' || selectedLang == 'मराठी') {
+    } else if (selectedLang == 'Marathi' || selectedLang == '\u092E\u0930\u093E\u0920\u0940') {
       langCode = 'mar';
-    } else if (selectedLang == 'Punjabi' || selectedLang == 'ਪੰਜਾਬੀ') {
+    } else if (selectedLang == 'Punjabi' || selectedLang == '\u0A2A\u0A70\u0A1C\u0A3E\u0A21\u0A40') {
       langCode = 'pun';
     }
 

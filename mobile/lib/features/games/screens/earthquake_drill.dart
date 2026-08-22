@@ -1,4 +1,4 @@
-// --- VR EARTHQUAKE DRILL (Cardboard Gaze Edition) ---
+﻿// --- VR EARTHQUAKE DRILL (Cardboard Gaze Edition) ---
 // Save this as lib/earthquake_drill_ar.dart
 
 // ignore_for_file: unused_local_variable, unused_field
@@ -35,7 +35,7 @@ class EarthquakeDrillApp extends StatelessWidget {
 // ---------------------------------------------------------------------------
 
 enum DrillPhase {
-  loading,      // ⏳ Wait 5s for VR Box setup
+  loading,      // â³ Wait 5s for VR Box setup
   intro,        // Peaceful classroom
   quakeStart,   // Shaking begins
   taskDrop,     // Wait for Drop input
@@ -61,7 +61,7 @@ class _VrEarthquakeScreenState extends State<VrEarthquakeScreen>
   // --- VR SENSORS ---
   vector.Quaternion _targetOrientation = vector.Quaternion.identity();
   vector.Quaternion _renderOrientation = vector.Quaternion.identity();
-  StreamSubscription? _orientationSubscription;
+  StreamSubscription<dynamic>? _orientationSubscription;
   
   // Tuning
   static const double INTERPOLATION_SPEED = 0.12; 
@@ -161,7 +161,7 @@ class _VrEarthquakeScreenState extends State<VrEarthquakeScreen>
     setState(() => _phase = DrillPhase.intro);
 
     // Phase 1: Intro (4s)
-    await Future.delayed(const Duration(seconds: 4));
+    await Future<void>.delayed(const Duration(seconds: 4));
     if (!mounted) return;
 
     // Phase 2: Quake Starts
@@ -171,7 +171,7 @@ class _VrEarthquakeScreenState extends State<VrEarthquakeScreen>
     });
 
     // Wait a bit for panic effect (3s)
-    await Future.delayed(const Duration(seconds: 3));
+    await Future<void>.delayed(const Duration(seconds: 3));
     if (!mounted) return;
 
     // Phase 3: Prompt Drop
@@ -565,7 +565,7 @@ class _VrEarthquakeScreenState extends State<VrEarthquakeScreen>
       uiElements.add(_buildGazeButton('DROP\nUNDER DESK', _targetButtonYaw, 0.0, Colors.red, 'DROP'));
     } 
     else if (_phase == DrillPhase.waitDrop) {
-      // ✅ Now using _countDownSeconds to show real time
+      // âœ… Now using _countDownSeconds to show real time
       uiElements.add(_buildInfoText('Stay Down... ($_countDownSeconds s)', _targetButtonYaw, 0.0));
     }
     else if (_phase == DrillPhase.taskCover) {
@@ -627,7 +627,7 @@ class _VrEarthquakeScreenState extends State<VrEarthquakeScreen>
       );
     } 
     else {
-      // 📐 WORLD SPACE PROJECTION (INVERSED)
+      // ðŸ“ WORLD SPACE PROJECTION (INVERSED)
       double diffYaw = targetYaw - _viewYaw;
       double diffPitch = targetPitch - _viewPitch;
 
@@ -636,10 +636,10 @@ class _VrEarthquakeScreenState extends State<VrEarthquakeScreen>
 
       if (diffYaw.abs() > math.pi / 2) return const SizedBox();
 
-      // ✅ FIX: Inversed Horizontal: Right Movement -> Negative diffYaw -> Negative X (Left)
+      // âœ… FIX: Inversed Horizontal: Right Movement -> Negative diffYaw -> Negative X (Left)
       x = (diffYaw * PANEL_DISTANCE); 
       
-      // ✅ FIX: Inversed Vertical: Up Movement -> Positive Pitch -> Negative Y (Down)
+      // âœ… FIX: Inversed Vertical: Up Movement -> Positive Pitch -> Negative Y (Down)
       y = (-diffPitch * PANEL_DISTANCE) + _camHeightOffset + _currentShake.dy;
       x += _currentShake.dx;
 

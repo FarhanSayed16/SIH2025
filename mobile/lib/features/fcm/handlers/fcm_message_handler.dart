@@ -1,4 +1,4 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
+﻿import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../emergency/screens/crisis_mode_screen.dart';
@@ -99,7 +99,7 @@ class FcmMessageHandler {
 
     if (context.mounted) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
+        MaterialPageRoute<dynamic>(
           builder: (context) => CrisisModeScreen(
             alertId: alertId.toString(),
             alertType: alertType.toString().toLowerCase(),
@@ -162,7 +162,7 @@ class FcmMessageHandler {
             label: 'View',
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => RedAlertScreen(
                     alertType: 'device_alert',
                     message: message,
@@ -178,7 +178,7 @@ class FcmMessageHandler {
       // Navigate directly if critical
       if (severity == 'critical') {
         Navigator.of(context).push(
-          MaterialPageRoute(
+          MaterialPageRoute<dynamic>(
             builder: (context) => RedAlertScreen(
               alertType: 'device_alert',
               message: message,
@@ -222,7 +222,7 @@ class FcmMessageHandler {
     }
   }
 
-  /// Handle broadcast messages — open the broadcast screen (tap or foreground).
+  /// Handle broadcast messages â€” open the broadcast screen (tap or foreground).
   void _handleBroadcast(
       Map<String, dynamic> data, RemoteNotification? notification) {
     final priority = (data['priority'] as String?) ?? 'medium';
@@ -265,7 +265,7 @@ class FcmMessageHandler {
     final duration = int.tryParse(data['duration']?.toString() ?? '10') ?? 10;
 
     if (drillId.isEmpty) {
-      print('⚠️ Drill start notification missing drillId');
+      print('âš ï¸ Drill start notification missing drillId');
       return;
     }
 
@@ -276,7 +276,7 @@ class FcmMessageHandler {
           builder: (context) => CrisisModeScreen(
             alertId: drillId,
             alertType: drillType.toLowerCase(),
-            message: 'PRACTICE DRILL — Please acknowledge your participation',
+            message: 'PRACTICE DRILL â€” Please acknowledge your participation',
             isDrill: true,
             drillId: drillId,
             drillType: drillType,

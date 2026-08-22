@@ -1,9 +1,8 @@
-/**
+﻿/**
  * Phase 4.10: Teacher Alert Service
  * Allows teachers to trigger emergency alerts from mobile app
  */
 
-import 'package:dio/dio.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/storage_service.dart';

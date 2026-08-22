@@ -1,12 +1,11 @@
 /// O1: AI Disaster Scenario Simulator (Choose Your Own Adventure)
 /// User sees a scenario, picks one of 4 options; AI returns consequence and next scenario.
-/// 3–5 steps then game over with safety score and tip.
+/// 3â€“5 steps then game over with safety score and tip.
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/api_service.dart';
-import '../../../core/design/design_system.dart';
 
 class DisasterScenarioScreen extends StatefulWidget {
   const DisasterScenarioScreen({super.key});
@@ -47,7 +46,7 @@ class _DisasterScenarioScreenState extends State<DisasterScenarioScreen> {
         ApiEndpoints.aiScenarioNext,
         data: {
           'stepIndex': 0,
-          'previousContext': [],
+          'previousContext': <dynamic>[],
         },
       );
       _applyResponse(res.data);
