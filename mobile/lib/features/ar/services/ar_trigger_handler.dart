@@ -1,4 +1,4 @@
-/// Phase 5.7: AR Trigger Handler
+﻿/// Phase 5.7: AR Trigger Handler
 /// Handles remote AR triggers from admin dashboard via Socket.io
 
 import 'dart:async';
@@ -8,13 +8,12 @@ import '../../../core/constants/socket_events.dart';
 import '../../socket/providers/socket_provider.dart';
 import '../../../core/services/storage_service.dart';
 import '../models/waypoint.dart';
-import '../screens/ar_evacuation_screen.dart';
 
 /// AR Trigger Handler
 /// Listens for remote AR triggers and handles them
 class ARTriggerHandler {
   final StorageService _storageService;
-  StreamSubscription? _triggerSubscription;
+  StreamSubscription<dynamic>? _triggerSubscription;
   
   // Callback for when AR path is triggered
   void Function(Map<String, dynamic> pathData)? onPathTriggered;
@@ -32,7 +31,7 @@ class ARTriggerHandler {
     });
     
     if (kDebugMode) {
-      print('✅ AR Trigger Handler: Socket listener setup complete');
+      print('âœ… AR Trigger Handler: Socket listener setup complete');
     }
   }
 
@@ -42,7 +41,7 @@ class ARTriggerHandler {
       final data = eventData as Map<String, dynamic>;
       
       if (kDebugMode) {
-        print('🔔 AR Trigger Handler: Received AR path trigger: $data');
+        print('ðŸ”” AR Trigger Handler: Received AR path trigger: $data');
       }
 
       // Extract path data
@@ -63,7 +62,7 @@ class ARTriggerHandler {
             waypoints.add(waypoint);
           } catch (e) {
             if (kDebugMode) {
-              print('⚠️ AR Trigger Handler: Error parsing waypoint: $e');
+              print('âš ï¸ AR Trigger Handler: Error parsing waypoint: $e');
             }
           }
         }
@@ -76,7 +75,7 @@ class ARTriggerHandler {
           safeZone = Waypoint.fromJson(safeZoneData);
         } catch (e) {
           if (kDebugMode) {
-            print('⚠️ AR Trigger Handler: Error parsing safe zone: $e');
+            print('âš ï¸ AR Trigger Handler: Error parsing safe zone: $e');
           }
         }
       }
@@ -104,11 +103,11 @@ class ARTriggerHandler {
       onPathTriggered?.call(pathData);
 
       if (kDebugMode) {
-        print('✅ AR Trigger Handler: Path data stored and callback triggered');
+        print('âœ… AR Trigger Handler: Path data stored and callback triggered');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Trigger Handler: Error handling AR path trigger: $e');
+        print('âš ï¸ AR Trigger Handler: Error handling AR path trigger: $e');
       }
     }
   }
@@ -123,7 +122,7 @@ class ARTriggerHandler {
       return data as Map<String, dynamic>?;
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Trigger Handler: Error getting stored path data: $e');
+        print('âš ï¸ AR Trigger Handler: Error getting stored path data: $e');
       }
       return null;
     }

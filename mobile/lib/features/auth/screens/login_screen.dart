@@ -355,33 +355,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     SizedBox(height: size.height * 0.08),
 
-                    // Animated Logo Section
+                    // Logo
                     Column(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(AppSpacing.xl),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppColors.primaryGreen.withOpacity(0.2),
-                                AppColors.primaryGreenSubtle,
-                              ],
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primaryGreen.withOpacity(0.3),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Icons.shield,
-                            size: 64,
-                            color: AppColors.primaryGreen,
-                          ),
-                        )
+                        const KavachLogo(size: KavachLogoSize.login)
                             .animate()
                             .scale(
                                 delay: 100.ms,

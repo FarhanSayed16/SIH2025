@@ -1,10 +1,9 @@
-/// Phase 101.2: Error State Component
+﻿/// Phase 101.2: Error State Component
 /// Phase 101.9.4: Enhanced with user-friendly error messages
 /// A styled error state widget
 
 import 'package:flutter/material.dart';
 import '../../design/design_system.dart';
-import '../../utils/error_handler_utils.dart';
 import '../buttons/primary_button.dart';
 
 /// Error State - Error display with retry option

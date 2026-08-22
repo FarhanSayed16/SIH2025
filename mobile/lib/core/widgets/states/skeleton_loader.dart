@@ -1,9 +1,8 @@
-/// Phase 101.2: Skeleton Loader Component
+﻿/// Phase 101.2: Skeleton Loader Component
 /// A skeleton/shimmer loading widget
 
 import 'package:flutter/material.dart';
 import '../../design/design_system.dart';
-import 'dart:math' as math;
 
 /// Skeleton Loader - Shimmer/skeleton loading effect
 class SkeletonLoader extends StatefulWidget {

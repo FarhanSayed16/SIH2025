@@ -1,4 +1,4 @@
-/// Phase 5.7: AR Asset Manager
+﻿/// Phase 5.7: AR Asset Manager
 /// Handles loading and caching of AR assets from CDN
 
 import 'dart:io';
@@ -12,8 +12,10 @@ import '../../../core/services/storage_service.dart';
 /// AR Asset Manager
 /// Loads assets from CDN and caches them locally for offline access
 class ARAssetManager {
+  // ignore: unused_field
   final StorageService _storageService;
   static const String _assetsBaseUrl = 'https://assets.kavach.app/ar';
+  // ignore: unused_field
   static const String _cacheBoxName = 'arAssetsCache';
   
   // Cache directory
@@ -31,11 +33,11 @@ class ARAssetManager {
         await _cacheDir!.create(recursive: true);
       }
       if (kDebugMode) {
-        print('✅ AR Asset Manager: Initialized cache at ${_cacheDir!.path}');
+        print('âœ… AR Asset Manager: Initialized cache at ${_cacheDir!.path}');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error initializing cache: $e');
+        print('âš ï¸ AR Asset Manager: Error initializing cache: $e');
       }
     }
   }
@@ -53,14 +55,14 @@ class ARAssetManager {
       final cached = await _getCachedAsset(assetUrl);
       if (cached != null) {
         if (kDebugMode) {
-          print('✅ AR Asset Manager: Loaded from cache: $assetUrl');
+          print('âœ… AR Asset Manager: Loaded from cache: $assetUrl');
         }
         return cached;
       }
 
       // Download from CDN
       if (kDebugMode) {
-        print('📥 AR Asset Manager: Downloading from CDN: $assetUrl');
+        print('ðŸ“¥ AR Asset Manager: Downloading from CDN: $assetUrl');
       }
       final response = await http.get(Uri.parse(assetUrl));
       
@@ -71,18 +73,18 @@ class ARAssetManager {
         await _cacheAsset(assetUrl, bytes);
         
         if (kDebugMode) {
-          print('✅ AR Asset Manager: Downloaded and cached: $assetUrl');
+          print('âœ… AR Asset Manager: Downloaded and cached: $assetUrl');
         }
         return bytes;
       } else {
         if (kDebugMode) {
-          print('⚠️ AR Asset Manager: Failed to download asset: ${response.statusCode}');
+          print('âš ï¸ AR Asset Manager: Failed to download asset: ${response.statusCode}');
         }
         return null;
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error loading asset: $e');
+        print('âš ï¸ AR Asset Manager: Error loading asset: $e');
       }
       return null;
     }
@@ -96,7 +98,7 @@ class ARAssetManager {
   /// Preload multiple assets for offline use
   Future<void> preloadAssets(List<String> assetUrls) async {
     if (kDebugMode) {
-      print('📥 AR Asset Manager: Preloading ${assetUrls.length} assets...');
+      print('ðŸ“¥ AR Asset Manager: Preloading ${assetUrls.length} assets...');
     }
     
     for (final url in assetUrls) {
@@ -104,13 +106,13 @@ class ARAssetManager {
         await loadAsset(url);
       } catch (e) {
         if (kDebugMode) {
-          print('⚠️ AR Asset Manager: Error preloading $url: $e');
+          print('âš ï¸ AR Asset Manager: Error preloading $url: $e');
         }
       }
     }
     
     if (kDebugMode) {
-      print('✅ AR Asset Manager: Preloading complete');
+      print('âœ… AR Asset Manager: Preloading complete');
     }
   }
 
@@ -128,7 +130,7 @@ class ARAssetManager {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error reading cache: $e');
+        print('âš ï¸ AR Asset Manager: Error reading cache: $e');
       }
       return null;
     }
@@ -145,11 +147,11 @@ class ARAssetManager {
       await file.writeAsBytes(bytes);
       
       if (kDebugMode) {
-        print('💾 AR Asset Manager: Cached asset: $fileName');
+        print('ðŸ’¾ AR Asset Manager: Cached asset: $fileName');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error caching asset: $e');
+        print('âš ï¸ AR Asset Manager: Error caching asset: $e');
       }
     }
   }
@@ -172,12 +174,12 @@ class ARAssetManager {
         await _cacheDir!.create(recursive: true);
         
         if (kDebugMode) {
-          print('🗑️ AR Asset Manager: Cache cleared');
+          print('ðŸ—‘ï¸ AR Asset Manager: Cache cleared');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error clearing cache: $e');
+        print('âš ï¸ AR Asset Manager: Error clearing cache: $e');
       }
     }
   }
@@ -198,7 +200,7 @@ class ARAssetManager {
       return totalSize;
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error calculating cache size: $e');
+        print('âš ï¸ AR Asset Manager: Error calculating cache size: $e');
       }
       return 0;
     }
@@ -218,7 +220,7 @@ class ARAssetManager {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ AR Asset Manager: Error listing cached assets: $e');
+        print('âš ï¸ AR Asset Manager: Error listing cached assets: $e');
       }
       return [];
     }

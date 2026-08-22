@@ -1,4 +1,4 @@
-/// Phase 5.5: AR Evacuation Screen
+﻿/// Phase 5.5: AR Evacuation Screen
 /// Phase 101.7.3: Enhanced with new component library
 /// Displays AR overlay with evacuation path arrows and compass fallback
 
@@ -8,8 +8,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import 'dart:math' as math;
-import '../../../core/widgets/widgets.dart';
-import '../../../core/design/design_system.dart';
 import '../services/ar_evacuation_service.dart';
 import '../models/waypoint.dart';
 import '../providers/ar_provider.dart';
@@ -130,7 +128,7 @@ class _AREvacuationScreenState extends ConsumerState<AREvacuationScreen> {
       
       _arService?.updatePosition(_currentPosition!);
     } catch (e) {
-      print('❌ Get location error: $e');
+      print('âŒ Get location error: $e');
       rethrow;
     }
   }
@@ -151,7 +149,7 @@ class _AREvacuationScreenState extends ConsumerState<AREvacuationScreen> {
         });
       }
     } catch (e) {
-      print('❌ Load evacuation path error: $e');
+      print('âŒ Load evacuation path error: $e');
     }
   }
   
@@ -172,7 +170,7 @@ class _AREvacuationScreenState extends ConsumerState<AREvacuationScreen> {
             _arService?.updatePosition(position);
           }
         } catch (e) {
-          print('⚠️ Location update error: $e');
+          print('âš ï¸ Location update error: $e');
         }
       },
     );
