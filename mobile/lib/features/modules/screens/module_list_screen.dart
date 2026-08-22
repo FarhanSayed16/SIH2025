@@ -1,4 +1,4 @@
-/// Phase 3.1.1: Enhanced Module List Screen
+﻿/// Phase 3.1.1: Enhanced Module List Screen
 /// Phase 101.5: Redesigned with new component library
 /// Displays modules with filtering, search, and sorting
 
@@ -8,7 +8,6 @@ import '../models/module_model.dart';
 import '../providers/module_provider.dart';
 import '../services/local_completion_service.dart';
 import 'module_detail_screen.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/providers/api_service_provider.dart';
 import '../../../core/widgets/widgets.dart';

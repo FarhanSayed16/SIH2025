@@ -1,4 +1,4 @@
-/// Phase 3.1.1: Content Viewer Widget
+﻿/// Phase 3.1.1: Content Viewer Widget
 /// Displays different types of content (text, images, videos, audio, animations)
 
 import 'package:flutter/material.dart';
@@ -234,6 +234,7 @@ class _VideoSection extends StatelessWidget {
     );
   }
 
+  // ignore: unused_element
   String _formatDuration(int seconds) {
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;
@@ -270,6 +271,7 @@ class _AudioSection extends StatelessWidget {
     );
   }
 
+  // ignore: unused_element
   String _formatDuration(int seconds) {
     final minutes = seconds ~/ 60;
     final secs = seconds % 60;

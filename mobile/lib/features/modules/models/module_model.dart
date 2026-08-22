@@ -60,7 +60,7 @@ class ModuleModel {
           : [],
       version: (json['version'] ?? '1.0.0') as String,
       content: ModuleContent.fromJson(
-        (json['content'] ?? {}) as Map<String, dynamic>,
+        (json['content'] ?? <String, dynamic>{}) as Map<String, dynamic>,
       ),
       quiz: json['quiz'] != null 
           ? ModuleQuiz.fromJson(json['quiz'] as Map<String, dynamic>) 

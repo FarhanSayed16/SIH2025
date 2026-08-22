@@ -51,7 +51,7 @@ class MeshRelayService {
 
       // 2. Verify HMAC signature (if security service available)
       if (_securityService != null && message.signature != null && message.signature!.isNotEmpty) {
-        final isValid = await _securityService.verifySignature(message, message.signature!);
+        final isValid = await _securityService!.verifySignature(message, message.signature!);
         if (!isValid) {
           if (kDebugMode) {
             print('⚠️ Mesh Relay: Invalid signature for ${message.msgId}, dropping');
@@ -289,7 +289,7 @@ class MeshRelayService {
       if (_securityService != null && relayedMessage.schoolId.isNotEmpty) {
         try {
           // Re-sign the relayed message with updated TTL/hops
-          final signature = await _securityService.signMessageAsync(relayedMessage);
+          final signature = await _securityService!.signMessageAsync(relayedMessage);
           signedRelayedMessage = relayedMessage.copyWith(signature: signature);
         } catch (e) {
           if (kDebugMode) {

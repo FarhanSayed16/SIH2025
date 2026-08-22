@@ -254,7 +254,7 @@ class AttendanceData {
               ?.map((e) => AttendanceRecord.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      statistics: (json['statistics'] ?? {}) as Map<String, dynamic>,
+      statistics: (json['statistics'] ?? <String, dynamic>{}) as Map<String, dynamic>,
     );
   }
 }

@@ -1,11 +1,10 @@
-/// Phase 3.1.1: Quiz Screen
+﻿/// Phase 3.1.1: Quiz Screen
 /// Phase 3.1.3: Enhanced with non-reader support (audio, picture quizzes)
 /// Displays quiz questions and handles quiz submission
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/module_model.dart';
-import '../services/module_service.dart';
 import '../providers/module_provider.dart';
 import '../../quiz/widgets/picture_quiz_widget.dart';
 import '../../quiz/widgets/audio_quiz_widget.dart';

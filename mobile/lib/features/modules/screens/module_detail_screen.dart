@@ -1,4 +1,4 @@
-/// Phase 3.1.1: Module Detail Screen
+﻿/// Phase 3.1.1: Module Detail Screen
 /// Phase 101.5.2: Redesigned with new component library
 /// Displays module content with structured lessons and quiz
 
@@ -11,7 +11,6 @@ import 'quiz_screen.dart';
 import '../../quiz/services/quiz_service.dart'; // Phase 3.1.4
 import 'ai_quiz_dialog.dart'; // Phase 3.1.4
 import '../../../core/widgets/widgets.dart';
-import '../../../core/design/design_system.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/api_service.dart';
 
@@ -534,6 +533,7 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildErrorState(Object error) {
     return Center(
       child: Column(
