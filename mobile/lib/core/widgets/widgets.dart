@@ -16,6 +16,9 @@ export 'navigation/navigation.dart';
 // Displays
 export 'displays/displays.dart';
 
+// Branding
+export 'kavach_logo.dart';
+
 // States
 export 'states/states.dart';
 

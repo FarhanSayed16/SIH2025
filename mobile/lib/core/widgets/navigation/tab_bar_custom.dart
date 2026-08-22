@@ -1,4 +1,4 @@
-/// Phase 101.2: Custom Tab Bar Component
+﻿/// Phase 101.2: Custom Tab Bar Component
 /// A styled horizontal scrollable tab bar
 
 import 'package:flutter/material.dart';
@@ -57,7 +57,7 @@ class TabBarCustom extends StatelessWidget implements PreferredSizeWidget {
       color: AppColors.backgroundWhite,
       child: TabBar(
         tabs: tabs.asMap().entries.map((entry) {
-          final index = entry.key;
+          final _ = entry.key;
           final tab = entry.value;
           return Tab(
             icon: tab.icon != null

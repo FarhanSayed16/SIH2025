@@ -1,8 +1,7 @@
-/// Phase 101.2: Search Input Component
+﻿/// Phase 101.2: Search Input Component
 /// A styled search input field
 
 import 'package:flutter/material.dart';
-import '../../design/design_system.dart';
 import 'text_input.dart';
 
 /// Search Input - Search field with search icon

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/enhanced_sync_service.dart';
@@ -102,7 +102,7 @@ class _SyncStatusWidgetState extends ConsumerState<SyncStatusWidget> {
                       if (_cacheStats != null) ...[
                         const SizedBox(height: 4),
                         Text(
-                          '${_cacheStats!['downloadedModules']} modules • ${_cacheStats!['unsyncedQuizzes']} pending',
+                          '${_cacheStats!['downloadedModules']} modules â€¢ ${_cacheStats!['unsyncedQuizzes']} pending',
                           style: Theme.of(context).textTheme.bodySmall,
                         ),
                       ],
@@ -115,7 +115,7 @@ class _SyncStatusWidgetState extends ConsumerState<SyncStatusWidget> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<dynamic>(
                           builder: (context) => const EnhancedSyncStatusScreen(),
                         ),
                       );

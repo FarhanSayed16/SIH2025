@@ -1,9 +1,8 @@
-/// Phase 101.2: Number Input Component
+﻿/// Phase 101.2: Number Input Component
 /// A styled number input field
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../design/design_system.dart';
 import 'text_input.dart';
 
 /// Number Input - Number input field

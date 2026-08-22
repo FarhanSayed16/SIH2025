@@ -1,8 +1,7 @@
-/// Phase 101.2: Split View Component
+﻿/// Phase 101.2: Split View Component
 /// A split view layout widget
 
 import 'package:flutter/material.dart';
-import '../../design/design_system.dart';
 
 /// Split View - Horizontal or vertical split layout
 class SplitView extends StatelessWidget {
