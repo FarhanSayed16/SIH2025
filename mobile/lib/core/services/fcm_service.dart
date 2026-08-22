@@ -1,8 +1,8 @@
-import 'package:firebase_messaging/firebase_messaging.dart';
+﻿import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../constants/app_constants.dart';
+
 
 /// FCM Service - Handles Firebase Cloud Messaging
 class FcmService {
@@ -14,9 +14,9 @@ class FcmService {
   bool _initialized = false;
 
   // Callbacks
-  Function(String)? onTokenReceived;
-  Function(RemoteMessage)? onMessageReceived;
-  Function(RemoteMessage)? onBackgroundMessage;
+  void Function(String)? onTokenReceived;
+  void Function(RemoteMessage)? onMessageReceived;
+  void Function(RemoteMessage)? onBackgroundMessage;
 
   String? get fcmToken => _fcmToken;
   bool get isInitialized => _initialized;
@@ -123,16 +123,6 @@ class FcmService {
       _handleMessage(message);
     });
   }
-
-  /// Handle foreground message
-  void _handleForegroundMessage(RemoteMessage message) {
-    // Show local notification for foreground messages
-    _showLocalNotification(message);
-
-    // Trigger callback
-    onMessageReceived?.call(message);
-  }
-
   /// Handle message (when notification is tapped)
   void _handleMessage(RemoteMessage message) {
     // This will be handled by the app's navigation

@@ -1,5 +1,4 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../constants/app_constants.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// App mode state (Peace or Crisis)
 enum AppMode {

@@ -45,7 +45,7 @@ class StorageService {
 
   // Hive storage methods
   /// Open a Hive box
-  Future<Box> openBox(String boxName) async {
+  Future<Box<dynamic>> openBox(String boxName) async {
     if (!Hive.isBoxOpen(boxName)) {
       return await Hive.openBox(boxName);
     }
@@ -53,7 +53,7 @@ class StorageService {
   }
 
   /// Get a Hive box
-  Box? getBox(String boxName) {
+  Box<dynamic>? getBox(String boxName) {
     if (Hive.isBoxOpen(boxName)) {
       return Hive.box(boxName);
     }

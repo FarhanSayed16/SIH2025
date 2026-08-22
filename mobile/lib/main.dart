@@ -11,6 +11,7 @@ import 'dart:io';
 import 'core/config/env.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_provider.dart';
+import 'core/widgets/kavach_logo.dart';
 import 'core/constants/app_constants.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/localizations/app_localizations_delegate.dart';
@@ -58,25 +59,25 @@ void main() async {
   await Hive.initFlutter();
 
   // 4. Open required Hive boxes
-  await Hive.openBox(AppConstants.userBox);
-  await Hive.openBox(AppConstants.settingsBox);
-  await Hive.openBox(AppConstants.cacheBox);
-  await Hive.openBox(AppConstants.modulesBox);
-  await Hive.openBox(AppConstants
+  await Hive.openBox<dynamic>(AppConstants.userBox);
+  await Hive.openBox<dynamic>(AppConstants.settingsBox);
+  await Hive.openBox<dynamic>(AppConstants.cacheBox);
+  await Hive.openBox<dynamic>(AppConstants.modulesBox);
+  await Hive.openBox<dynamic>(AppConstants
       .completedModulesBox); // Phase 1: Local completion persistence
-  await Hive.openBox(
+  await Hive.openBox<dynamic>(
       AppConstants.videoProgressBox); // NDMA Module Video Progress Persistence
-  await Hive.openBox(AppConstants.drillLogsBox);
-  await Hive.openBox(AppConstants.quizResultsBox);
-  await Hive.openBox(AppConstants.quizzesBox); // Phase 3.1.4: AI quiz cache
+  await Hive.openBox<dynamic>(AppConstants.drillLogsBox);
+  await Hive.openBox<dynamic>(AppConstants.quizResultsBox);
+  await Hive.openBox<dynamic>(AppConstants.quizzesBox); // Phase 3.1.4: AI quiz cache
 
   // Phase 3.2.5: Game offline storage
-  await Hive.openBox(AppConstants.gameScoresBox);
-  await Hive.openBox(AppConstants.gameStatesBox);
-  await Hive.openBox(AppConstants.gameItemsBox);
+  await Hive.openBox<dynamic>(AppConstants.gameScoresBox);
+  await Hive.openBox<dynamic>(AppConstants.gameStatesBox);
+  await Hive.openBox<dynamic>(AppConstants.gameItemsBox);
 
   // Phase 5.3: Mesh offline queue
-  await Hive.openBox(AppConstants.meshOfflineQueueBox);
+  await Hive.openBox<dynamic>(AppConstants.meshOfflineQueueBox);
 
   // 5. Initialize Flutter Local Notifications and create notification channel
 
@@ -276,7 +277,9 @@ class _KavachAppState extends ConsumerState<KavachApp> {
     if (context.mounted) {
       _fcmMessageHandler = FcmMessageHandler(context, ref);
       ref.read(fcmProvider.notifier).setNotificationTapHandler((message) {
-        _fcmMessageHandler?.handleMessage(message);
+        if (message is RemoteMessage) {
+          _fcmMessageHandler?.handleMessage(message);
+        }
       });
     }
   }
@@ -463,19 +466,8 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.shield,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              AppConstants.appName,
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 10),
+            const KavachLogo(size: KavachLogoSize.splash),
+            const SizedBox(height: 16),
             Text(
               AppConstants.appDescription,
               style: Theme.of(context).textTheme.bodyLarge,

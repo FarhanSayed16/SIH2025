@@ -82,8 +82,8 @@ class SyncService {
       };
     } catch (e) {
       return {
-        'quizzes': [],
-        'drillLogs': [],
+        'quizzes': <dynamic>[],
+        'drillLogs': <dynamic>[],
         'total': 0,
         'error': e.toString(),
       };

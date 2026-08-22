@@ -16,10 +16,10 @@ class SocketService {
   Timer? _heartbeatTimer;
 
   // Callbacks
-  Function(String)? onConnectCallback;
-  Function(String)? onDisconnectCallback;
-  Function(String, dynamic)? onEventCallback;
-  Function(String)? onErrorCallback;
+  void Function(String)? onConnectCallback;
+  void Function(String)? onDisconnectCallback;
+  void Function(String, dynamic)? onEventCallback;
+  void Function(String)? onErrorCallback;
 
   bool get isConnected => _isConnected;
   bool get isConnecting => _isConnecting;
@@ -171,7 +171,7 @@ class SocketService {
   }
 
   /// Listen to an event
-  void on(String event, Function(dynamic) handler) {
+  void on(String event, void Function(dynamic) handler) {
     if (_socket != null) {
       _socket!.on(event, (data) {
         handler(data);
