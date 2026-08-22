@@ -1,11 +1,10 @@
-/// Phase 4.1: Crisis Alert Service
+﻿/// Phase 4.1: Crisis Alert Service
 /// Handles crisis alerts, status updates, and offline caching
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/constants/api_endpoints.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/socket_events.dart'; // Phase 4.0
 import '../../socket/providers/socket_provider.dart';
 import 'package:geolocator/geolocator.dart';

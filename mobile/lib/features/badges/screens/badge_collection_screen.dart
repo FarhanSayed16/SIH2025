@@ -1,4 +1,4 @@
-/// Phase 3.3.3: Badge Collection Screen
+﻿/// Phase 3.3.3: Badge Collection Screen
 /// Displays all available badges and user's earned badges
 
 import 'package:flutter/material.dart';
@@ -183,7 +183,7 @@ class _BadgeCollectionScreenState extends ConsumerState<BadgeCollectionScreen>
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
+          MaterialPageRoute<dynamic>(
             builder: (context) => BadgeDetailScreen(badgeId: badge.id.toString()),
           ),
         );
@@ -319,7 +319,7 @@ class _BadgeCollectionScreenState extends ConsumerState<BadgeCollectionScreen>
   }
 
   void _showCategoryFilter() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Filter by Category'),

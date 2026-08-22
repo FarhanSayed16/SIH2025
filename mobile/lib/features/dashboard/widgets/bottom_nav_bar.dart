@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// Bottom Navigation Bar Widget
 /// Phase 3.4.6.4: All tabs shown, access control handled by screens
 class BottomNavBar extends StatelessWidget {
   final int currentIndex;
-  final Function(int) onTap;
+  final void Function(int) onTap;
 
   const BottomNavBar({
     super.key,

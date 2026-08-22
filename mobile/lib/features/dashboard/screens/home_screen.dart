@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:camera/camera.dart';
@@ -243,13 +243,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String emoji;
     if (hour < 12) {
       greeting = 'Good Morning';
-      emoji = '🌅';
+      emoji = '\u{1F305}';
     } else if (hour < 17) {
       greeting = 'Good Afternoon';
-      emoji = '☀️';
+      emoji = '\u{2600}\u{FE0F}';
     } else {
       greeting = 'Good Evening';
-      emoji = '🌙';
+      emoji = '\u{1F319}';
     }
 
     // Determine score color
@@ -591,7 +591,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       Text(
                         "Today's safety tip",
-                        style: AppTextStyles.labelLarge?.copyWith(
+                        style: AppTextStyles.labelLarge.copyWith(
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
@@ -622,8 +622,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               spacing: 8,
               children: [
                 _tipChip('English', 'en'),
-                _tipChip('हिंदी', 'hi'),
-                _tipChip('मराठी', 'mr'),
+                _tipChip('\u0939\u093F\u0902\u0926\u0940', 'hi'),
+                _tipChip('\u092E\u0930\u093E\u0920\u0940', 'mr'),
               ],
             ),
           ],

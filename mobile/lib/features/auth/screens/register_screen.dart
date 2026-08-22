@@ -1,4 +1,4 @@
-/// RBAC Refinement: Register Screen - Modern Redesign with Role Selection
+﻿/// RBAC Refinement: Register Screen - Modern Redesign with Role Selection
 /// High-end startup-quality UI with step-by-step registration flow
 
 import 'dart:convert';
@@ -41,6 +41,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _selectedRole;
   String? _selectedInstitutionId;
   String? _selectedGrade;
+  // ignore: unused_field
   String? _selectedClassId;
   String? _scannedQRCode; // For classroom QR
   final _classCodeController =
@@ -942,7 +943,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               child: OutlinedButtonCustom(
                 label: _scannedQRCode != null
-                    ? 'QR Code Scanned ✓'
+                    ? 'QR Code Scanned âœ“'
                     : 'Scan Classroom QR Code',
                 onPressed: () async {
                   final result = await Navigator.of(context).push<String>(

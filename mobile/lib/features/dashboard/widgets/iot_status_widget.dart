@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Phase 201: IoT Status Widget
  * Shows IoT device status on home screen
  */
@@ -8,8 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/design/design_system.dart';
-import '../../../core/constants/socket_events.dart';
-import '../../socket/providers/socket_provider.dart';
 import '../../iot/screens/iot_device_list_screen.dart';
 
 class IoTStatusWidget extends ConsumerStatefulWidget {

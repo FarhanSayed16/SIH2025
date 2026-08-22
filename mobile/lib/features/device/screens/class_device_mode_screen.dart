@@ -1,6 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_constants.dart';
 import '../providers/device_mode_provider.dart';
 import '../../qr/screens/qr_scanner_screen.dart';
 
@@ -148,7 +147,7 @@ class ClassDeviceModeScreen extends ConsumerWidget {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<dynamic>(
                       builder: (context) => QRScannerScreen(
                         title: 'Scan Student QR',
                         onQRScanned: (qrCode) {
