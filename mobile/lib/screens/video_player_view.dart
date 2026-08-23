@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
@@ -12,7 +12,7 @@ class VideoPlayerView extends StatefulWidget {
   final String title;
   final VoidCallback onVideoCompleted;
   final bool vrPassthroughByDefault;
-  final String? backgroundImagePath; // 360° background image
+  final String? backgroundImagePath; // 360Â° background image
 
   const VideoPlayerView({
     Key? key,
@@ -140,7 +140,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (_) => VrPlayerEnhanced(
           videoUrl: widget.videoUrl,
           isYouTube: false,
@@ -157,7 +157,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (_) => Ar360Viewer(
           imagePath: bgPath,
           videoUrl: widget.videoUrl,
@@ -180,7 +180,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     }
 
     // Otherwise, show selection dialog
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.black87,
@@ -311,7 +311,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
                     Icon(Icons.threesixty, size: 18, color: Colors.cyan),
                     SizedBox(width: 12),
                     Text(
-                      'AR 360° View',
+                      'AR 360Â° View',
                       style: TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold),
                     ),
                   ],

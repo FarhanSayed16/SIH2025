@@ -7,7 +7,7 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   // Allow public routes
-  const publicRoutes = ['/login'];
+  const publicRoutes = ['/login', '/privacy', '/terms'];
   const isPublicRoute = publicRoutes.some((route) => request.nextUrl.pathname.startsWith(route));
 
   if (isPublicRoute) {

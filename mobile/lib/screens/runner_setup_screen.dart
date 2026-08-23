@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../managers/game_manager.dart';
 import '../features/games/screens/school_runner_game.dart';
 
@@ -104,7 +104,7 @@ class _RunnerSetupScreenState extends State<RunnerSetupScreen> {
                       // FIX: Added .then() to force a refresh when the user returns from the game
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<dynamic>(
                             builder: (context) =>
                                 const SchoolRunnerWidget(isEndless: false)),
                       ).then((_) => setState(() {}));

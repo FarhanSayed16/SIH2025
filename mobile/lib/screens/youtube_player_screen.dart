@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 // Ensure this points to the VR engine file
@@ -65,7 +65,7 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (_) => VrPlayerEnhanced(
           videoUrl: widget.videoUrl,
           isYouTube: true,
@@ -82,7 +82,7 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (_) => Ar360Viewer(
           imagePath: bgPath,
           videoUrl: widget.videoUrl,
@@ -105,7 +105,7 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
     }
 
     // Otherwise, let the user pick the scenario
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.black87,
@@ -225,7 +225,7 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
                     Icon(Icons.threesixty, size: 16, color: Colors.cyan),
                     SizedBox(width: 12),
                     Text(
-                      'AR 360° View',
+                      'AR 360Â° View',
                       style: TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold),
                     ),
                   ],

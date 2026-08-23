@@ -1,17 +1,13 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
+﻿import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:kavach/core/services/socket_service.dart';
-import 'socket_service_test.mocks.dart';
 
 @GenerateMocks([IO.Socket])
 void main() {
   late SocketService socketService;
-  late MockSocket mockSocket;
 
   setUp(() {
-    mockSocket = MockSocket();
     socketService = SocketService();
   });
 
