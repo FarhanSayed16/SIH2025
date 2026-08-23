@@ -1,10 +1,4 @@
 {
-  "/teacher/analytics/page": "app/teacher/analytics/page.js",
-  "/login/page": "app/login/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/teacher/classes/page": "app/teacher/classes/page.js",
-  "/teacher/parents/page": "app/teacher/parents/page.js",
-  "/users/page": "app/users/page.js",
-  "/scenario/page": "app/scenario/page.js",
-  "/broadcast/page": "app/broadcast/page.js"
+  "/(marketing)/page": "app/(marketing)/page.js",
+  "/(marketing)/team-preview/page": "app/(marketing)/team-preview/page.js"
 }
