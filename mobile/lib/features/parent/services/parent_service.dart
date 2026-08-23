@@ -197,7 +197,7 @@ class ParentService {
     try {
       final response = await _apiService.put(
         ApiEndpoints.parentNotificationRead(notificationId),
-        data: {},
+        data: <String, dynamic>{},
       );
       if (response.data['success'] != true) {
         throw Exception(
@@ -214,7 +214,7 @@ class ParentService {
     try {
       final response = await _apiService.put(
         ApiEndpoints.parentMarkAllNotificationsRead,
-        data: {},
+        data: <String, dynamic>{},
       );
       if (response.data['success'] == true) {
         return (response.data['data']?['count'] as int?) ?? 0;

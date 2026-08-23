@@ -1,4 +1,4 @@
-/// Student Parents Screen
+﻿/// Student Parents Screen
 /// Phase 7: Parent-Teacher-Student Linkage
 /// List of all parents for a student
 
@@ -45,7 +45,7 @@ class _StudentParentsScreenState extends ConsumerState<StudentParentsScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => ParentQRScannerScreen(
                     studentId: widget.studentId,
                   ),
@@ -187,7 +187,7 @@ class _StudentParentsScreenState extends ConsumerState<StudentParentsScreen> {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
+                                  MaterialPageRoute<dynamic>(
                                     builder: (context) => ParentQRScannerScreen(
                                       studentId: widget.studentId,
                                     ),

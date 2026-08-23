@@ -105,7 +105,7 @@ class DeveloperMenu extends ConsumerWidget {
               title: Text(l10n.switchRole),
               subtitle: Text('${l10n.role}: ${user.role}'),
               onTap: () {
-                _showRoleSwitcher(context, ref, user?.role ?? 'student');
+                _showRoleSwitcher(context, ref, user.role);
               },
             ),
 
@@ -147,7 +147,7 @@ class DeveloperMenu extends ConsumerWidget {
               Navigator.pop(context); // Close developer menu first
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => const MeshTestScreen(),
                 ),
               );
@@ -163,7 +163,7 @@ class DeveloperMenu extends ConsumerWidget {
               Navigator.pop(context); // Close developer menu first
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => const IoTDeviceListScreen(),
                 ),
               );
@@ -186,7 +186,7 @@ class DeveloperMenu extends ConsumerWidget {
   void _showRoleSwitcher(BuildContext context, WidgetRef ref, String currentRole) {
     final l10n = AppLocalizations.of(context);
     
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.switchRole),

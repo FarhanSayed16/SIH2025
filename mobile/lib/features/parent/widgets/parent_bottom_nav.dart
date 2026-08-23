@@ -1,4 +1,4 @@
-/// Parent Bottom Navigation Bar
+﻿/// Parent Bottom Navigation Bar
 /// Provides quick access to main parent features
 /// Parent Monitoring System - Phase 3 Enhancement
 
@@ -8,12 +8,11 @@ import '../../../core/design/design_system.dart';
 import '../screens/parent_dashboard_screen.dart';
 import '../screens/qr_verification_screen.dart';
 import '../screens/notifications_screen.dart';
-import '../screens/parent_profile_screen.dart';
 import '../providers/parent_provider.dart';
 
 class ParentBottomNav extends ConsumerWidget {
   final int currentIndex;
-  final Function(int) onTap;
+  final void Function(int) onTap;
 
   const ParentBottomNav({
     super.key,

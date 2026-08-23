@@ -281,7 +281,7 @@ class _EnhancedSyncStatusScreenState extends ConsumerState<EnhancedSyncStatusScr
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<dynamic>(
                       builder: (context) => ConflictResolutionScreen(
                         conflictItem: conflict,
                       ),

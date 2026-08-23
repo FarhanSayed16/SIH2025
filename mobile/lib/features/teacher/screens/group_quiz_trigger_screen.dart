@@ -1,4 +1,4 @@
-/// Phase 3.4.5: Group Quiz Trigger Screen
+﻿/// Phase 3.4.5: Group Quiz Trigger Screen
 /// Allows teachers to trigger group quizzes for their class
 
 import 'package:flutter/material.dart';
@@ -83,7 +83,7 @@ class _GroupQuizTriggerScreenState
     setState(() => _isTriggering = true);
 
     try {
-      final result = await _teacherService.triggerGroupQuiz(
+      final _ = await _teacherService.triggerGroupQuiz(
         widget.classId,
         _selectedModuleId!,
       );

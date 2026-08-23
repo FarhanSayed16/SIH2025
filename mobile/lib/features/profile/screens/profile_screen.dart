@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -184,7 +184,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   SizedBox(height: AppSpacing.sm),
                   BadgeWidget(
-                    text: user?.role?.toUpperCase() ?? 'UNKNOWN',
+                    text: user?.role.toUpperCase() ?? 'UNKNOWN',
                     type: BadgeType.primary,
                     size: BadgeSize.medium,
                   ),
@@ -209,8 +209,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // Leaderboard Section - Phase 3.4.6.4: Only for full access
             if (user == null ||
-                user!.role != 'student' ||
-                AccessLevelProvider.canAccessFeature(user!, 'leaderboard')) ...[
+                user.role != 'student' ||
+                AccessLevelProvider.canAccessFeature(user, 'leaderboard')) ...[
               const SizedBox(height: 24),
               _buildLeaderboardSection(),
             ],
@@ -227,8 +227,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
             // Theme Toggle (Crisis Mode) - Phase 3.4.6.4: Only for full access
             if (user == null ||
-                user!.role != 'student' ||
-                AccessLevelProvider.canAccessFeature(user!, 'crisis_mode'))
+                user.role != 'student' ||
+                AccessLevelProvider.canAccessFeature(user, 'crisis_mode'))
               Padding(
                 padding: EdgeInsets.only(bottom: AppSpacing.md),
                 child: Card(
@@ -266,7 +266,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: ActionCard(
                 title: l10n.language,
                 subtitle: localeState.locale.languageCode == 'hi'
-                    ? 'हिंदी'
+                    ? '\u0939\u093F\u0902\u0926\u0940'
                     : 'English',
                 leadingIcon: Icons.language,
                 onTap: () {
@@ -321,7 +321,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         onTap: () async {
                           final qrCode = await Navigator.push<String>(
                             context,
-                            MaterialPageRoute(
+                            MaterialPageRoute<String>(
                               builder: (context) => const QRScannerScreen(
                                 title: 'Scan Class QR Code',
                                 isClassroomMode: true,
@@ -578,10 +578,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     Text(
-                      '• Share your QR code or Student ID with your parent\n'
-                      '• Parent can use this to link your account\n'
-                      '• Parent needs to login and go to "Add Child" page\n'
-                      '• Parent can scan the QR code or enter your Student ID',
+                      '\u2022 Share your QR code or Student ID with your parent\n'
+                      '\u2022 Parent can use this to link your account\n'
+                      '\u2022 Parent needs to login and go to "Add Child" page\n'
+                      '\u2022 Parent can scan the QR code or enter your Student ID',
                       style: AppTextStyles.bodySmall,
                     ),
                   ],
@@ -651,7 +651,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  MaterialPageRoute<dynamic>(
                     builder: (context) => const BadgeCollectionScreen(),
                   ),
                 );
@@ -686,7 +686,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(
+                                MaterialPageRoute<dynamic>(
                                   builder: (context) =>
                                       const BadgeCollectionScreen(),
                                 ),
@@ -718,7 +718,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                     onTap: () {
                                       Navigator.push(
                                         context,
-                                        MaterialPageRoute(
+                                        MaterialPageRoute<dynamic>(
                                           builder: (context) =>
                                               BadgeDetailScreen(
                                             badgeId: badge.id,

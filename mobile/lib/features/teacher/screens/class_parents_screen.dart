@@ -1,4 +1,4 @@
-/// Class Parents Screen
+﻿/// Class Parents Screen
 /// Phase 7: Parent-Teacher-Student Linkage
 /// All parents in the class with relationship matrix
 
@@ -49,7 +49,7 @@ class _ClassParentsScreenState extends ConsumerState<ClassParentsScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => ParentQRScannerScreen(
                     classId: widget.classId,
                   ),
@@ -268,7 +268,7 @@ class _ClassParentsScreenState extends ConsumerState<ClassParentsScreen> {
                                 onTap: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
+                                    MaterialPageRoute<dynamic>(
                                       builder: (context) => StudentParentsScreen(
                                         studentId: studentId,
                                         studentName: studentName,

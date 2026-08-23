@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/teacher_provider.dart';
@@ -69,7 +69,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => QRScannerScreen(
                     title: 'Scan Student QR',
                     onQRScanned: (qrCode) {
@@ -254,7 +254,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
                               onPressed: () {
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(
+                                  MaterialPageRoute<dynamic>(
                                     builder: (context) => AddStudentScreen(
                                       classId: widget.classId,
                                       grade: grade,
@@ -318,7 +318,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
                             ),
                             onTap: () {
                               // Show student details
-                              showDialog(
+                              showDialog<void>(
                                 context: context,
                                 builder: (context) => AlertDialog(
                                   title: Text(name),
@@ -421,7 +421,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
     final students = ref.read(teacherProvider).students ?? [];
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (context) => AttendanceMarkingScreen(
           classId: widget.classId,
           students: students,
@@ -443,7 +443,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
     final students = ref.read(teacherProvider).students ?? [];
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (context) => XPAssignmentScreen(
           classId: widget.classId,
           students: students,
@@ -464,7 +464,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
   void _navigateToQuiz(BuildContext context, WidgetRef ref) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (context) => GroupQuizTriggerScreen(
           classId: widget.classId,
         ),
@@ -484,7 +484,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
   void _navigateToProgress(BuildContext context, WidgetRef ref) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (context) => StudentProgressScreen(
           classId: widget.classId,
         ),
@@ -495,7 +495,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
   void _navigateToDrillDashboard(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (context) => const DrillDashboardScreen(),
       ),
     );
@@ -522,7 +522,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
 
   /// Phase 3: Show drill type selection dialog
   void _showDrillTypeSelection(BuildContext context, WidgetRef ref) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Start Drill'),
@@ -595,7 +595,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
           // Navigate to participation tracking screen
           Navigator.push(
             context,
-            MaterialPageRoute(
+            MaterialPageRoute<dynamic>(
               builder: (context) => DrillParticipationTrackingScreen(
                 drillId: newDrill.id,
                 drillType: newDrill.type,
@@ -616,7 +616,7 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<dynamic>(
                       builder: (context) => const DrillDashboardScreen(),
                     ),
                   );

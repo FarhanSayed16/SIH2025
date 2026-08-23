@@ -1,11 +1,13 @@
 /**
  * Accessibility Settings Screen
- * Phase 4.9: User accessibility preferences
+ * Syncs with GET /api/settings and PUT /api/settings/accessibility
  */
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/api_endpoints.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/services/api_service.dart';
 import '../../../l10n/app_localizations.dart';
 
 class AccessibilitySettingsScreen extends ConsumerStatefulWidget {
@@ -16,10 +18,12 @@ class AccessibilitySettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySettingsScreen> {
+  final ApiService _api = ApiService();
   bool _highContrast = false;
   bool _reducedMotion = false;
   String _fontSize = 'medium';
   bool _largeText = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -27,16 +31,61 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
     _loadSettings();
   }
 
-  void _loadSettings() {
-    // TODO: Load from user settings API
-    // For now, using defaults
+  Map<String, dynamic>? _asMap(dynamic v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return null;
   }
 
-  void _saveSettings() {
-    // TODO: Save to user settings API
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Settings saved')),
-    );
+  Future<void> _loadSettings() async {
+    try {
+      final res = await _api.get(ApiEndpoints.settings);
+      final root = _asMap(res.data);
+      final data = _asMap(root?['data']) ?? root;
+      if (data == null) return;
+      final access = _asMap(data['accessibility']) ?? {};
+      final language = data['language']?.toString();
+      if (!mounted) return;
+      setState(() {
+        _highContrast = access['highContrast'] == true;
+        _reducedMotion = access['reducedMotion'] == true;
+        _fontSize = (access['fontSize'] as String?) ?? 'medium';
+        _largeText = _fontSize == 'large' || _fontSize == 'xlarge';
+      });
+      if (language != null && language.isNotEmpty) {
+        await ref.read(localeProvider.notifier).setLocale(Locale(language));
+      }
+    } catch (_) {
+      // Offline or unauthenticated: keep local defaults
+    }
+  }
+
+  Future<void> _saveSettings() async {
+    if (_saving) return;
+    _saving = true;
+    try {
+      await _api.put(ApiEndpoints.settingsAccessibility, data: {
+        'highContrast': _highContrast,
+        'fontSize': _fontSize,
+        'reducedMotion': _reducedMotion,
+      });
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not save settings. Try again when online.')),
+        );
+      }
+    } finally {
+      _saving = false;
+    }
+  }
+
+  Future<void> _saveLanguage(String code) async {
+    try {
+      await _api.put(ApiEndpoints.settingsLanguage, data: {'language': code});
+    } catch (_) {
+      // Locale is already stored locally via localeProvider
+    }
   }
 
   @override
@@ -82,6 +131,11 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
                 onChanged: (value) {
                   setState(() {
                     _largeText = value;
+                    if (value && (_fontSize == 'small' || _fontSize == 'medium')) {
+                      _fontSize = 'large';
+                    } else if (!value && (_fontSize == 'large' || _fontSize == 'xlarge')) {
+                      _fontSize = 'medium';
+                    }
                     _saveSettings();
                   });
                 },
@@ -197,7 +251,7 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
           onChanged: (value) {
             if (value != null) {
               localeNotifier.setLocale(Locale(value));
-              _saveSettings();
+              _saveLanguage(value);
             }
           },
           selected: isSelected,
@@ -221,6 +275,7 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
               onChanged: (value) {
                 setState(() {
                   _fontSize = value!;
+                  _largeText = value == 'large' || value == 'xlarge';
                 });
                 Navigator.pop(context);
                 _saveSettings();
@@ -233,6 +288,7 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
               onChanged: (value) {
                 setState(() {
                   _fontSize = value!;
+                  _largeText = value == 'large' || value == 'xlarge';
                 });
                 Navigator.pop(context);
                 _saveSettings();
@@ -245,6 +301,7 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
               onChanged: (value) {
                 setState(() {
                   _fontSize = value!;
+                  _largeText = value == 'large' || value == 'xlarge';
                 });
                 Navigator.pop(context);
                 _saveSettings();
@@ -257,6 +314,7 @@ class _AccessibilitySettingsScreenState extends ConsumerState<AccessibilitySetti
               onChanged: (value) {
                 setState(() {
                   _fontSize = value!;
+                  _largeText = value == 'large' || value == 'xlarge';
                 });
                 Navigator.pop(context);
                 _saveSettings();

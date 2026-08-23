@@ -1,10 +1,7 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/socket_service.dart';
 import '../../../core/services/connectivity_service.dart';
-import '../../../core/constants/api_endpoints.dart';
 import '../../../core/services/storage_service.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../auth/services/auth_service.dart';
 
 /// Socket state
 class SocketState {
@@ -119,7 +116,7 @@ class SocketNotifier extends StateNotifier<SocketState> {
   }
 
   /// Listen to socket event
-  void on(String event, Function(dynamic) handler) {
+  void on(String event, void Function(dynamic) handler) {
     _socketService.on(event, handler);
   }
 

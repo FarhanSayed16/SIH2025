@@ -1,10 +1,9 @@
-/// Phase 3.4.5: Attendance Marking Screen
+﻿/// Phase 3.4.5: Attendance Marking Screen
 /// Allows teachers to mark attendance for their class
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/teacher_service.dart';
-import '../../../core/services/api_service.dart';
 
 class AttendanceMarkingScreen extends ConsumerStatefulWidget {
   final String classId;

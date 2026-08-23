@@ -1,4 +1,4 @@
-/// Phase 3: Teacher Drill Dashboard
+﻿/// Phase 3: Teacher Drill Dashboard
 /// Shows active drills, scheduled drills, and drill history
 
 import 'dart:async';
@@ -201,7 +201,7 @@ class _DrillDashboardScreenState extends ConsumerState<DrillDashboardScreen>
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<dynamic>(
                   builder: (context) => DrillParticipationTrackingScreen(
                     drillId: drill.id,
                     drillType: drill.type,
@@ -254,7 +254,7 @@ class _DrillDashboardScreenState extends ConsumerState<DrillDashboardScreen>
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               // Show drill details
-              showDialog(
+              showDialog<void>(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text(_formatDrillType(drill.type)),
@@ -328,7 +328,7 @@ class _DrillDashboardScreenState extends ConsumerState<DrillDashboardScreen>
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () {
               // Show drill summary
-              showDialog(
+              showDialog<void>(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text(_formatDrillType(drill.type)),

@@ -22,6 +22,7 @@ class QRVerificationScreen extends ConsumerStatefulWidget {
 class _QRVerificationScreenState extends ConsumerState<QRVerificationScreen> {
   final MobileScannerController _controller = MobileScannerController();
   bool _isProcessing = false;
+  // ignore: unused_field
   QRVerificationResult? _verificationResult;
   String? _lastScannedQRCode; // Prevent duplicate scans
 
@@ -71,7 +72,7 @@ class _QRVerificationScreenState extends ConsumerState<QRVerificationScreen> {
   }
 
   void _showSuccessDialog(QRVerificationResult result) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Row(
@@ -116,7 +117,7 @@ class _QRVerificationScreenState extends ConsumerState<QRVerificationScreen> {
   }
 
   void _showLinkDialog(String qrCode, QRVerificationResult result) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Row(
@@ -200,7 +201,7 @@ class _QRVerificationScreenState extends ConsumerState<QRVerificationScreen> {
   }
 
   void _showErrorDialog(String message) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Row(
