@@ -1,4 +1,4 @@
-/// Child Detail Screen
+﻿/// Child Detail Screen
 /// Detailed view of a child's progress, drills, attendance, and safety
 /// Parent Monitoring System - Phase 3
 
@@ -497,7 +497,7 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen>
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            MaterialPageRoute<dynamic>(
                               builder: (context) => ChildLocationScreen(
                                 studentId: widget.studentId,
                                 location: location,

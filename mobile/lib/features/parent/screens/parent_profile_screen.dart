@@ -280,10 +280,10 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (user.email != null) ...[
+                if (user.email.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
-                    user.email!,
+                    user.email,
                     style: AppTextStyles.bodyMedium.copyWith(
                       color: AppColors.textSecondary,
                     ),
@@ -423,7 +423,7 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                     ListTile(
                       leading: const Icon(Icons.email),
                       title: const Text('Email'),
-                      subtitle: Text(user.email ?? 'Not provided'),
+                      subtitle: Text(user.email.isNotEmpty ? user.email : 'Not provided'),
                     ),
                     // Phone will be shown if available from profile data
                     ListTile(

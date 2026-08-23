@@ -1,4 +1,4 @@
-/// Children Management Screen
+﻿/// Children Management Screen
 /// Manage all linked children - view, unlink, edit relationships
 /// Parent Monitoring System - Phase 1 Mobile
 
@@ -206,7 +206,7 @@ class _ChildrenManagementScreenState
                     itemBuilder: (context, index) {
                       final child = filteredChildren[index];
                       final status = _getChildStatus(child);
-                      final isEditing = _editingRelationshipId == child.id;
+                      final _ = _editingRelationshipId == child.id;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),

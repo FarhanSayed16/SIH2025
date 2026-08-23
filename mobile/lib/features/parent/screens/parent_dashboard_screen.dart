@@ -1,4 +1,4 @@
-/// Parent Dashboard Screen
+﻿/// Parent Dashboard Screen
 /// Main dashboard for parents to monitor their children
 /// Parent Monitoring System - Phase 3
 /// Enhanced with statistics, activity feed, and better child cards
@@ -364,7 +364,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                   onPressed: () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
+                                      MaterialPageRoute<dynamic>(
                                         builder: (context) =>
                                             const NotificationsScreen(),
                                       ),
@@ -435,7 +435,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
+                                    MaterialPageRoute<dynamic>(
                                       builder: (context) =>
                                           const QRVerificationScreen(),
                                     ),
@@ -451,7 +451,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                                 onPressed: () {
                                   Navigator.push(
                                     context,
-                                    MaterialPageRoute(
+                                    MaterialPageRoute<dynamic>(
                                       builder: (context) =>
                                           const NotificationsScreen(),
                                     ),
@@ -605,7 +605,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
+              MaterialPageRoute<dynamic>(
                 builder: (context) => ChildDetailScreen(studentId: child.id),
               ),
             );
@@ -731,7 +731,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<dynamic>(
                           builder: (context) =>
                               ChildDetailScreen(studentId: child.id),
                         ),

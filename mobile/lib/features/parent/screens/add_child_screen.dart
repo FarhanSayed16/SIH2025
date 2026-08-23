@@ -1,4 +1,4 @@
-/// Add Child Screen
+﻿/// Add Child Screen
 /// Allows parents to link children by QR code or Student ID
 /// Parent Monitoring System - Phase 3 Enhancement
 
@@ -8,7 +8,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../core/design/design_system.dart';
 import '../providers/parent_provider.dart';
-import '../services/parent_service.dart';
 import '../models/parent_models.dart';
 import 'parent_dashboard_screen.dart';
 import 'child_detail_screen.dart';

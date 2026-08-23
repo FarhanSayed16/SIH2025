@@ -1,4 +1,4 @@
-/// Parent Notifications Screen
+﻿/// Parent Notifications Screen
 /// Displays all notifications for the parent
 /// Parent Monitoring System - Phase 3
 
@@ -185,7 +185,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           if (notification.data?['studentId'] != null) {
             Navigator.push(
               context,
-              MaterialPageRoute(
+              MaterialPageRoute<dynamic>(
                 builder: (context) => ChildDetailScreen(
                   studentId: notification.data!['studentId'].toString(),
                 ),

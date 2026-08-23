@@ -1,4 +1,4 @@
-/// Child Location Screen
+﻿/// Child Location Screen
 /// Real-time location map for child
 /// Parent Monitoring System - Phase 3
 
@@ -75,7 +75,7 @@ class _ChildLocationScreenState extends ConsumerState<ChildLocationScreen> {
   @override
   Widget build(BuildContext context) {
     final locationAsync = ref.watch(childLocationProvider(widget.studentId));
-    final location = widget.location;
+    final _ = widget.location;
 
     return Scaffold(
       appBar: AppBar(
