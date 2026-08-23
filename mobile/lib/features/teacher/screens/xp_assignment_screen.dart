@@ -1,4 +1,4 @@
-/// Phase 3.4.5: XP Assignment Screen
+﻿/// Phase 3.4.5: XP Assignment Screen
 /// Allows teachers to assign XP to students
 
 import 'package:flutter/material.dart';
@@ -94,7 +94,7 @@ class _XPAssignmentScreenState extends ConsumerState<XPAssignmentScreen> {
     setState(() => _isAssigning = true);
 
     try {
-      final result = await _teacherService.assignXP(
+      final _ = await _teacherService.assignXP(
         widget.classId,
         xpAmount,
         studentIds: _selectedStudentIds.toList(),

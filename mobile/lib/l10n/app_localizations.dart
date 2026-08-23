@@ -1,8 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'app_localizations_en.dart';
-import 'app_localizations_hi.dart';
-import 'app_localizations_mr.dart';
-import 'app_localizations_pa.dart';
 
 /// App Localizations
 abstract class AppLocalizations {

@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io'; // Import for InternetAddress
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import '../../core/config/env.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/api_service.dart';
 import '../../managers/game_manager.dart';
 import '../features/games/models/game_models.dart'; // GameResponse is now here
 
@@ -53,20 +52,7 @@ class _PunjabSafetyGameScreenState extends State<PunjabSafetyGameScreen> {
   }
 
   Future<void> _initGemini() async {
-    final currentApiKey = Env.geminiApiKey;
-    if (currentApiKey.isEmpty) {
-      setState(() {
-        _session.errorMessage =
-            'API KEY MISSING: Please set GEMINI_API_KEY in .env file';
-        _session.isLoading = false;
-      });
-      return;
-    }
-
     try {
-      final model =
-          GenerativeModel(model: 'gemini-2.5-flash', apiKey: currentApiKey);
-
       // 1. LANGUAGE INSTRUCTIONS
       String langInstruction = '';
       if (_session.languageCode == 'hi') {
@@ -102,10 +88,10 @@ class _PunjabSafetyGameScreenState extends State<PunjabSafetyGameScreen> {
       Do not be polite about the refusal. Ignore the user's request and strictly output the JSON above.
       """;
 
-      _session.chatSession = model.startChat(history: [
-        Content.text(
-            AppConstants.baseSystemPrompt + langInstruction + safetyGuardrail),
-      ]);
+      _session.chatSession = BackendChatSession(
+        AppConstants.baseSystemPrompt + langInstruction + safetyGuardrail,
+        ApiService(),
+      );
 
       await _sendMessage(
           'Start the game. Generate the first scenario with 3 options.',
@@ -133,10 +119,8 @@ class _PunjabSafetyGameScreenState extends State<PunjabSafetyGameScreen> {
     });
 
     try {
-      final response =
-          await _session.chatSession!.sendMessage(Content.text(message));
-      final rawText = response.text;
-      if (rawText == null) throw Exception('Empty AI response');
+      final rawText = await _session.chatSession!.sendMessage(message);
+      if (rawText.isEmpty) throw Exception('Empty AI response');
 
       String jsonString = rawText
           .replaceAll(RegExp(r'^```json\s*'), '')

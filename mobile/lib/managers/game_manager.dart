@@ -1,5 +1,7 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
-import '../features/games/models/game_models.dart'; // GameResponse is now here
+import 'package:dio/dio.dart';
+import '../features/games/models/game_models.dart';
+import '../core/services/api_service.dart';
+import '../core/constants/api_endpoints.dart';
 
 class GameManager {
   static final GameManager _instance = GameManager._internal();
@@ -148,8 +150,46 @@ class GameSession {
   bool isGameOver = false;
   bool isLoading = false;
   String? errorMessage;
-  ChatSession? chatSession;
+  BackendChatSession? chatSession;
   GameSession({required this.languageCode, required this.gameType});
+}
+
+/// Server-side Gemini chat (no on-device API key).
+class BackendChatSession {
+  final String systemPrompt;
+  final ApiService api;
+  final List<Map<String, String>> history = [];
+
+  BackendChatSession(this.systemPrompt, this.api);
+
+  Future<String> sendMessage(String message) async {
+    final prior = List<Map<String, String>>.from(history);
+    history.add({'role': 'user', 'text': message});
+    final res = await api.post(
+      ApiEndpoints.aiGameTurn,
+      data: {
+        'systemPrompt': systemPrompt,
+        'message': message,
+        'history': prior,
+      },
+      options: Options(receiveTimeout: const Duration(seconds: 90)),
+    );
+    final data = res.data;
+    String text = '';
+    if (data is Map) {
+      final inner = data['data'];
+      if (inner is Map && inner['text'] != null) {
+        text = inner['text'].toString();
+      } else if (data['text'] != null) {
+        text = data['text'].toString();
+      }
+    }
+    history.add({'role': 'model', 'text': text});
+    if (text.isEmpty) {
+      throw Exception('Empty AI response');
+    }
+    return text;
+  }
 }
 
 class TurnHistoryItem {

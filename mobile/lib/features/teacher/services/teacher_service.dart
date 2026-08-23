@@ -1,5 +1,4 @@
-import 'package:dio/dio.dart';
-import '../../../core/services/api_service.dart';
+﻿import '../../../core/services/api_service.dart';
 import '../../../core/constants/api_endpoints.dart';
 
 /// Teacher Service
@@ -19,7 +18,7 @@ class TeacherService {
           (data['data'] as Map<String, dynamic>?)?['classes'] as List? ?? [];
       return List<Map<String, dynamic>>.from(classes);
     } catch (e) {
-      print('❌ Get classes error: $e');
+      print('âŒ Get classes error: $e');
       rethrow;
     }
   }
@@ -32,7 +31,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Get class students error: $e');
+      print('âŒ Get class students error: $e');
       rethrow;
     }
   }
@@ -50,7 +49,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Start drill error: $e');
+      print('âŒ Start drill error: $e');
       rethrow;
     }
   }
@@ -69,7 +68,7 @@ class TeacherService {
         },
       );
     } catch (e) {
-      print('❌ Mark participation error: $e');
+      print('âŒ Mark participation error: $e');
       rethrow;
     }
   }
@@ -82,7 +81,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Get analytics error: $e');
+      print('âŒ Get analytics error: $e');
       rethrow;
     }
   }
@@ -104,7 +103,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Mark attendance error: $e');
+      print('âŒ Mark attendance error: $e');
       rethrow;
     }
   }
@@ -129,7 +128,7 @@ class TeacherService {
           (data['data'] as Map<String, dynamic>?)?['attendance'] as List? ?? [];
       return List<Map<String, dynamic>>.from(attendance);
     } catch (e) {
-      print('❌ Get attendance error: $e');
+      print('âŒ Get attendance error: $e');
       rethrow;
     }
   }
@@ -155,7 +154,7 @@ class TeacherService {
       final responseData = response.data as Map<String, dynamic>;
       return responseData['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Assign XP error: $e');
+      print('âŒ Assign XP error: $e');
       rethrow;
     }
   }
@@ -178,7 +177,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Get XP history error: $e');
+      print('âŒ Get XP history error: $e');
       rethrow;
     }
   }
@@ -204,7 +203,7 @@ class TeacherService {
       final responseData = response.data as Map<String, dynamic>;
       return responseData['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Trigger quiz error: $e');
+      print('âŒ Trigger quiz error: $e');
       rethrow;
     }
   }
@@ -219,7 +218,7 @@ class TeacherService {
           (data['data'] as Map<String, dynamic>?)?['quizzes'] as List? ?? [];
       return List<Map<String, dynamic>>.from(quizzes);
     } catch (e) {
-      print('❌ Get active quizzes error: $e');
+      print('âŒ Get active quizzes error: $e');
       rethrow;
     }
   }
@@ -232,7 +231,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Get quiz results error: $e');
+      print('âŒ Get quiz results error: $e');
       rethrow;
     }
   }
@@ -245,7 +244,7 @@ class TeacherService {
       final data = response.data as Map<String, dynamic>;
       return data['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Get student progress error: $e');
+      print('âŒ Get student progress error: $e');
       rethrow;
     }
   }
@@ -279,7 +278,7 @@ class TeacherService {
       final responseData = response.data as Map<String, dynamic>;
       return responseData['data'] as Map<String, dynamic>? ?? {};
     } catch (e) {
-      print('❌ Create roster student error: $e');
+      print('âŒ Create roster student error: $e');
       rethrow;
     }
   }
@@ -300,7 +299,7 @@ class TeacherService {
       }
       throw Exception(data['message'] ?? 'Failed to load student parents');
     } catch (e) {
-      print('❌ Get student parents error: $e');
+      print('âŒ Get student parents error: $e');
       rethrow;
     }
   }
@@ -320,7 +319,7 @@ class TeacherService {
       }
       throw Exception(data['message'] ?? 'Failed to load class parents');
     } catch (e) {
-      print('❌ Get class parents error: $e');
+      print('âŒ Get class parents error: $e');
       rethrow;
     }
   }
@@ -350,7 +349,7 @@ class TeacherService {
       throw Exception(
           responseData['message'] ?? 'Failed to verify parent QR code');
     } catch (e) {
-      print('❌ Verify parent QR error: $e');
+      print('âŒ Verify parent QR error: $e');
       rethrow;
     }
   }

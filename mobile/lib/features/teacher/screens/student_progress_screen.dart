@@ -314,7 +314,7 @@ class _StudentProgressScreenState extends ConsumerState<StudentProgressScreen> {
     );
   }
 
-  double _calculateAverageScore(List students) {
+  double _calculateAverageScore(List<dynamic> students) {
     if (students.isEmpty) return 0.0;
 
     int totalScore = 0;

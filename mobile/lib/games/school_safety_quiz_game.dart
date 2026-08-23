@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'dart:io'; // Import for InternetAddress
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
-import '../../core/config/env.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/api_service.dart';
 import '../../managers/game_manager.dart';
 import '../features/games/models/game_models.dart'; // GameResponse is now here
 
@@ -55,18 +54,7 @@ class _SchoolSafetyQuizScreenState extends State<SchoolSafetyQuizScreen> {
   }
 
   Future<void> _initGemini() async {
-    final currentApiKey = Env.geminiApiKey;
-    if (currentApiKey.isEmpty) {
-      setState(() {
-        _session.errorMessage = 'API KEY MISSING: Please set GEMINI_API_KEY in .env file';
-        _session.isLoading = false;
-      });
-      return;
-    }
-    
     try {
-      final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: currentApiKey);
-      
       // --- LANGUAGE SUPPORT LOGIC ---
       String langInstruction = '';
       if (_session.languageCode == 'hi') {
@@ -83,12 +71,11 @@ class _SchoolSafetyQuizScreenState extends State<SchoolSafetyQuizScreen> {
             "However, keep the JSON KEYS (like 'question_text', 'options', 'evaluation', 'next_question') strictly in English.";
       }
       
-      // Start chat with the Quiz Prompt + Language Instruction
-      _session.chatSession = model.startChat(history: [
-        Content.text(AppConstants.schoolSafetyQuizPrompt + langInstruction),
-      ]);
+      _session.chatSession = BackendChatSession(
+        AppConstants.schoolSafetyQuizPrompt + langInstruction,
+        ApiService(),
+      );
 
-      // Trigger the first question
       await _sendMessage('Start the School Safety Quiz. Question 1.', isSystemTrigger: true);
     } catch (e) {
       setState(() {
@@ -111,9 +98,8 @@ class _SchoolSafetyQuizScreenState extends State<SchoolSafetyQuizScreen> {
     });
 
     try {
-      final response = await _session.chatSession!.sendMessage(Content.text(message));
-      final rawText = response.text;
-      if (rawText == null) throw Exception('Empty AI response');
+      final rawText = await _session.chatSession!.sendMessage(message);
+      if (rawText.isEmpty) throw Exception('Empty AI response');
 
       // Clean markdown formatting if present
       String jsonString = rawText.replaceAll(RegExp(r'^```json\s*'), '').replaceAll(RegExp(r'\s*```$'), '');
