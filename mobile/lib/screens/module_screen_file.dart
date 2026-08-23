@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../screens/ndma_module_list.dart';
 import 'ndrf_language_screen.dart';
 import 'hearing_impaired_list.dart'; // Import the new screen
@@ -29,7 +29,7 @@ class ModuleScreenFile extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NdmaModulesList()),
+                  MaterialPageRoute<dynamic>(builder: (context) => const NdmaModulesList()),
                 );
               },
             ),
@@ -43,7 +43,7 @@ class ModuleScreenFile extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const NdrfLanguageScreen()),
+                  MaterialPageRoute<dynamic>(builder: (context) => const NdrfLanguageScreen()),
                 );
               },
             ),
@@ -58,7 +58,7 @@ class ModuleScreenFile extends StatelessWidget {
                 // Navigate to the Sign Language List
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const HearingImpairedList()),
+                  MaterialPageRoute<dynamic>(builder: (context) => const HearingImpairedList()),
                 );
               },
             ),

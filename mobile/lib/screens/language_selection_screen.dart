@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../managers/game_manager.dart';
 // FIX: Import games correctly from the sibling 'games' folder
 import '../games/punjab_safety_game.dart';
@@ -23,20 +23,20 @@ class LanguageSelectionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('🌪️', style: TextStyle(fontSize: 60)),
+              const Text('\u{1F30A}', style: TextStyle(fontSize: 60)),
               const SizedBox(height: 20),
               const Text(
-                'Select Language / भाषा चुनें',
+                'Select Language / \u092D\u093E\u0937\u093E \u091A\u0941\u0928\u0947\u0902',
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 40),
               _buildOption(context, 'English', 'en'),
               const SizedBox(height: 16),
-              _buildOption(context, 'हिंदी (Hindi)', 'hi'),
+              _buildOption(context, '\u0939\u093F\u0902\u0926\u0940 (Hindi)', 'hi'),
               const SizedBox(height: 16),
-              _buildOption(context, 'मराठी (Marathi)', 'mr'),
+              _buildOption(context, '\u092E\u0930\u093E\u0920\u0940 (Marathi)', 'mr'),
               const SizedBox(height: 16),
-              _buildOption(context, 'ਪੰਜਾਬੀ (Punjabi)', 'pa'),
+              _buildOption(context, '\u0A2A\u0A70\u0A1C\u0A3E\u0A21\u0A40 (Punjabi)', 'pa'),
             ],
           ),
         ),
@@ -68,7 +68,7 @@ class LanguageSelectionScreen extends StatelessWidget {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => nextScreen),
+            MaterialPageRoute<dynamic>(builder: (context) => nextScreen),
           );
         },
         child: Text(label, style: const TextStyle(fontSize: 18)),

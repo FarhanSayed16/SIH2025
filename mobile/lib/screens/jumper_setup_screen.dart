@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../managers/game_manager.dart';
 import '../features/games/screens/flood_escape_game.dart'; // Import the new game
 
@@ -105,7 +105,7 @@ class _JumperSetupScreenState extends State<JumperSetupScreen> {
                       // Go to Game
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<dynamic>(
                             builder: (context) => const FloodEscapeWidget()),
                       ).then((_) => setState(() {}));
                     }

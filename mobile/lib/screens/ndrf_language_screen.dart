@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/ndrf_data.dart';
 import 'ndrf_module_detail_screen.dart';
 
@@ -39,7 +39,7 @@ class NdrfLanguageScreen extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  MaterialPageRoute<dynamic>(
                     builder: (context) => NdrfModuleDetailScreen(language: lang),
                   ),
                 );

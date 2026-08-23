@@ -1,11 +1,11 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class QuizScreen extends StatefulWidget {
   final String quizPath;
   final String moduleTitle;
-  final Function(bool passed) onQuizFinished;
+  final void Function(bool passed) onQuizFinished;
 
   const QuizScreen({
     Key? key,
@@ -95,7 +95,7 @@ class _QuizScreenState extends State<QuizScreen> {
       isSubmitted = true;
     });
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(

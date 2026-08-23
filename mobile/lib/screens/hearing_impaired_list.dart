@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/hearing_impaired_data.dart';
 import 'video_player_view.dart';
 
@@ -30,7 +30,7 @@ class HearingImpairedList extends StatelessWidget {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
+                  MaterialPageRoute<dynamic>(
                     builder: (context) => VideoPlayerView(
                       videoUrl: video.url,
                       title: video.title,

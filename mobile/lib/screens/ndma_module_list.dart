@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../data/module_data.dart';
 import '../models/module_models.dart';
 import 'module_detail_screen.dart';
@@ -104,7 +104,7 @@ class _NdmaModulesListState extends State<NdmaModulesList> {
               : () async {
                   await Navigator.push(
                     context,
-                    MaterialPageRoute(
+                    MaterialPageRoute<dynamic>(
                       builder: (context) => ModuleDetailScreen(
                         module: module,
                         onModuleUpdated: () => setState(() {}),

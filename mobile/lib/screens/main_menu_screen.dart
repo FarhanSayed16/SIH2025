@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../managers/game_manager.dart';
 import 'language_selection_screen.dart';
@@ -89,7 +89,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
         builder: (context) => ComicReaderScreen(
           totalPages: pageCount, // PASSED DYNAMICALLY
           topicName: topicFolder,
@@ -107,7 +107,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Game Arcade 🎮'),
+        title: const Text('Game Arcade ðŸŽ®'),
         backgroundColor: Colors.white,
         centerTitle: true,
         elevation: 0,
@@ -136,14 +136,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Disaster Scenario',
                     subtitle: 'Choose Your Own Adventure',
-                    emoji: '🎭',
+                    emoji: 'ðŸŽ­',
                     color1: Colors.deepPurple.shade400,
                     color2: Colors.deepPurple.shade800,
                     onTap: () async {
                       GameManager().startNewGame('en', 'scenario');
                       await Navigator.push(
                         context,
-                        MaterialPageRoute(
+                        MaterialPageRoute<dynamic>(
                             builder: (context) => const DisasterScenarioScreen()),
                       );
                       _refresh();
@@ -157,7 +157,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Earthquake Drill',
                     subtitle: 'Drop, Cover, Hold On!',
-                    emoji: '📉',
+                    emoji: 'ðŸ“‰',
                     color1: Colors.brown.shade400,
                     color2: Colors.brown.shade700,
                     onTap: () async {
@@ -167,7 +167,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       // 2. Navigate to Game
                       await Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute<dynamic>(
                               builder: (context) =>
                                   const EarthquakeDrillApp()));
 
@@ -183,7 +183,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Punjab Safety Hero',
                     subtitle: 'Disaster Preparedness RPG',
-                    emoji: '🌪️',
+                    emoji: 'ðŸŒªï¸',
                     color1: Colors.orange.shade400,
                     color2: Colors.deepOrange.shade600,
                     onTap: () =>
@@ -196,7 +196,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Fire Extinguisher',
                     subtitle: 'AR Training Sim',
-                    emoji: '🧯',
+                    emoji: 'ðŸ§¯',
                     color1: Colors.red.shade400,
                     color2: Colors.red.shade900,
                     onTap: () async {
@@ -206,7 +206,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       // 2. Navigate to AR Game
                       await Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute<dynamic>(
                               builder: (context) =>
                                   const FireExtinguisherApp()));
 
@@ -222,7 +222,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'School Safety Quiz',
                     subtitle: 'Nationwide India Quiz',
-                    emoji: '🇮🇳',
+                    emoji: 'ðŸ‡®ðŸ‡³',
                     color1: Colors.blue.shade400,
                     color2: Colors.blueAccent.shade700,
                     onTap: () =>
@@ -236,7 +236,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'School Runner',
                     subtitle: 'Escape the Fire!',
-                    emoji: '🔥',
+                    emoji: 'ðŸ”¥',
                     color1: Colors.red.shade400,
                     color2: Colors.redAccent.shade700,
                     onTap: () async {
@@ -246,7 +246,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       // 2. Wait for game to finish and user to return
                       await Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute<dynamic>(
                               builder: (context) => const RunnerSetupScreen()));
 
                       // 3. REFRESH STATS ON RETURN
@@ -261,7 +261,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Flood Escape',
                     subtitle: 'Jump to Survive!',
-                    emoji: '🌊',
+                    emoji: 'ðŸŒŠ',
                     color1: Colors.cyan.shade400,
                     color2: Colors.cyan.shade800,
                     onTap: () async {
@@ -271,7 +271,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       // 2. Wait for game to finish
                       await Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute<dynamic>(
                               builder: (context) => const JumperSetupScreen()));
 
                       // 3. REFRESH STATS ON RETURN
@@ -306,7 +306,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
             ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-              child: Text('Desktop Mode • Zoom Enabled • +1 XP',
+              child: Text('Desktop Mode â€¢ Zoom Enabled â€¢ +1 XP',
                   style: TextStyle(color: Colors.grey)),
             ),
 
@@ -320,7 +320,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Stop Disasters',
                     subtitle: 'By UNDRR',
-                    emoji: '🌍',
+                    emoji: 'ðŸŒ',
                     color: Colors.green,
                     url: 'https://www.stopdisastersgame.org/',
                   ),
@@ -329,7 +329,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Disaster Master',
                     subtitle: 'By Ready.gov',
-                    emoji: '⚡',
+                    emoji: 'âš¡',
                     color: Colors.amber.shade800,
                     url:
                         'https://www.ready.gov/kids/games/data/dm-english/index.html',
@@ -339,7 +339,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Build a Kit',
                     subtitle: 'By Ready.gov',
-                    emoji: '🎒',
+                    emoji: 'ðŸŽ’',
                     color: Colors.teal,
                     url:
                         'https://www.ready.gov/kids/games/data/bak-english/index.html',
@@ -349,7 +349,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Disaster Mind',
                     subtitle: 'By iThrive',
-                    emoji: '🧠',
+                    emoji: 'ðŸ§ ',
                     color: Colors.deepPurple,
                     url: 'https://www.ithrivesim.org/#/disastermind',
                   ),
@@ -358,7 +358,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     context,
                     title: 'Be Brave Be a Hero',
                     subtitle: 'By NDMA',
-                    emoji: '🧠',
+                    emoji: 'ðŸ§ ',
                     color: const Color.fromARGB(255, 215, 238, 13),
                     url: 'https://ndma.gov.in/kids/index.html',
                   ),
@@ -397,7 +397,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     }
 
                     await Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => resumeScreen));
+                        MaterialPageRoute<dynamic>(builder: (context) => resumeScreen));
                     _refresh();
                   },
                   child: Container(
@@ -564,7 +564,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     bool isThisGameActive =
         canResume && GameManager().currentSession?.gameType == gameType;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
@@ -601,7 +601,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     }
 
                     await Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => resumeScreen));
+                        MaterialPageRoute<dynamic>(builder: (context) => resumeScreen));
                     _refresh();
                   },
                 ),
@@ -632,7 +632,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   void _navigateToLanguageSelect(BuildContext context, String gameType) async {
     await Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<dynamic>(
           builder: (context) => LanguageSelectionScreen(gameType: gameType)),
     );
     _refresh();
@@ -738,7 +738,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         // 3. OPEN GAME (Force Desktop View is handled inside WebGameScreen)
         await Navigator.push(
           context,
-          MaterialPageRoute(
+          MaterialPageRoute<dynamic>(
             builder: (context) => WebGameScreen(title: title, url: url),
           ),
         );

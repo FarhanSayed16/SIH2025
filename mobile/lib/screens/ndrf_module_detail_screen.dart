@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For rootBundle
 import '../data/ndrf_data.dart';
@@ -29,7 +29,7 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
   String _normalizeKey(String title) {
     String keyToNormalize = title;
 
-    // 1. Check if title has text in brackets like "भूकंप (Earthquake)"
+    // 1. Check if title has text in brackets like "à¤­à¥‚à¤•à¤‚à¤ª (Earthquake)"
     // The regex looks for content inside the last set of parentheses
     RegExp bracketPattern = RegExp(r'\((.*?)\)$');
     Match? match = bracketPattern.firstMatch(title);
@@ -109,7 +109,7 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
   }
 
   void _showSummaryDialog(BuildContext context, String title, String summary) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
@@ -170,7 +170,7 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            MaterialPageRoute<dynamic>(
                               builder: (context) => YoutubePlayerScreen(
                                 videoUrl: video.url,
                                 title: video.title,

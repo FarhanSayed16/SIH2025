@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/module_models.dart';
 import 'video_player_view.dart';
 import 'quiz_screen.dart'; // Import the new game file
@@ -162,7 +162,7 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen> {
                       onTap: () {
                          Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            MaterialPageRoute<dynamic>(
                               builder: (context) => VideoPlayerView(
                                 title: video.title,
                                 videoUrl: video.url,
@@ -266,7 +266,7 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen> {
                                 ? () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(
+                                      MaterialPageRoute<dynamic>(
                                         builder: (context) => QuizScreen(
                                           moduleTitle: widget.module.title,
                                           quizPath: widget.module.quizJsonPath,
