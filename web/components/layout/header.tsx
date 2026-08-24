@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { socketService } from '@/lib/services/socket-service';
 import { useAuthStore } from '@/lib/store/auth-store';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 export function Header() {
@@ -41,9 +42,7 @@ export function Header() {
   const handleReconnect = () => {
     if (!user || !accessToken) return;
     
-    const institutionId = typeof user.institutionId === 'string' 
-      ? user.institutionId 
-      : (user.institutionId as any)?._id || user.institutionId;
+    const institutionId = getInstitutionId(user.institutionId);
     
     if (institutionId && accessToken) {
       setIsConnecting(true);

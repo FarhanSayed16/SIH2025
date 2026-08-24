@@ -36,7 +36,6 @@ export default function VerifyStudentPage() {
   const [qrCode, setQrCode] = useState('');
   const [verificationResult, setVerificationResult] = useState<QRVerificationResult | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'parent') {
@@ -80,14 +79,6 @@ export default function VerifyStudentPage() {
     }
   };
 
-  const handleScan = () => {
-    // TODO: Implement camera-based QR scanning
-    // For now, show a placeholder
-    setIsScanning(true);
-    showToast('QR scanner will be available in mobile app', 'info');
-    setTimeout(() => setIsScanning(false), 2000);
-  };
-
   const resetForm = () => {
     setQrCode('');
     setVerificationResult(null);
@@ -115,7 +106,7 @@ export default function VerifyStudentPage() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">Verify Student</h1>
-                <p className="text-gray-600 mt-1">Scan or enter student QR code to verify identity</p>
+                <p className="text-gray-600 mt-1">Paste the student QR code. Camera scan is on the Kavach mobile app.</p>
               </div>
             </div>
           </div>
@@ -157,24 +148,6 @@ export default function VerifyStudentPage() {
                       <>
                         <QrCode className="w-4 h-4 mr-2" />
                         Verify
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleScan}
-                    disabled={isScanning}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    {isScanning ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Scanning...
-                      </>
-                    ) : (
-                      <>
-                        <QrCode className="w-4 h-4 mr-2" />
-                        Scan
                       </>
                     )}
                   </Button>

@@ -13,6 +13,7 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { AdminRoute } from '@/components/auth/AdminRoute';
 import { incidentsApi, Incident, IncidentStats, IncidentQueryParams } from '@/lib/api/incidents';
 import { apiClient } from '@/lib/api/client';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -107,16 +108,6 @@ function extractIncidentsAndPagination(
   };
 }
 
-// Helper function to get institution ID
-function getInstitutionId(instId: any): string | null {
-  if (!instId) return null;
-  if (typeof instId === 'string') return instId;
-  if (typeof instId === 'object' && instId !== null && '_id' in instId) {
-    return (instId as any)._id;
-  }
-  return null;
-}
-
 // Main Incidents Page Content Component
 function IncidentsPageContent() {
   const router = useRouter();
@@ -202,8 +193,9 @@ function IncidentsPageContent() {
 
     try {
       const schoolId = getInstitutionId(user.institutionId);
+      const isSuperAdmin = user.role === 'system_admin' || user.role === 'SYSTEM_ADMIN';
       
-      if (!schoolId) {
+      if (!schoolId && !isSuperAdmin) {
         console.warn('No institution ID available');
         setIncidents([]);
         setIsLoading(false);
@@ -305,7 +297,8 @@ function IncidentsPageContent() {
 
     try {
       const schoolId = getInstitutionId(user.institutionId);
-      if (!schoolId) {
+      const isSuperAdmin = user.role === 'system_admin' || user.role === 'SYSTEM_ADMIN';
+      if (!schoolId && !isSuperAdmin) {
         console.warn('No institution ID for stats');
         // Set default stats
         setStats({
@@ -406,7 +399,8 @@ function IncidentsPageContent() {
   const handleExportPDF = async () => {
     try {
       const schoolId = getInstitutionId(user?.institutionId);
-      if (!schoolId) {
+      const isSuperAdmin = user?.role === 'system_admin' || user?.role === 'SYSTEM_ADMIN';
+      if (!schoolId && !isSuperAdmin) {
         showToast('No institution ID available', 'error');
         return;
       }
@@ -1035,7 +1029,7 @@ function IncidentsPageContent() {
                     <TableSkeleton />
                   ) : incidents.length === 0 ? (
                     <EmptyState
-                      icon={AlertTriangle}
+                      icon={<AlertTriangle className="w-12 h-12" />}
                       title="No incidents found"
                       description="No incidents match your current filters. Try adjusting your search criteria."
                     />

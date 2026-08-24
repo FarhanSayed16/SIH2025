@@ -115,5 +115,9 @@ export const broadcastApi = {
   async getStats(id: string): Promise<ApiResponse> {
     return apiClient.get(`/broadcast/${id}/stats`);
   },
+
+  async getCapabilities(): Promise<ApiResponse<{ sms: boolean; email: boolean; push: boolean }>> {
+    return apiClient.get('/broadcast/capabilities');
+  },
 };
 

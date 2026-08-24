@@ -77,7 +77,7 @@ export default function AdminParentsPage() {
   }>({});
 
   useEffect(() => {
-    if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'SYSTEM_ADMIN')) {
+    if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'SYSTEM_ADMIN' && user?.role !== 'system_admin')) {
       router.push('/login');
       return;
     }
@@ -361,7 +361,7 @@ export default function AdminParentsPage() {
     }
   };
 
-  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'SYSTEM_ADMIN')) {
+  if (!isAuthenticated || (user?.role !== 'admin' && user?.role !== 'SYSTEM_ADMIN' && user?.role !== 'system_admin')) {
     return null;
   }
 

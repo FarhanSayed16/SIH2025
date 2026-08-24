@@ -21,6 +21,7 @@ import { drillsApi, Drill } from '@/lib/api/drills';
 import { devicesApi, Device, HealthMonitoring } from '@/lib/api/devices';
 import { mlPredictionsApi, BatchPredictionsResult, DrillPerformancePrediction, OptimalDrillTiming, DrillAnomaliesResult } from '@/lib/api/mlPredictions';
 import { apiClient } from '@/lib/api/client';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -118,19 +119,8 @@ export default function CrisisDashboardPage() {
   // Use ref to prevent concurrent API calls
   const isRefreshingRef = useRef(false);
 
-  // Helper to extract institutionId (handles both string and object) - memoized
-  const getInstitutionId = useCallback((instId: any): string | null => {
-    if (!instId) return null;
-    if (typeof instId === 'string') return instId;
-    if (typeof instId === 'object' && instId !== null && '_id' in instId) {
-      return (instId as any)._id;
-    }
-    return null;
-  }, []);
-
-  // Memoized refresh function to prevent infinite loops
   const userInstitutionIdRef = useRef<string | null>(null);
-  userInstitutionIdRef.current = getInstitutionId(user?.institutionId);
+  userInstitutionIdRef.current = getInstitutionId(user?.institutionId) ?? null;
   
   const refreshStatusCounts = useCallback(async () => {
     if (isRefreshingRef.current) return;
@@ -356,8 +346,9 @@ export default function CrisisDashboardPage() {
     setIsLoading(true);
     try {
       const schoolId = getInstitutionId(user?.institutionId);
+      const isSuperAdmin = user?.role === 'system_admin' || user?.role === 'SYSTEM_ADMIN';
       
-      if (!schoolId) {
+      if (!schoolId && !isSuperAdmin) {
         console.warn('No institution ID available');
         setIsLoading(false);
         return;
@@ -1023,7 +1014,7 @@ export default function CrisisDashboardPage() {
                       </Card>
                     </motion.div>
 
-                    {/* ML Predictions - Enhanced */}
+                    {/* Risk scores (heuristics) */}
                     {(studentRiskPredictions || drillPerformancePrediction || optimalDrillTiming) && (
                       <motion.div
                         initial={{ opacity: 0, x: 20 }}
@@ -1032,10 +1023,11 @@ export default function CrisisDashboardPage() {
                       >
                         <Card className="bg-white/90 backdrop-blur-lg border border-white/20 shadow-xl">
                           <div className="p-6">
-                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+                            <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-1">
                               <Zap className="h-5 w-5 text-purple-600" />
-                              AI Predictions
+                              Risk scores
                             </h3>
+                            <p className="text-xs text-gray-500 mb-4">Rule-based risk scores from drill and quiz stats — not a trained ML model.</p>
                             <div className="space-y-4">
                               {studentRiskPredictions && (
                                 <div className="border-t pt-4">
@@ -1065,7 +1057,7 @@ export default function CrisisDashboardPage() {
 
                               {drillPerformancePrediction && (
                                 <div className="border-t pt-4">
-                                  <h4 className="font-semibold text-sm mb-2 text-gray-700">Predicted Performance</h4>
+                                  <h4 className="font-semibold text-sm mb-2 text-gray-700">Heuristic drill score</h4>
                                   <div className="text-xs space-y-1 bg-blue-50 p-3 rounded-lg">
                                     <div>Response Time: <span className="font-bold">{drillPerformancePrediction.predictedResponseTime}s</span></div>
                                     <div>Participation: <span className="font-bold">{drillPerformancePrediction.predictedParticipationRate}%</span></div>

@@ -19,6 +19,7 @@ import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { AdminRoute } from '@/components/auth/AdminRoute';
 import { apiClient } from '@/lib/api/client';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { AnimatedCounter } from '@/components/dashboard/AnimatedCounter';
 import { motion } from 'framer-motion';
 import {
@@ -158,16 +159,6 @@ const loadPendingTeachers = async () => {
     } catch (error) {
       console.error('Error loading pending teachers:', error);
     }
-  };
-
-  // Helper to extract institutionId (handles both string and object)
-  const getInstitutionId = (instId: any): string => {
-    if (!instId) return '';
-    if (typeof instId === 'string') return instId;
-    if (typeof instId === 'object' && instId !== null && '_id' in instId) {
-      return (instId as any)._id;
-    }
-    return '';
   };
 
   const loadTeachers = async () => {

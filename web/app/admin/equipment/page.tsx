@@ -26,7 +26,6 @@ import {
   MapPin,
   RefreshCw,
   Plus,
-  Edit,
   Trash2,
   QrCode,
   CheckCircle,
@@ -477,9 +476,9 @@ export default function EquipmentManagementPage() {
                                       <Button
                                         variant="ghost"
                                         size="sm"
+                                        title="QR code"
                                         onClick={() => {
-                                          // TODO: Show QR code
-                                          showToast('QR code viewer coming soon', 'info');
+                                          window.prompt('Equipment QR / code', String(eq.qrCode));
                                         }}
                                       >
                                         <QrCode className="w-4 h-4" />
@@ -488,21 +487,12 @@ export default function EquipmentManagementPage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      title="Open on floor plan"
                                       onClick={() => {
                                         router.push(`/admin/blueprint?school=${selectedSchool}&equipment=${eq.id}`);
                                       }}
                                     >
                                       <MapPin className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        // TODO: Edit equipment
-                                        showToast('Edit functionality coming soon', 'info');
-                                      }}
-                                    >
-                                      <Edit className="w-4 h-4" />
                                     </Button>
                                     <Button
                                       variant="ghost"

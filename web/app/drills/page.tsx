@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { drillsApi, Drill, CreateDrillRequest } from '@/lib/api/drills';
 import { socketService, SocketEvent } from '@/lib/services/socket-service';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,10 +34,7 @@ export default function DrillsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const getSchoolId = useCallback((): string | undefined => {
-    if (!user?.institutionId) return undefined;
-    return typeof user.institutionId === 'string'
-      ? user.institutionId
-      : (user.institutionId as any)?._id ?? undefined;
+    return getInstitutionId(user?.institutionId);
   }, [user?.institutionId]);
 
   const [formData, setFormData] = useState<CreateDrillRequest>({
@@ -111,9 +109,7 @@ export default function DrillsPage() {
     }
 
     // Phase 4: Setup Socket.io listeners for real-time updates
-    const institutionId = typeof user?.institutionId === 'string' 
-      ? user.institutionId 
-      : (user?.institutionId as any)?._id || user?.institutionId;
+    const institutionId = getInstitutionId(user?.institutionId);
 
     if (institutionId && accessToken && !isInitializedRef.current) {
       isInitializedRef.current = true;

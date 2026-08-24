@@ -56,6 +56,7 @@ export const useAuthStore = create<AuthState>()(
             const state = get();
             // Clear auth state
             apiClient.setToken(null);
+            apiClient.setRefreshToken(null);
             set({
               user: null,
               accessToken: null,
@@ -115,6 +116,9 @@ export const useAuthStore = create<AuthState>()(
             
             // Set token in API client
             apiClient.setToken(response.data.accessToken);
+            if (response.data.refreshToken) {
+              apiClient.setRefreshToken(response.data.refreshToken);
+            }
             set({
               user: {
                 id: user.id,
@@ -167,6 +171,9 @@ export const useAuthStore = create<AuthState>()(
             
             // Set token in API client
             apiClient.setToken(response.data.accessToken);
+            if (response.data.refreshToken) {
+              apiClient.setRefreshToken(response.data.refreshToken);
+            }
             set({
               user: {
                 id: user.id,
@@ -207,6 +214,7 @@ export const useAuthStore = create<AuthState>()(
         } finally {
           // Clear token from API client
           apiClient.setToken(null);
+          apiClient.setRefreshToken(null);
           set({
             user: null,
             accessToken: null,
@@ -222,7 +230,8 @@ export const useAuthStore = create<AuthState>()(
       // Role helper functions
       isAdmin: () => {
         const state = get();
-        return state.user?.role === 'admin' || state.user?.role === 'SYSTEM_ADMIN';
+        const role = state.user?.role?.toLowerCase();
+        return role === 'admin' || role === 'system_admin';
       },
       isTeacher: () => {
         const state = get();

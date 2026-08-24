@@ -7,8 +7,12 @@ import { ErrorBoundary } from '@/components/ui/error-boundary'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'EduSafe - Admin Dashboard',
+  title: 'Kavach - Admin Dashboard',
   description: 'Disaster Preparedness & Response Education System',
+  icons: {
+    icon: '/kavach-logo.jpeg',
+    apple: '/kavach-logo.jpeg',
+  },
 }
 
 export default function RootLayout({

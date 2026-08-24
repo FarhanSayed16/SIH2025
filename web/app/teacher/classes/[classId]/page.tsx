@@ -22,6 +22,7 @@ import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import { Search, Award, BookOpen, Gamepad2, TrendingUp, Zap, Play, Clock, CheckCircle } from 'lucide-react';
 import { drillsApi, Drill } from '@/lib/api/drills';
 import { socketService } from '@/lib/services/socket-service';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { useToast } from '@/components/ui/toast';
 import Link from 'next/link';
 
@@ -86,6 +87,53 @@ export default function TeacherClassDetailsPage() {
     }
   }, [classId]);
 
+  // Define all loaders as useCallback BEFORE any useEffect that references them
+  const loadClassData = useCallback(async () => {
+    try {
+      const response = await teacherApi.getClassStudents(classId);
+      if (response.success && response.data) {
+        setClassData(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading class data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [classId]);
+
+  const loadPendingStudents = useCallback(async () => {
+    try {
+      const response = await teacherApi.getPendingStudents(classId);
+      if (response.success && response.data) {
+        // PHASE 2: Backend now returns array directly, not wrapped in students
+        const students = Array.isArray(response.data) ? response.data : (response.data.students || []);
+        setPendingStudents(students);
+      }
+    } catch (error) {
+      console.error('Error loading pending students:', error);
+    }
+  }, [classId]);
+
+  const loadApprovedStudents = useCallback(async () => {
+    try {
+      const response = await teacherApi.getClassStudents(classId);
+      if (response.success && response.data) {
+        const students = response.data.studentIds || [];
+        // Filter approved students: account_user with approved status
+        const approved = students.filter((s: any) => 
+          s.approvalStatus === 'approved' && s.userType === 'account_user'
+        );
+        setApprovedStudents(approved);
+        
+        // Filter roster students separately
+        const roster = students.filter((s: any) => s.userType === 'roster_record');
+        setRosterStudents(roster);
+      }
+    } catch (error) {
+      console.error('Error loading approved students:', error);
+    }
+  }, [classId]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/login');
@@ -112,7 +160,7 @@ export default function TeacherClassDetailsPage() {
     if (activeTab === 'drills') {
       loadClassDrills();
     }
-  }, [isAuthenticated, user, router, accessToken, classId, activeTab, loadStudentProgress]);
+  }, [isAuthenticated, user, router, accessToken, classId, activeTab, loadStudentProgress, loadClassData, loadPendingStudents, loadApprovedStudents]);
 
   // Auto-refresh student progress when on performance tab
   useEffect(() => {
@@ -137,52 +185,6 @@ export default function TeacherClassDetailsPage() {
       return () => clearInterval(studentsInterval);
     }
   }, [classId, loadApprovedStudents, loadPendingStudents]);
-
-  const loadClassData = async () => {
-    try {
-      const response = await teacherApi.getClassStudents(classId);
-      if (response.success && response.data) {
-        setClassData(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading class data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadPendingStudents = async () => {
-    try {
-      const response = await teacherApi.getPendingStudents(classId);
-      if (response.success && response.data) {
-        // PHASE 2: Backend now returns array directly, not wrapped in students
-        const students = Array.isArray(response.data) ? response.data : (response.data.students || []);
-        setPendingStudents(students);
-      }
-    } catch (error) {
-      console.error('Error loading pending students:', error);
-    }
-  };
-
-  const loadApprovedStudents = async () => {
-    try {
-      const response = await teacherApi.getClassStudents(classId);
-      if (response.success && response.data) {
-        const students = response.data.studentIds || [];
-        // Filter approved students: account_user with approved status
-        const approved = students.filter((s: any) => 
-          s.approvalStatus === 'approved' && s.userType === 'account_user'
-        );
-        setApprovedStudents(approved);
-        
-        // Filter roster students separately
-        const roster = students.filter((s: any) => s.userType === 'roster_record');
-        setRosterStudents(roster);
-      }
-    } catch (error) {
-      console.error('Error loading approved students:', error);
-    }
-  };
 
   const handleApprove = async (studentId: string) => {
     setProcessingId(studentId);
@@ -269,12 +271,7 @@ export default function TeacherClassDetailsPage() {
     }
   };
 
-  const getSchoolId = (): string | undefined => {
-    if (!user?.institutionId) return undefined;
-    return typeof user.institutionId === 'string'
-      ? user.institutionId
-      : (user.institutionId as any)?._id ?? undefined;
-  };
+  const getSchoolId = (): string | undefined => getInstitutionId(user?.institutionId);
 
   // Phase 4: Load class drills
   const loadClassDrills = async () => {
@@ -312,9 +309,7 @@ export default function TeacherClassDetailsPage() {
         loadClassDrills();
         
         // Setup Socket.io listener for this drill
-        const institutionId = typeof user?.institutionId === 'string' 
-          ? user.institutionId 
-          : (user?.institutionId as any)?._id || user?.institutionId;
+        const institutionId = getInstitutionId(user?.institutionId);
         
         if (institutionId && accessToken) {
           socketService.connect(institutionId, accessToken);

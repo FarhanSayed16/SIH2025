@@ -10,6 +10,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { drillsApi, Drill } from '@/lib/api/drills';
 import { socketService } from '@/lib/services/socket-service';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/header';
@@ -107,9 +108,7 @@ export default function DrillDetailPage() {
     loadParticipants();
 
     // Phase 4: Setup Socket.io listeners for real-time updates
-    const institutionId = typeof user?.institutionId === 'string' 
-      ? user.institutionId 
-      : (user?.institutionId as any)?._id || user?.institutionId;
+    const institutionId = getInstitutionId(user?.institutionId);
 
     if (institutionId && accessToken && !isInitializedRef.current) {
       isInitializedRef.current = true;

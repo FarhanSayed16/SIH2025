@@ -167,5 +167,9 @@ export const usersApi = {
   async deleteUser(userId: string): Promise<ApiResponse<{ message: string }>> {
     return apiClient.delete<{ message: string }>(`/admin/users/${userId}`);
   },
+
+  async updateSafetyStatus(userId: string, status: 'safe' | 'missing' | 'at_risk' | 'evacuating') {
+    return apiClient.put(`/users/${userId}/safety-status`, { status });
+  },
 };
 

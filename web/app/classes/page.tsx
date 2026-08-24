@@ -368,9 +368,10 @@ function ClassesPageContent() {
     });
   };
 
-  const getInstitutionName = (institutionId: string | { _id: string; name: string }) => {
+  const getInstitutionName = (institutionId: string | { _id: string; name: string } | null | undefined) => {
+    if (!institutionId) return 'Unknown';
     if (typeof institutionId === 'object') {
-      return institutionId.name;
+      return institutionId.name || 'Unknown';
     }
     const institution = institutions.find(i => i._id === institutionId);
     return institution?.name || 'Unknown';

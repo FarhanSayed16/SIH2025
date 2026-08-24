@@ -12,6 +12,7 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { AdminRoute } from '@/components/auth/AdminRoute';
 import { analyticsApi, DrillMetrics, StudentProgress, InstitutionAnalytics, ModuleCompletion, GamePerformance, QuizAccuracy } from '@/lib/api/analytics';
 import { apiClient } from '@/lib/api/client';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -135,15 +136,6 @@ const generateFallbackQuizData = (): QuizAccuracy => ({
     { moduleId: '4', moduleTitle: 'First Aid Essentials', totalQuizzes: 87, avgScore: 82.7, passRate: 85.5 }
   ]
 });
-
-// Helper function to get institution ID
-function getInstitutionId(instId: any): string | null {
-  if (!instId) return null;
-  if (typeof instId === 'string') return instId;
-  if (instId._id) return instId._id.toString();
-  if (instId.toString) return instId.toString();
-  return null;
-}
 
 // Main Analytics Page Component
 function AnalyticsPageContent() {

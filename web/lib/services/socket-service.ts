@@ -26,7 +26,9 @@ export type SocketEvent =
   | 'QR_CODE_SCANNED' // QR code scan notification
   // Phase 201: IoT Device Events
   | 'TELEMETRY_UPDATE' // Real-time telemetry updates from IoT devices
-  | 'DEVICE_ALERT'; // IoT device alerts
+  | 'DEVICE_ALERT'
+  | 'SOS_ALERT'
+  | 'SOS_SAFE'; // IoT device alerts
 
 export interface SocketEventData {
   [key: string]: any;
@@ -194,6 +196,8 @@ class SocketService {
       // Phase 201: IoT Device Events
       'TELEMETRY_UPDATE',
       'DEVICE_ALERT',
+      'SOS_ALERT',
+      'SOS_SAFE',
     ];
 
     events.forEach((event) => {

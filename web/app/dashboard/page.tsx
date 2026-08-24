@@ -12,10 +12,11 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { socketService, SocketEvent } from '@/lib/services/socket-service';
 import { drillsApi, Drill } from '@/lib/api/drills';
 import { alertsApi, Alert } from '@/lib/api/alerts';
+import { usersApi } from '@/lib/api/users';
 import { devicesApi, DeviceHealth } from '@/lib/api/devices';
-import { alertsApi as sosAlertsApi } from '@/lib/api/alerts';
 import { apiClient } from '@/lib/api/client';
 import { aiApi } from '@/lib/api/ai';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const [drills, setDrills] = useState<Drill[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [sosAlerts, setSosAlerts] = useState<Alert[]>([]);
+  const [liveSos, setLiveSos] = useState<any[]>([]);
   const [iotDevices, setIotDevices] = useState<DeviceHealth[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -92,9 +94,7 @@ export default function DashboardPage() {
 
     setIsInitialized(true);
 
-    const institutionId = typeof user.institutionId === 'string' 
-      ? user.institutionId 
-      : (user.institutionId as any)?._id || user.institutionId;
+    const institutionId = getInstitutionId(user.institutionId);
     
     if (institutionId && accessToken) {
       console.log('🔄 Connecting to Socket.io with institutionId:', institutionId);
@@ -224,7 +224,11 @@ export default function DashboardPage() {
 
       // SOS alerts
       socketService.on('SOS_ALERT' as SocketEvent, async (data: any) => {
-        await loadSosAlerts();
+        setLiveSos((prev) => {
+          const id = data?.userId || data?.timestamp;
+          const without = prev.filter((s) => (s.userId || s.timestamp) !== id);
+          return [data, ...without].slice(0, 8);
+        });
         const who = data?.userName || data?.role || 'User';
         const loc = data?.location;
         const locText =
@@ -233,7 +237,7 @@ export default function DashboardPage() {
       });
 
       socketService.on('SOS_SAFE' as SocketEvent, async (data: any) => {
-        await loadSosAlerts();
+        setLiveSos((prev) => prev.filter((s) => s.userId !== data?.userId));
         const who = data?.userName || data?.role || 'User';
         showToast(`Safe: ${who} marked safe`, 'success');
       });
@@ -296,12 +300,7 @@ export default function DashboardPage() {
     }
   };
 
-  const getSchoolId = () => {
-    if (!user?.institutionId) return undefined;
-    return typeof user.institutionId === 'string'
-      ? user.institutionId
-      : (user.institutionId as any)?._id ?? undefined;
-  };
+  const getSchoolId = () => getInstitutionId(user?.institutionId);
 
   const loadDrills = async () => {
     const schoolId = getSchoolId();
@@ -321,7 +320,7 @@ export default function DashboardPage() {
 
   const loadSosAlerts = async () => {
     const schoolId = getSchoolId();
-    const res = await sosAlertsApi.list(schoolId);
+    const res = await alertsApi.list(schoolId);
     if (res.success && res.data) {
       const sosOnly = (res.data as any[]).filter(
         (a) => (a as any).type === 'sos' || (a as any).metadata?.sos === true
@@ -334,9 +333,29 @@ export default function DashboardPage() {
   const activeDrills = drills.filter((d) => d.status === 'active');
   const scheduledDrills = drills.filter((d) => d.status === 'completed');
   const completedDrills = drills.filter((d) => d.status === 'completed');
-  const latestSos = sosAlerts
-    .filter((a: any) => a.type === 'sos' || a?.metadata?.sos === true)
-    .slice(0, 5);
+  const latestSos = [
+    ...liveSos,
+    ...sosAlerts.filter((a: any) => a.type === 'sos' || a?.metadata?.sos === true),
+  ].slice(0, 8);
+
+  const markSosSafe = async (entry: any) => {
+    const userId = entry?.userId || entry?.triggeredBy;
+    try {
+      if (userId) {
+        await usersApi.updateSafetyStatus(String(userId), 'safe');
+      }
+      socketService.emit('SOS_SAFE', {
+        userId,
+        userName: entry?.userName,
+        institutionId: getSchoolId(),
+        status: 'safe',
+      });
+      setLiveSos((prev) => prev.filter((s) => s.userId !== userId));
+      showToast('Marked safe', 'success');
+    } catch (e) {
+      showToast('Could not mark safe', 'error');
+    }
+  };
 
   // Severity color mapping
   const getSeverityColor = (severity: string) => {
@@ -366,7 +385,7 @@ export default function DashboardPage() {
         `}</style>
         
         {/* Sidebar */}
-        <aside className="w-64 hidden md:block h-full overflow-y-auto border-r border-white/20 bg-white/70 backdrop-blur-xl z-10">
+        <aside className="w-64 hidden md:block h-full overflow-y-auto z-10">
           <Sidebar />
         </aside>
 
@@ -380,7 +399,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
                   <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                    Welcome to <span className="text-blue-600">EduSafe</span> Dashboard
+                    Welcome to <span className="text-blue-600">Kavach</span> Dashboard
                   </h1>
                   <p className="text-gray-600 text-base">
                     Disaster Management & Safety Training System for Students
@@ -432,6 +451,37 @@ export default function DashboardPage() {
                   </div>
                 </Card>
               </motion.div>
+            )}
+
+            {latestSos.length > 0 && (
+              <Card className="mb-6 p-4 border-l-4 border-red-600 bg-red-50/90">
+                <div className="flex items-center gap-2 mb-3">
+                  <Siren className="h-5 w-5 text-red-700" />
+                  <h2 className="font-bold text-red-900">SOS — people who need help</h2>
+                </div>
+                <ul className="space-y-2">
+                  {latestSos.map((s: any, i: number) => {
+                    const who = s.userName || s.role || s.title || 'User';
+                    const loc = s.location;
+                    const locText =
+                      loc?.lat != null ? ` (${loc.lat.toFixed?.(4) ?? loc.lat}, ${loc.lng?.toFixed?.(4) ?? loc.lng})` : '';
+                    return (
+                      <li key={s.userId || s._id || i} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-red-900">
+                          {who}{locText}
+                        </span>
+                        <button
+                          type="button"
+                          className="px-3 py-1 rounded bg-green-600 text-white text-xs font-semibold hover:bg-green-700"
+                          onClick={() => markSosSafe(s)}
+                        >
+                          Mark safe
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </Card>
             )}
 
             {/* Stats Grid with Animation */}

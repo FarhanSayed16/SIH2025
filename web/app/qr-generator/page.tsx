@@ -226,7 +226,7 @@ export default function QRGeneratorPage() {
           </head>
           <body>
             <div class="badge">
-              <h2>EduSafe</h2>
+              <h2>Kavach</h2>
               <img src="${qr.qrImage}" alt="QR Code" />
               <h3>${qr.student.name}</h3>
               <p>Grade ${qr.student.grade} - Section ${qr.student.section}</p>

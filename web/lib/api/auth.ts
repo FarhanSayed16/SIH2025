@@ -37,7 +37,9 @@ export const authApi = {
       const response = await apiClient.post<LoginResponse>('/auth/login', credentials);
       if (response.success && response.data) {
         apiClient.setToken(response.data.accessToken);
-        // Also store in localStorage for persistence
+        if (response.data.refreshToken) {
+          apiClient.setRefreshToken(response.data.refreshToken);
+        }
         if (typeof window !== 'undefined') {
           localStorage.setItem('accessToken', response.data.accessToken);
         }
@@ -75,6 +77,9 @@ export const authApi = {
     const response = await apiClient.post<LoginResponse>('/auth/register', data);
     if (response.success && response.data) {
       apiClient.setToken(response.data.accessToken);
+      if (response.data.refreshToken) {
+        apiClient.setRefreshToken(response.data.refreshToken);
+      }
     }
     return response;
   },
@@ -82,6 +87,7 @@ export const authApi = {
   logout: async (): Promise<ApiResponse> => {
     const response = await apiClient.post('/auth/logout');
     apiClient.setToken(null);
+    apiClient.setRefreshToken(null);
     return response;
   },
 

@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, RefreshCw, Maximize, Eye, EyeOff } from 'lucide-react';
 import { socketService, SocketEvent } from '@/lib/services/socket-service';
+import { getInstitutionId } from '@/lib/utils/institution';
 
 type DeviceFeature = {
   id: string;
@@ -45,12 +46,7 @@ export default function MapPage() {
   const [blueprintStatus, setBlueprintStatus] = useState<string | null>(null);
 
   const mapToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
-  const schoolId = useMemo(() => {
-    if (!user?.institutionId) return null;
-    return typeof user.institutionId === 'string'
-      ? user.institutionId
-      : (user.institutionId as any)?._id || user.institutionId;
-  }, [user]);
+  const schoolId = useMemo(() => getInstitutionId(user?.institutionId) ?? null, [user]);
 
   useEffect(() => {
     if (!isAuthenticated || !accessToken) {
@@ -80,7 +76,7 @@ export default function MapPage() {
       return;
     }
     if (!schoolId) {
-      setError('Missing school/institution id for map');
+      setError('No institution on this account. Use a seeded user or Join Class. A Mapbox token is optional — OpenStreetMap is used without one.');
       setLoading(false);
       return;
     }

@@ -1,4 +1,3 @@
 {
-  "/(marketing)/page": "app/(marketing)/page.js",
-  "/(marketing)/team-preview/page": "app/(marketing)/team-preview/page.js"
+  "/(marketing)/page": "app/(marketing)/page.js"
 }

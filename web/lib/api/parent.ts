@@ -388,7 +388,7 @@ export const parentApi = {
    */
   async changePassword(oldPassword: string, newPassword: string): Promise<ApiResponse<{ success: boolean; message: string }>> {
     return apiClient.put<{ success: boolean; message: string }>('/parent/profile/password', { oldPassword, newPassword });
-  }  /**
+  },  /**
    * Phase 4: Get child activity timeline
    * GET /api/parent/children/:studentId/activity
    */

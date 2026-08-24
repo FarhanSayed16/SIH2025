@@ -11,6 +11,7 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { AdminRoute } from '@/components/auth/AdminRoute';
 import { analyticsApi } from '@/lib/api/analytics';
 import { apiClient } from '@/lib/api/client';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { aiApi, ReportCardResult } from '@/lib/api/ai';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -114,15 +115,6 @@ const cardVariants = {
     transition: { delay: i * 0.1, duration: 0.5 }
   })
 };
-
-// Helper function to get institution ID
-function getInstitutionId(instId: any): string | null {
-  if (!instId) return null;
-  if (typeof instId === 'string') return instId;
-  if (instId._id) return instId._id.toString();
-  if (instId.toString) return instId.toString();
-  return null;
-}
 
 // Helper function to format file size
 function formatFileSize(bytes?: number): string {

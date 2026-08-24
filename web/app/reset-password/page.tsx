@@ -11,6 +11,7 @@ import { authApi } from '@/lib/api/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { validatePasswordStrength } from '@/lib/utils/validation';
+import { KavachLogo } from '@/components/branding/KavachLogo';
 
 interface FieldErrors {
   password: string | null;
@@ -220,8 +221,9 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">🛡️ EduSafe</h1>
+        <div className="text-center flex flex-col items-center">
+          <KavachLogo slot="login" className="mb-3" />
+          <h1 className="text-3xl font-bold text-gray-900">Kavach</h1>
           <p className="mt-2 text-sm text-gray-600">Reset Password</p>
           <p className="mt-1 text-xs text-gray-500">
             Enter your new password below.

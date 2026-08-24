@@ -1,15 +1,3 @@
-  const requestDelete = (type: 'equipment' | 'exit' | 'room', id: string) => {
-    setConfirmState({ open: true, type, id });
-  };
-
-  const confirmDelete = async () => {
-    if (!confirmState.open || !confirmState.type || !confirmState.id) return;
-    const { type, id } = confirmState;
-    setConfirmState({ open: false, type: null, id: null });
-    if (type === 'equipment') return handleDeleteEquipment(id);
-    if (type === 'exit') return handleDeleteExit(id);
-    if (type === 'room') return handleDeleteRoom(id);
-  };
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -96,9 +84,7 @@ type MapData = {
   hazards: any[];
 };
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  'https://bnc51nt1-3000.inc1.devtunnels.ms/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 export default function BlueprintAdminPage() {
   const router = useRouter();

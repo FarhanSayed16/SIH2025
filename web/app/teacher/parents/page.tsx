@@ -13,6 +13,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import {
   Users,
@@ -73,9 +74,7 @@ export default function TeacherParentsPage() {
   }>({});
 
   // Get teacher's institution ID
-  const teacherInstitutionId = user?.institutionId 
-    ? (typeof user.institutionId === 'string' ? user.institutionId : user.institutionId._id)
-    : null;
+  const teacherInstitutionId = getInstitutionId(user?.institutionId) ?? null;
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'teacher') {

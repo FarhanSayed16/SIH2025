@@ -37,17 +37,17 @@ export default function BroadcastPage() {
 
   // Form state
   const [formData, setFormData] = useState({
-    // Simplify: single, fast path that works for admin and teacher alike
     type: 'announcement' as 'emergency' | 'announcement' | 'drill' | 'general',
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     recipientType: 'all' as 'all' | 'students' | 'teachers' | 'parents' | 'admins' | 'custom',
-    channels: ['push'] as ('sms' | 'email' | 'push')[], // force push by default for reliability
+    channels: ['push'] as ('sms' | 'email' | 'push')[],
     subject: '',
     title: '',
     message: '',
     templateId: '',
     scheduledAt: '',
   });
+  const [smsEnabled, setSmsEnabled] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -63,6 +63,10 @@ export default function BroadcastPage() {
 
     loadBroadcasts();
     loadTemplates();
+    broadcastApi.getCapabilities().then((res) => {
+      const sms = Boolean((res as any)?.data?.sms ?? (res as any)?.sms);
+      setSmsEnabled(sms);
+    }).catch(() => setSmsEnabled(false));
   }, [isAuthenticated, router, accessToken]);
 
   // O7: Pre-fill message from incident "Send via broadcast" (e.g. /broadcast?message=...)
@@ -392,8 +396,8 @@ export default function BroadcastPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Channels <span className="text-red-500">*</span>
                   </label>
-                  <div className="flex gap-4">
-                    {['push', 'email', 'sms'].map((channel) => (
+                  <div className="flex gap-4 flex-wrap">
+                    {(['push', 'email', ...(smsEnabled ? (['sms'] as const) : [])] as const).map((channel) => (
                       <label key={channel} className="flex items-center space-x-2 cursor-pointer">
                         <input
                           type="checkbox"
@@ -413,6 +417,11 @@ export default function BroadcastPage() {
                       </label>
                     ))}
                   </div>
+                  {!smsEnabled && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      SMS is off until Twilio is configured. This send uses email and push only.
+                    </p>
+                  )}
                 </div>
 
                 <div>

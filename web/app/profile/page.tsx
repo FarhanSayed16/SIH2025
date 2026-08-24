@@ -14,6 +14,7 @@ import { Header } from '@/components/layout/header';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import { 
   QrCode, 
@@ -105,14 +106,6 @@ export default function ProfilePage() {
     }
   };
 
-  const getInstitutionId = () => {
-    if (!profile?.institutionId) return null;
-    if (typeof profile.institutionId === 'object') {
-      return profile.institutionId._id;
-    }
-    return profile.institutionId;
-  };
-
   const getInstitutionName = () => {
     if (!profile?.institutionId) return null;
     if (typeof profile.institutionId === 'object') {
@@ -156,7 +149,7 @@ export default function ProfilePage() {
   }
 
   const isStudent = profile.role === 'student';
-  const institutionId = getInstitutionId();
+  const institutionId = getInstitutionId(profile?.institutionId);
   const institutionName = getInstitutionName();
 
   return (
