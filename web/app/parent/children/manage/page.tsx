@@ -328,7 +328,7 @@ export default function ChildrenManagementPage() {
                                 </span>
                                 <Button
                                   size="sm"
-                                  variant="ghost"
+                                  variant="outline"
                                   onClick={() => handleEditRelationship(child)}
                                   className="p-1 h-6 w-6"
                                 >

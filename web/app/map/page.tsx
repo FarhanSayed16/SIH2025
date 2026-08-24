@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import mapboxgl, { Map as MapboxMap, LngLatBoundsLike, GeoJSONSourceRaw } from 'mapbox-gl';
+import mapboxgl, { Map as MapboxMap, LngLatBoundsLike, GeoJSONSource } from 'mapbox-gl';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { apiClient } from '@/lib/api/client';
 import { devicesApi } from '@/lib/api/devices';
@@ -108,7 +108,7 @@ export default function MapPage() {
     setError(null);
     try {
       // Devices
-      const devicesRes = await devicesApi.getDeviceHealthMonitoring(schoolId);
+      const devicesRes = await devicesApi.getHealthMonitoring(schoolId);
       if (devicesRes.success && Array.isArray(devicesRes.data?.devices)) {
         const feats: DeviceFeature[] = devicesRes.data.devices
           .map((d: any) => ({
@@ -188,7 +188,7 @@ export default function MapPage() {
       mapRef.addSource('blueprint-geojson', {
         type: 'geojson',
         data: bp.geojson,
-      } as GeoJSONSourceRaw);
+      } as mapboxgl.AnySourceData);
       mapRef.addLayer({
         id: 'blueprint-fill',
         type: 'fill',

@@ -328,7 +328,7 @@ export default function DrillDetailPage() {
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
                   <span className={`inline-block px-2 py-1 rounded text-sm ${
-                    drill.status === 'active' || drill.status === 'in_progress'
+                    drill.status === 'active'
                       ? 'bg-red-100 text-red-800'
                       : drill.status === 'completed'
                       ? 'bg-green-100 text-green-800'
@@ -400,7 +400,7 @@ export default function DrillDetailPage() {
                       Get a short AI-generated summary and improvement tip for this drill.
                     </p>
                     <Button
-                      variant="default"
+                      variant="primary"
                       className="bg-emerald-600 hover:bg-emerald-700"
                       onClick={handleGenerateSummary}
                       disabled={drillSummaryLoading}
@@ -427,7 +427,7 @@ export default function DrillDetailPage() {
             <Card className="p-6">
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
               <div className="space-y-2">
-                {(drill.status === 'active' || drill.status === 'in_progress') && (
+                {(drill.status === 'active') && (
                   <Button
                     variant="danger"
                     className="w-full"

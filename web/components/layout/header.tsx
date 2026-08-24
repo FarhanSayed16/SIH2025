@@ -10,7 +10,11 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { getInstitutionId } from '@/lib/utils/institution';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
-export function Header() {
+interface HeaderProps {
+  title?: string;
+}
+
+export function Header({ title = "Admin Dashboard" }: HeaderProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const { user, accessToken } = useAuthStore();
@@ -58,7 +62,7 @@ export function Header() {
     <header className="bg-white/80 backdrop-blur-lg shadow-sm border-b border-gray-200/50 sticky top-0 z-50">
       <div className="px-6 py-4 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold text-gray-900">Admin Dashboard</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
         </div>
         <div className="flex items-center space-x-4">
           {/* Connection Status Indicator */}

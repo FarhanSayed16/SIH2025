@@ -77,7 +77,7 @@ export default function DevicesPage() {
 
   const loadDevices = async () => {
     try {
-      const response = await devicesApi.list(user?.institutionId);
+      const response = await devicesApi.list(user?.institutionId || undefined);
       if (response.success && response.data) {
         setDevices(response.data);
       }
@@ -90,7 +90,7 @@ export default function DevicesPage() {
 
   const loadHealthMonitoring = async () => {
     try {
-      const response = await devicesApi.getHealthMonitoring(user?.institutionId);
+      const response = await devicesApi.getHealthMonitoring(user?.institutionId || undefined);
       if (response.success && response.data) {
         setHealthData(response.data.devices || []);
       }

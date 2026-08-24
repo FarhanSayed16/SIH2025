@@ -522,14 +522,14 @@ export default function TeacherParentsPage() {
                               </div>
                             )}
                             {parent.parentProfile?.verified && (
-                              <Shield className="w-4 h-4 text-blue-500" title="Verified" />
+                              <span title="Verified"><Shield className="w-4 h-4 text-blue-500" /></span>
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleViewParent(parent._id)}
                               className="text-blue-600 hover:text-blue-700"
@@ -537,7 +537,7 @@ export default function TeacherParentsPage() {
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleLinkChild(parent._id)}
                               className="text-green-600 hover:text-green-700"
@@ -607,7 +607,7 @@ export default function TeacherParentsPage() {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Add New Parent</h2>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => {
                       setShowAddModal(false);
                       setFieldErrors({});
@@ -685,7 +685,7 @@ export default function TeacherParentsPage() {
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                     <p className="text-sm text-blue-800">
-                      <strong>Note:</strong> This parent will be automatically assigned to your institution ({user?.institutionId && typeof user.institutionId === 'object' ? user.institutionId.name : 'Your Institution'}).
+                      <strong>Note:</strong> This parent will be automatically assigned to your institution ({user?.institutionId && typeof user.institutionId === 'object' ? (user.institutionId as any).name : 'Your Institution'}).
                     </p>
                   </div>
                   <div className="flex gap-2 pt-4">

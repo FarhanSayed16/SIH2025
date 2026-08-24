@@ -86,7 +86,7 @@ export default function ParentProfilePage() {
     try {
       const response = await authApi.getProfile();
       // Handle both response.data.user and response.data directly
-      const userData = response.data?.user || response.data;
+      const userData = (response.data as any)?.user || response.data;
       if (userData) {
         setProfile(userData);
         setFormData({
@@ -336,7 +336,7 @@ export default function ParentProfilePage() {
                       <Label>Change Password</Label>
                       <Button
                         size="sm"
-                        variant="ghost"
+                        variant="outline"
                         onClick={() => {
                           setShowPasswordForm(false);
                           setPasswordData({

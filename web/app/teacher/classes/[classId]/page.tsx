@@ -1017,7 +1017,7 @@ export default function TeacherClassDetailsPage() {
                 ) : (
                   <div className="space-y-4">
                     {classDrills
-                      .filter((d) => d.status === 'active' || d.status === 'in_progress')
+                      .filter((d) => d.status === 'active')
                       .map((drill) => (
                         <div key={drill._id} className="border border-orange-200 bg-orange-50 rounded-lg p-4">
                           <div className="flex justify-between items-start">

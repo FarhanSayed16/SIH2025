@@ -386,7 +386,7 @@ export default function UsersPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {users.map((userItem) => {
-                        const userId = userItem.id || userItem._id; // Handle both id and _id
+                        const userId = (userItem as any).id || userItem._id; // Handle both id and _id
                         return (
                         <tr key={userId} className="hover:bg-gray-50">
                           <td className="px-4 py-3">

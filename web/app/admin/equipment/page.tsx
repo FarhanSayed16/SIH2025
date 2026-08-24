@@ -82,7 +82,7 @@ export default function EquipmentManagementPage() {
 
   const loadSchools = async () => {
     try {
-      const response = await apiClient.get('/schools');
+      const response = await apiClient.get<any>('/schools');
       const data = response.data?.data || response.data || [];
       setSchools(Array.isArray(data) ? data : []);
       if (data.length > 0 && !selectedSchool) {
@@ -105,7 +105,7 @@ export default function EquipmentManagementPage() {
       if (typeFilter) query.append('type', typeFilter);
       if (statusFilter) query.append('status', statusFilter);
 
-      const response = await apiClient.get(
+      const response = await apiClient.get<any>(
         `/schools/${selectedSchool}/floor-plan/safety-equipment${query.toString() ? `?${query.toString()}` : ''}`
       );
       const data = response.data?.data || response.data || {};
@@ -229,7 +229,7 @@ export default function EquipmentManagementPage() {
           if (values.length < headers.length) continue;
 
           const rowData: any = {};
-          headers.forEach((header, index) => {
+          headers.forEach((header: string, index: number) => {
             rowData[header.toLowerCase().replace(/\s+/g, '')] = values[index] || '';
           });
 
@@ -474,7 +474,7 @@ export default function EquipmentManagementPage() {
                                   <div className="flex justify-end gap-2">
                                     {eq.qrCode && (
                                       <Button
-                                        variant="ghost"
+                                        variant="outline"
                                         size="sm"
                                         title="QR code"
                                         onClick={() => {
@@ -485,7 +485,7 @@ export default function EquipmentManagementPage() {
                                       </Button>
                                     )}
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
                                       title="Open on floor plan"
                                       onClick={() => {
@@ -495,7 +495,7 @@ export default function EquipmentManagementPage() {
                                       <MapPin className="w-4 h-4" />
                                     </Button>
                                     <Button
-                                      variant="ghost"
+                                      variant="outline"
                                       size="sm"
                                       onClick={async () => {
                                         if (confirm('Are you sure you want to delete this equipment?')) {

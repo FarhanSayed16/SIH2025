@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { teacherApi } from '@/lib/api/teacher';
@@ -48,38 +48,7 @@ export default function StudentPerformanceDetailPage() {
   const [studentProgress, setStudentProgress] = useState<any>(null);
   const [showQRScanner, setShowQRScanner] = useState(false);
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
-
-    if (user?.role !== 'teacher') {
-      router.push('/dashboard');
-      return;
-    }
-
-    if (accessToken) {
-      const { apiClient } = require('@/lib/api/client');
-      apiClient.setToken(accessToken);
-    }
-
-    loadStudentData();
-  }, [isAuthenticated, router, accessToken, user, classId, studentId]);
-
-  // Auto-refresh student progress every 30 seconds
-  useEffect(() => {
-    if (classId && studentId) {
-      // Initial load already done above
-      // Set up polling every 30 seconds
-      const progressInterval = setInterval(() => {
-        loadStudentData();
-      }, 30000);
-      return () => clearInterval(progressInterval);
-    }
-  }, [classId, studentId, loadStudentData]);
-
-  const loadStudentData = async () => {
+  const loadStudentData = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await teacherApi.getStudentProgress(classId);
@@ -101,7 +70,38 @@ export default function StudentPerformanceDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [classId, studentId, router, showToast]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    if (user?.role !== 'teacher') {
+      router.push('/dashboard');
+      return;
+    }
+
+    if (accessToken) {
+      const { apiClient } = require('@/lib/api/client');
+      apiClient.setToken(accessToken);
+    }
+
+    loadStudentData();
+  }, [isAuthenticated, router, accessToken, user, classId, studentId, loadStudentData]);
+
+  // Auto-refresh student progress every 30 seconds
+  useEffect(() => {
+    if (classId && studentId) {
+      // Initial load already done above
+      // Set up polling every 30 seconds
+      const progressInterval = setInterval(() => {
+        loadStudentData();
+      }, 30000);
+      return () => clearInterval(progressInterval);
+    }
+  }, [classId, studentId, loadStudentData]);
 
   if (isLoading) {
     return (

@@ -331,14 +331,11 @@ export default function ParentDashboardPage() {
                 {children.map((child) => {
                   const status = getChildStatus(child);
                   return (
-                    <Card
-                      key={child._id}
-                      className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                      onClick={() => router.push(`/parent/children/${child._id}`)}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    <div key={child._id} onClick={() => router.push(`/parent/children/${child._id}`)}>
+                      <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
                             {child.name.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -424,6 +421,7 @@ export default function ParentDashboardPage() {
                         </Button>
                       </div>
                     </Card>
+                  </div>
                   );
                 })}
               </div>

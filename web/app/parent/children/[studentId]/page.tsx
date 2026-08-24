@@ -280,7 +280,7 @@ export default function ChildDetailPage() {
               <OverviewTab childDetails={childDetails} />
             )}
             {activeTab === 'progress' && (
-              <ProgressTab progress={progress} />
+              <ProgressTab childDetails={childDetails} />
             )}
             {activeTab === 'drills' && (
               <DrillsTab drills={drills} isLoading={isLoadingDrills} />
@@ -300,7 +300,7 @@ export default function ChildDetailPage() {
 
 // Overview Tab Component
 function OverviewTab({ childDetails }: { childDetails: ChildProgress }) {
-  const { student, progress } = childDetails;
+  const { student, progress, modules, quiz } = childDetails;
 
   return (
     <div className="space-y-6">
@@ -310,7 +310,7 @@ function OverviewTab({ childDetails }: { childDetails: ChildProgress }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Preparedness Score</p>
-              <p className="text-2xl font-bold text-blue-700">{progress.progress.preparednessScore || 0}</p>
+              <p className="text-2xl font-bold text-blue-700">{progress?.preparednessScore || 0}</p>
             </div>
             <Shield className="w-8 h-8 text-blue-600 opacity-50" />
           </div>
@@ -319,7 +319,7 @@ function OverviewTab({ childDetails }: { childDetails: ChildProgress }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Modules Completed</p>
-              <p className="text-2xl font-bold text-green-700">{progress.modules.completed || 0}</p>
+              <p className="text-2xl font-bold text-green-700">{modules?.completed || 0}</p>
             </div>
             <BookOpen className="w-8 h-8 text-green-600 opacity-50" />
           </div>
@@ -328,7 +328,7 @@ function OverviewTab({ childDetails }: { childDetails: ChildProgress }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Quiz Average</p>
-              <p className="text-2xl font-bold text-purple-700">{progress.quiz.avgScore || 0}%</p>
+              <p className="text-2xl font-bold text-purple-700">{quiz?.avgScore || 0}%</p>
             </div>
             <TrendingUp className="w-8 h-8 text-purple-600 opacity-50" />
           </div>
@@ -337,7 +337,7 @@ function OverviewTab({ childDetails }: { childDetails: ChildProgress }) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600 mb-1">Login Streak</p>
-              <p className="text-2xl font-bold text-yellow-700">{progress.progress.loginStreak || 0} days</p>
+              <p className="text-2xl font-bold text-yellow-700">{progress?.loginStreak || 0} days</p>
             </div>
             <Award className="w-8 h-8 text-yellow-600 opacity-50" />
           </div>
@@ -388,15 +388,17 @@ function OverviewTab({ childDetails }: { childDetails: ChildProgress }) {
   );
 }
 
-// Progress Tab Component
-function ProgressTab({ progress }: { progress: ChildProgress['progress'] }) {
-  const quizData = progress.quiz.recentQuizzes?.slice(0, 10).map((q, idx) => ({
+// ProgressTab Component
+function ProgressTab({ childDetails }: { childDetails: ChildProgress }) {
+  const { quiz, games } = childDetails;
+
+  const quizData = quiz?.recentQuizzes?.slice(0, 10).map((q, idx) => ({
     name: `Quiz ${idx + 1}`,
     score: q.score || 0,
     passed: q.passed ? 1 : 0
   })) || [];
 
-  const gameData = progress.games.recentGames?.slice(0, 10).map((g, idx) => ({
+  const gameData = games?.recentGames?.slice(0, 10).map((g, idx) => ({
     name: `Game ${idx + 1}`,
     score: g.score || 0,
     xp: g.xpEarned || 0
@@ -410,15 +412,15 @@ function ProgressTab({ progress }: { progress: ChildProgress['progress'] }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center p-4 bg-blue-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">Total Quizzes</p>
-            <p className="text-2xl font-bold text-blue-700">{progress.quiz.totalQuizzes || 0}</p>
+            <p className="text-2xl font-bold text-blue-700">{quiz?.totalQuizzes || 0}</p>
           </div>
           <div className="text-center p-4 bg-green-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">Average Score</p>
-            <p className="text-2xl font-bold text-green-700">{progress.quiz.avgScore || 0}%</p>
+            <p className="text-2xl font-bold text-green-700">{quiz?.avgScore || 0}%</p>
           </div>
           <div className="text-center p-4 bg-purple-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">Pass Rate</p>
-            <p className="text-2xl font-bold text-purple-700">{progress.quiz.passRate || 0}%</p>
+            <p className="text-2xl font-bold text-purple-700">{quiz?.passRate || 0}%</p>
           </div>
         </div>
         {quizData.length > 0 && (
@@ -441,15 +443,15 @@ function ProgressTab({ progress }: { progress: ChildProgress['progress'] }) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="text-center p-4 bg-yellow-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">Total Games</p>
-            <p className="text-2xl font-bold text-yellow-700">{progress.games.totalGames || 0}</p>
+            <p className="text-2xl font-bold text-yellow-700">{games?.totalGames || 0}</p>
           </div>
           <div className="text-center p-4 bg-orange-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">Total XP</p>
-            <p className="text-2xl font-bold text-orange-700">{progress.games.totalXP || 0}</p>
+            <p className="text-2xl font-bold text-orange-700">{games?.totalXP || 0}</p>
           </div>
           <div className="text-center p-4 bg-red-50 rounded-lg">
             <p className="text-sm text-gray-600 mb-1">Average Score</p>
-            <p className="text-2xl font-bold text-red-700">{progress.games.avgScore || 0}</p>
+            <p className="text-2xl font-bold text-red-700">{games?.avgScore || 0}</p>
           </div>
         </div>
         {gameData.length > 0 && (
@@ -494,20 +496,24 @@ function DrillsTab({ drills, isLoading }: { drills: DrillParticipation[]; isLoad
           <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${
+                <div className={`w-3 h-3 rounded-full mt-1.5 ${
+                  drill.status === 'in_progress' ? 'bg-red-500' :
                   drill.status === 'completed' ? 'bg-green-500' :
-                  drill.status === 'in_progress' ? 'bg-yellow-500' :
-                  drill.status === 'missed' ? 'bg-red-500' : 'bg-gray-500'
+                  'bg-gray-400'
                 }`} />
-                <span className="font-semibold text-gray-900 capitalize">{drill.drillType} Drill</span>
+                <div>
+                  <h4 className="font-medium text-gray-900 flex items-center gap-2">
+                    {drill.drillType.charAt(0).toUpperCase() + drill.drillType.slice(1)} Drill
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      drill.status === 'in_progress' ? 'bg-red-100 text-red-700' :
+                      drill.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      'bg-gray-100 text-gray-700'
+                    }`}>
+                      {drill.status.replace('_', ' ')}
+                    </span>
+                  </h4>
+                </div>
               </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                drill.status === 'completed' ? 'bg-green-100 text-green-700' :
-                drill.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' :
-                drill.status === 'missed' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-              }`}>
-                {drill.status.replace('_', ' ')}
-              </span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>

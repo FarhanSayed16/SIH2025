@@ -396,7 +396,7 @@ export default function CrisisDashboardPage() {
       const response = await drillsApi.list(schoolId);
       
       if (response.success && response.data) {
-        const active = response.data.filter((d) => d.status === 'active' || d.status === 'in_progress');
+        const active = response.data.filter((d) => d.status === 'active');
         setActiveDrills(active);
       }
     } catch (error) {
@@ -819,7 +819,7 @@ export default function CrisisDashboardPage() {
                                                   loadActiveAlerts();
                                                 }
                                               } catch (error) {
-                                                alert('Failed to cancel alert');
+                                                window.alert('Failed to cancel alert');
                                               }
                                             }
                                           }}

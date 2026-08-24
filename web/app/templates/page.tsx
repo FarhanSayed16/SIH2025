@@ -63,7 +63,7 @@ export default function TemplatesPage() {
   const loadTemplates = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await templatesApi.getTemplates(filter);
+      const response = await templatesApi.getTemplates(filter as any);
       if (response.success && response.data) {
         setTemplates(response.data);
       }
@@ -126,7 +126,7 @@ export default function TemplatesPage() {
       name: template.name,
       category: template.category,
       channels: template.channels,
-      content: template.content,
+      content: template.content as any,
       variables: template.variables || [],
       isGlobal: template.isGlobal || false,
     });
@@ -156,7 +156,7 @@ export default function TemplatesPage() {
       name: `Copy of ${template.name}`,
       category: template.category,
       channels: template.channels,
-      content: template.content,
+      content: template.content as any,
       variables: template.variables || [],
       isGlobal: template.isGlobal || false,
     });

@@ -47,7 +47,7 @@ export default function DrillsPage() {
   const isInitializedRef = useRef(false);
 
   // Phase 4: Filter drills by status
-  const activeDrills = drills.filter(d => d.status === 'in_progress' || d.status === 'active');
+  const activeDrills = drills.filter(d => d.status === 'active');
   const scheduledDrills = drills.filter(d => d.status === 'scheduled');
   const completedDrills = drills.filter(d => d.status === 'completed');
 

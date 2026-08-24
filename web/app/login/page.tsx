@@ -68,9 +68,9 @@ export default function LoginPage() {
     let error: string | null = null;
     
     if (fieldName === 'email') {
-      error = validateEmail(value);
+      error = !value ? 'Email is required' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? 'Invalid email format' : null;
     } else if (fieldName === 'password') {
-      error = validatePassword(value);
+      error = !value ? 'Password is required' : value.length < 6 ? 'Password must be at least 6 characters' : null;
     }
     
     setClientErrors(prev => ({

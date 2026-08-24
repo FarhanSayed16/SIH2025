@@ -636,6 +636,18 @@ export default function BlueprintAdminPage() {
     }
   };
 
+  const requestDelete = (type: 'equipment' | 'exit' | 'room', id: string) => {
+    setConfirmState({ open: true, type, id });
+  };
+
+  const confirmDelete = () => {
+    if (!confirmState.id) return;
+    if (confirmState.type === 'equipment') handleDeleteEquipment(confirmState.id);
+    if (confirmState.type === 'exit') handleDeleteExit(confirmState.id);
+    if (confirmState.type === 'room') handleDeleteRoom(confirmState.id);
+    setConfirmState({ open: false, type: null, id: null });
+  };
+
   return (
     <AdminRoute>
       <div className="flex min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-gray-50">
@@ -1312,7 +1324,7 @@ export default function BlueprintAdminPage() {
                 <Button variant="outline" onClick={() => setConfirmState({ open: false, type: null, id: null })}>
                   Cancel
                 </Button>
-                <Button variant="destructive" onClick={confirmDelete}>
+                <Button variant="danger" onClick={confirmDelete}>
                   Delete
                 </Button>
               </div>

@@ -155,7 +155,7 @@ export default function TeacherAnalyticsPage() {
       if (progressResponse.success && progressResponse.data) {
         const data = progressResponse.data as BackendStudentProgress;
         // Calculate summary if not provided by backend
-        if (!data.summary && data.students && data.students.length > 0) {
+        if (!(data as any).summary && data.students && data.students.length > 0) {
           const students = data.students;
           const totalStudents = data.totalStudents || students.length;
           const avgModulesCompleted = students.reduce((sum: number, s: any) => 

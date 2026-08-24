@@ -99,7 +99,7 @@ export default function AdminParentsPage() {
       
       const response = await schoolsApi.list();
       if (response.success && response.data) {
-        const schoolsList = Array.isArray(response.data) ? response.data : response.data.schools || [];
+        const schoolsList = Array.isArray(response.data) ? response.data : (response.data as any).schools || [];
         setSchools(schoolsList);
       }
     } catch (error) {
@@ -537,14 +537,16 @@ export default function AdminParentsPage() {
                               </div>
                             )}
                             {parent.parentProfile?.verified && (
-                              <Shield className="w-4 h-4 text-blue-500" title="Verified" />
+                              <span title="Verified">
+                                <Shield className="w-4 h-4 text-blue-500" />
+                              </span>
                             )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex items-center justify-end gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleViewParent(parent._id)}
                               className="text-blue-600 hover:text-blue-700"
@@ -552,7 +554,7 @@ export default function AdminParentsPage() {
                               <Eye className="w-4 h-4" />
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleLinkChild(parent._id)}
                               className="text-green-600 hover:text-green-700"
@@ -622,7 +624,7 @@ export default function AdminParentsPage() {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">Add New Parent</h2>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => {
                       setShowAddModal(false);
                       setFieldErrors({});

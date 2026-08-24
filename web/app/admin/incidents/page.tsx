@@ -1173,7 +1173,8 @@ function IncidentsPageContent() {
       {/* Historical Incident Form Modal */}
       {showHistoricalForm && (
         <HistoricalIncidentForm
-          onClose={() => {
+          onClose={() => setShowHistoricalForm(false)}
+          onSuccess={() => {
             setShowHistoricalForm(false);
             loadIncidents();
             loadStats();
