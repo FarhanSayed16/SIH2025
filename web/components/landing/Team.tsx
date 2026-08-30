@@ -120,13 +120,15 @@ export default function Team() {
         </div>
 
         {/* Institution */}
-        <motion.div variants={fadeUp} custom={11} className="mx-auto mt-12 max-w-2xl text-center rounded-2xl border border-[var(--k-line)] bg-white/60 p-6 shadow-sm backdrop-blur-sm">
-           <h3 className="mb-4 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">Institution</h3>
-           <div className="flex justify-center mb-4 overflow-hidden py-2">
-             <img src="/landing/vsit-logo-new.png" alt="Vidyalankar School of Information Technology" className="h-16 md:h-20 object-contain mix-blend-multiply transform scale-110" />
+        <motion.div variants={fadeUp} custom={11} className="mx-auto mt-12 max-w-3xl rounded-2xl border border-[var(--k-line)] bg-white/60 p-6 sm:p-8 shadow-sm backdrop-blur-sm flex flex-col sm:flex-row items-center gap-6 sm:gap-10 text-center sm:text-left">
+           <div className="flex-shrink-0">
+             <img src="/landing/vsit-logo-new.png" alt="Vidyalankar School of Information Technology" className="h-20 md:h-24 object-contain mix-blend-multiply" />
            </div>
-           <p className="text-[0.95rem] font-bold leading-relaxed text-[var(--k-ink)]">Vidyalankar School of Information Technology</p>
-           <p className="mt-2 text-[0.8rem] leading-relaxed text-[var(--k-muted)]">Special thanks for the continuous support and guidance provided throughout the Smart India Hackathon process.</p>
+           <div>
+             <h3 className="mb-2 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">Institution</h3>
+             <p className="text-[0.95rem] font-bold leading-relaxed text-[var(--k-ink)]">Vidyalankar School of Information Technology</p>
+             <p className="mt-2 text-[0.85rem] leading-relaxed text-[var(--k-muted)]">Special thanks for the continuous support and guidance provided throughout the Smart India Hackathon process.</p>
+           </div>
         </motion.div>
 
       </motion.div>
