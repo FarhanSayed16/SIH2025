@@ -269,13 +269,13 @@ export const MENTORS = [
     name: 'Dr. Geeta Sahu',
     role: 'Mentor',
     summary: 'Strategic guidance, domain expertise, and continuous academic support.',
-    img: '/team/geeta.jpeg',
+    img: '/team/Geeta_Sahu.jpg',
   },
   {
     name: 'Dr. Umesh Koyande',
     role: 'Mentor',
     summary: 'Technical architecture guidance, implementation oversight, and project execution strategy.',
-    img: '/team/umesh.jpeg',
+    img: '/team/Dr.-Umesh-Koyande-Dept.jpg',
   },
 ];
 
