@@ -249,18 +249,18 @@ export const TEAM = [
 export const EXTENDED_TEAM = [
   {
     name: 'Jayprakash Morya',
-    role: 'Team Member',
-    summary: 'Contributions to development, research, and project execution.',
+    role: 'Co-Developer',
+    summary: 'Assisted with website frontend components and development support.',
   },
   {
     name: 'Divyashree Gudla',
-    role: 'Team Member',
-    summary: 'Contributions to development, research, and project execution.',
+    role: 'Research & Presentation',
+    summary: 'Conducted project research and prepared presentation materials.',
   },
   {
     name: 'Madhura Navele',
-    role: 'Team Member',
-    summary: 'Contributions to development, research, and project execution.',
+    role: 'Documentation',
+    summary: 'Managed project documentation and compiled comprehensive reports.',
   },
 ];
 
