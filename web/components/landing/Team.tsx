@@ -121,7 +121,10 @@ export default function Team() {
 
         {/* Institution */}
         <motion.div variants={fadeUp} custom={11} className="mx-auto mt-12 max-w-2xl text-center rounded-2xl border border-[var(--k-line)] bg-white/60 p-6 shadow-sm backdrop-blur-sm">
-           <h3 className="mb-2 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">Institution</h3>
+           <h3 className="mb-4 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">Institution</h3>
+           <div className="flex justify-center mb-4">
+             <img src="/landing/vsit-logo.png" alt="Vidyalankar School of Information Technology" className="h-16 object-contain" />
+           </div>
            <p className="text-[0.95rem] font-bold leading-relaxed text-[var(--k-ink)]">Vidyalankar School of Information Technology</p>
            <p className="mt-2 text-[0.8rem] leading-relaxed text-[var(--k-muted)]">Special thanks for the continuous support and guidance provided throughout the Smart India Hackathon process.</p>
         </motion.div>
