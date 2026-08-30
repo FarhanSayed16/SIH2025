@@ -246,6 +246,39 @@ export const TEAM = [
   },
 ];
 
+export const EXTENDED_TEAM = [
+  {
+    name: 'Jayprakash Morya',
+    role: 'Team Member',
+    summary: 'Contributions to development, research, and project execution.',
+  },
+  {
+    name: 'Divyashree Gudla',
+    role: 'Team Member',
+    summary: 'Contributions to development, research, and project execution.',
+  },
+  {
+    name: 'Madhura Navele',
+    role: 'Team Member',
+    summary: 'Contributions to development, research, and project execution.',
+  },
+];
+
+export const MENTORS = [
+  {
+    name: 'Dr. Geeta Sahu',
+    role: 'Mentor',
+    summary: 'Strategic guidance, domain expertise, and continuous academic support.',
+    img: '/team/geeta.jpeg',
+  },
+  {
+    name: 'Dr. Umesh Koyande',
+    role: 'Mentor',
+    summary: 'Technical architecture guidance, implementation oversight, and project execution strategy.',
+    img: '/team/umesh.jpeg',
+  },
+];
+
 export const FAQ = [
   {
     q: 'Is Kavach an official MoE/NDMA product?',

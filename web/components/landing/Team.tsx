@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { TEAM } from '@/lib/content/landing';
+import { TEAM, EXTENDED_TEAM, MENTORS } from '@/lib/content/landing';
 import { Code2, Brain, Palette } from 'lucide-react';
 
 const fadeUp = {
@@ -81,47 +81,49 @@ export default function Team() {
           })}
         </div>
 
-        {/* Extended Acknowledgements Sub-section */}
-        <motion.div variants={fadeUp} custom={4} className="mx-auto mt-10 max-w-4xl rounded-2xl border border-[var(--k-line)] bg-white/60 p-6 shadow-sm backdrop-blur-sm sm:p-8">
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            
-            {/* Additional Members */}
-            <div>
-              <h3 className="mb-3 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">
-                Extended Team
-              </h3>
-              <ul className="flex flex-col gap-2.5 text-[0.85rem] font-medium text-[var(--k-ink-soft)]">
-                <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-[var(--k-accent)]"></span>Jayprakash Morya</li>
-                <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-[var(--k-accent)]"></span>Divyashree Gudla</li>
-                <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-[var(--k-accent)]"></span>Madhura Navele</li>
-              </ul>
-            </div>
+        {/* Mentors Section */}
+        <motion.div variants={fadeUp} custom={4} className="mt-16 mb-8 text-center">
+          <p className="k-tag mb-3">Guidance & Support</p>
+          <h3 className="landing-h2 text-2xl">Our Mentors</h3>
+        </motion.div>
+        <div className="mx-auto grid max-w-3xl gap-5 md:grid-cols-2">
+          {MENTORS.map((mentor, i) => (
+            <motion.div key={mentor.name} variants={fadeUp} custom={5 + i} className="group">
+              <div className="k-card flex h-full flex-col p-5">
+                <div className="mb-4 flex items-center gap-4">
+                  <div className="relative flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-100 shadow-sm ring-1 ring-slate-200">
+                    <img src={mentor.img} alt={mentor.name} className="absolute inset-0 h-full w-full object-cover" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="font-display text-[15px] font-bold leading-tight text-[var(--k-ink)]">{mentor.name}</h4>
+                    <p className="mt-1 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--k-accent)]">{mentor.role}</p>
+                  </div>
+                </div>
+                <p className="text-[13.5px] leading-relaxed text-[var(--k-muted)]">{mentor.summary}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
 
-            {/* Mentors */}
-            <div>
-              <h3 className="mb-3 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">
-                Mentors
-              </h3>
-              <ul className="flex flex-col gap-2.5 text-[0.85rem] font-medium text-[var(--k-ink-soft)]">
-                <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-[var(--k-accent)]"></span>Dr. Geeta Sahu</li>
-                <li className="flex items-center gap-2"><span className="h-1 w-1 rounded-full bg-[var(--k-accent)]"></span>Dr. Umesh Koyande</li>
-              </ul>
-            </div>
+        {/* Extended Team Section */}
+        <motion.div variants={fadeUp} custom={7} className="mt-16 mb-8 text-center">
+          <h3 className="landing-h2 text-2xl">Extended Team</h3>
+        </motion.div>
+        <div className="mx-auto grid max-w-4xl gap-4 md:grid-cols-3">
+          {EXTENDED_TEAM.map((member, i) => (
+            <motion.div key={member.name} variants={fadeUp} custom={8 + i} className="k-card p-5">
+              <h4 className="font-display text-[15px] font-bold text-[var(--k-ink)]">{member.name}</h4>
+              <p className="mt-1 mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--k-accent)]">{member.role}</p>
+              <p className="text-[13.5px] leading-relaxed text-[var(--k-muted)]">{member.summary}</p>
+            </motion.div>
+          ))}
+        </div>
 
-            {/* Institution */}
-            <div className="sm:col-span-2 lg:col-span-1">
-              <h3 className="mb-3 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">
-                Institution
-              </h3>
-              <p className="text-[0.9rem] font-bold leading-relaxed text-[var(--k-ink)]">
-                Vidyalankar School of Information Technology
-              </p>
-              <p className="mt-2 text-[0.75rem] leading-relaxed text-[var(--k-muted)]">
-                Special thanks for the continuous support and guidance provided throughout the Smart India Hackathon process.
-              </p>
-            </div>
-
-          </div>
+        {/* Institution */}
+        <motion.div variants={fadeUp} custom={11} className="mx-auto mt-12 max-w-2xl text-center rounded-2xl border border-[var(--k-line)] bg-white/60 p-6 shadow-sm backdrop-blur-sm">
+           <h3 className="mb-2 font-display text-[0.7rem] font-bold uppercase tracking-widest text-[var(--k-accent)]">Institution</h3>
+           <p className="text-[0.95rem] font-bold leading-relaxed text-[var(--k-ink)]">Vidyalankar School of Information Technology</p>
+           <p className="mt-2 text-[0.8rem] leading-relaxed text-[var(--k-muted)]">Special thanks for the continuous support and guidance provided throughout the Smart India Hackathon process.</p>
         </motion.div>
 
       </motion.div>
