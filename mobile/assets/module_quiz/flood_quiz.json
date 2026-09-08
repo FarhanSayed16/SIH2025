@@ -1,0 +1,132 @@
+[
+  {
+    "id": 1,
+    "topic": "Before Flood",
+    "question": "What is a crucial step to take regarding important documents before a flood?",
+    "options": [
+      "A. Leave them in a drawer",
+      "B. Keep them in a water-proof bag",
+      "C. Photocopy them and discard originals",
+      "D. Hide them under a mattress"
+    ],
+    "answer": "B. Keep them in a water-proof bag",
+    "explanation": "Protecting documents from water damage ensures you have identification and property records after the disaster."
+  },
+  {
+    "id": 2,
+    "topic": "Before Flood",
+    "question": "Which of the following should be included in your emergency kit before a flood?",
+    "options": [
+      "A. Heavy furniture",
+      "B. Perishable food items",
+      "C. Battery-operated radio and torch",
+      "D. Decorative items"
+    ],
+    "answer": "C. Battery-operated radio and torch",
+    "explanation": "A radio helps you receive updates if power fails, and a torch provides light during outages."
+  },
+  {
+    "id": 3,
+    "topic": "Before Flood",
+    "question": "What should you do with cattle and animals if a flood warning is issued?",
+    "options": [
+      "A. Tie them securely inside the shed",
+      "B. Untie them to ensure their safety",
+      "C. Leave them in low-lying areas",
+      "D. Lock them in a room"
+    ],
+    "answer": "B. Untie them to ensure their safety",
+    "explanation": "Untying animals allows them to swim or escape to higher ground if water levels rise suddenly."
+  },
+  {
+    "id": 4,
+    "topic": "Before Flood",
+    "question": "To prepare for a flood, what should you do with your mobile phone?",
+    "options": [
+      "A. Keep it switched off",
+      "B. Drain the battery",
+      "C. Keep it fully charged for emergency communication",
+      "D. Leave it at a neighbor's house"
+    ],
+    "answer": "C. Keep it fully charged for emergency communication",
+    "explanation": "A charged mobile phone is essential for contacting rescue services or family during an emergency."
+  },
+  {
+    "id": 5,
+    "topic": "During Flood",
+    "question": "Why should you avoid walking through floodwaters?",
+    "options": [
+      "A. It ruins your shoes",
+      "B. You might catch a cold",
+      "C. Even shallow moving water can sweep you away",
+      "D. It is illegal"
+    ],
+    "answer": "C. Even shallow moving water can sweep you away",
+    "explanation": "Just 6 inches of fast-moving water can knock an adult off their feet."
+  },
+  {
+    "id": 6,
+    "topic": "During Flood",
+    "question": "If you must enter floodwater, what safety gear should you wear?",
+    "options": [
+      "A. Sandals",
+      "B. Suitable footwear",
+      "C. Bare feet",
+      "D. Socks only"
+    ],
+    "answer": "B. Suitable footwear",
+    "explanation": "Footwear protects against sharp objects, debris, and bites from unseen animals underwater."
+  },
+  {
+    "id": 7,
+    "topic": "During Flood",
+    "question": "What is a major electrical hazard to avoid during a flood?",
+    "options": [
+      "A. Using a flashlight",
+      "B. Touching broken electric poles and fallen power lines",
+      "C. Using a battery radio",
+      "D. Switching off the main power"
+    ],
+    "answer": "B. Touching broken electric poles and fallen power lines",
+    "explanation": "Water conducts electricity, and fallen lines can electrocute anyone nearby."
+  },
+  {
+    "id": 8,
+    "topic": "During Flood",
+    "question": "What kind of water is safe to drink during a flood?",
+    "options": [
+      "A. Tap water directly",
+      "B. Floodwater",
+      "C. Boiled or chlorinated water",
+      "D. River water"
+    ],
+    "answer": "C. Boiled or chlorinated water",
+    "explanation": "Floodwater often contaminates local water sources; boiling or chlorination kills harmful bacteria."
+  },
+  {
+    "id": 9,
+    "topic": "After Flood",
+    "question": "Why should you use mosquito nets after a flood?",
+    "options": [
+      "A. To keep warm",
+      "B. To prevent malaria and other vector-borne diseases",
+      "C. To block dust",
+      "D. To improve sleep quality"
+    ],
+    "answer": "B. To prevent malaria and other vector-borne diseases",
+    "explanation": "Stagnant water left by floods becomes a breeding ground for mosquitoes."
+  },
+  {
+    "id": 10,
+    "topic": "After Flood",
+    "question": "What danger from animals is common after a flood?",
+    "options": [
+      "A. Bear attacks",
+      "B. Snake bites",
+      "C. Bird strikes",
+      "D. Lion attacks"
+    ],
+    "answer": "B. Snake bites",
+    "explanation": "Floods displace snakes from their burrows, causing them to seek shelter in homes or dry patches."
+  }
+]
