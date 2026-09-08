@@ -58,7 +58,6 @@ mobile/ios/Flutter/flutter_export_environment.sh
 
 # Docs & Assets
 docs/
-mobile/assets
 
 # Next.js build output
 web/.next/
