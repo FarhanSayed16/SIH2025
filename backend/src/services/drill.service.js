@@ -154,7 +154,7 @@ export const triggerDrill = async (drillId, triggeredBy) => {
         } catch (error) {
           logger.error('Auto-end drill error:', error);
         }
-      }, durationMs);
+      }, durationMs).unref();
     }
     
     logger.info(`Drill triggered: ${drill.type} (ID: ${drill._id}) - Duration: ${drill.duration} minutes`);

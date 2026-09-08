@@ -191,7 +191,7 @@ export default function TeacherClassesPage() {
                 <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <p className="text-sm text-blue-800 font-semibold">ℹ️ No Classes Assigned</p>
                   <p className="text-xs text-blue-700 mt-1">
-                    You don't have any classes assigned yet. Contact your administrator to get assigned to a class.
+                    You don&apos;t have any classes assigned yet. Contact your administrator to get assigned to a class.
                   </p>
                 </div>
               )}

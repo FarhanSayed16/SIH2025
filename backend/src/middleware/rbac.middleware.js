@@ -81,6 +81,10 @@ export const requireRole = (...allowedRoles) => {
       });
     }
 
+    if (['admin', 'system_admin', 'teacher'].includes(userRole) && req.user.approvalStatus !== 'approved') {
+      return errorResponse(res, 'Account approval is required', 403);
+    }
+
     logger.debug(`[requireRole] Access granted for role '${userRole}' to ${req.method} ${req.path}`);
     next();
   };
@@ -295,4 +299,3 @@ export const requireOwnershipOrTeacherAdmin = (userIdParam = 'id') => {
     return errorResponse(res, 'Access denied', 403);
   };
 };
-

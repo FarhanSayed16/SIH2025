@@ -5,8 +5,8 @@ void main() {
   group('Validators', () {
     group('Email Validation', () {
       test('valid email should return true', () {
-        expect(Validators.isValidEmail('test@example.com'), true);
-        expect(Validators.isValidEmail('user.name@domain.co.in'), true);
+        expect(Validators.isValidEmailFormat('test@example.com'), true);
+        expect(Validators.isValidEmailFormat('user.name@domain.co.in'), true);
       });
 
       test('invalid email should return false', () {
@@ -17,8 +17,10 @@ void main() {
 
       test('email error messages', () {
         expect(Validators.emailError(''), 'Email is required');
-        expect(Validators.emailError('invalid'), 'Please enter a valid email');
+        expect(Validators.emailError('invalid'), 'Enter a valid email address');
         expect(Validators.emailError('test@example.com'), null);
+        expect(Validators.emailErrorForRegistration('test@example.com'), 'Only Gmail accounts are allowed.');
+        expect(Validators.emailErrorForRegistration('test@gmail.com'), null);
       });
     });
 
@@ -36,10 +38,13 @@ void main() {
 
       test('password error messages', () {
         expect(Validators.passwordError(''), 'Password is required');
-        expect(Validators.passwordError('short'), 'Password must be at least 8 characters');
-        expect(Validators.passwordError('onlyletters'), 'Password must contain at least one number');
-        expect(Validators.passwordError('12345678'), 'Password must contain at least one letter');
-        expect(Validators.passwordError('password123'), null);
+        // Login accepts existing credentials; strength rules apply to registration.
+        expect(Validators.passwordError('short'), null);
+        expect(Validators.passwordStrengthError('short'), 'Password must be at least 8 characters.');
+        expect(Validators.passwordStrengthError('onlyletters'), isNotNull);
+        expect(Validators.passwordStrengthError('12345678'), isNotNull);
+        expect(Validators.passwordStrengthError('Password123'), null);
+
       });
     });
 

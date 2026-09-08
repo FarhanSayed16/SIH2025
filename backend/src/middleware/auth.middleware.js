@@ -28,7 +28,8 @@ export const authenticate = async (req, res, next) => {
     // Get user - always populate institutionId for proper access checks
     const user = await getUserById(decoded.userId, true);
     
-    if (!user) {
+    if (!user || user.isActive === false || ['blocked', 'rejected'].includes(user.approvalStatus) ||
+        (decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
       logger.warn(`[authenticate] User not found: ${decoded.userId}`);
       return errorResponse(res, 'User not found', 401);
     }
@@ -41,8 +42,7 @@ export const authenticate = async (req, res, next) => {
     // If role is missing from userObj, log error and use JWT role as fallback
     if (!userObj.role) {
       logger.error(`[authenticate] CRITICAL: User ${decoded.userId} has no role in DB! JWT role: ${decoded.role}, userObj keys: ${Object.keys(userObj).join(', ')}`);
-      // Fallback to JWT role but this should never happen
-      userObj.role = decoded.role;
+      return errorResponse(res, 'Account role is missing', 401);
     }
     
     // Debug logging with more detail
@@ -51,7 +51,7 @@ export const authenticate = async (req, res, next) => {
     // Attach user to request
     req.user = userObj;
     req.userId = decoded.userId;
-    req.userRole = decoded.role; // Keep JWT role, but DB role takes precedence in requireRole
+    req.userRole = userObj.role;
 
     next();
   } catch (error) {
@@ -75,10 +75,11 @@ export const optionalAuth = async (req, res, next) => {
         
         if (decoded && decoded.type !== 'refresh') {
           const user = await getUserById(decoded.userId);
-          if (user) {
+          if (user && user.isActive !== false && !['blocked', 'rejected'].includes(user.approvalStatus) &&
+              (decoded.tokenVersion || 0) === (user.tokenVersion || 0)) {
             req.user = user;
             req.userId = decoded.userId;
-            req.userRole = decoded.role;
+            req.userRole = user.role;
           }
         }
       } catch (tokenError) {
@@ -94,4 +95,3 @@ export const optionalAuth = async (req, res, next) => {
     next();
   }
 };
-

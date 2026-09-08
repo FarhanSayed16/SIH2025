@@ -380,10 +380,10 @@ class MockSocket extends _i1.Mock implements _i3.Socket {
       );
 
   @override
-  void onopen([dynamic _]) => super.noSuchMethod(
+  void onopen([dynamic event]) => super.noSuchMethod(
         Invocation.method(
           #onopen,
-          [_],
+          [event],
         ),
         returnValueForMissingStub: null,
       );

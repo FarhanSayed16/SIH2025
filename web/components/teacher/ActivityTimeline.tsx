@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import { activityApi, ActivityLog } from '@/lib/api/activity';
 import {
+  Activity,
   BookOpen,
   FileText,
   Gamepad2,
@@ -87,10 +88,11 @@ export function ActivityTimeline({
       });
 
       if (response.success && response.data) {
+        const nextActivities = response.data.activities;
         if (reset) {
-          setActivities(response.data.activities);
+          setActivities(nextActivities);
         } else {
-          setActivities((prev) => [...prev, ...response.data.activities]);
+          setActivities((prev) => [...prev, ...nextActivities]);
         }
         setHasMore(response.data.activities.length === 20);
         if (reset) setPage(1);
@@ -148,11 +150,14 @@ export function ActivityTimeline({
 
   const handleExport = () => {
     const headers = ['Date', 'Type', 'Description'];
-    const rows = activities.map((a) => [
-      new Date(a.timestamp).toISOString(),
-      a.activityType || '—',
-      formatActivityMessage(a),
-    ]);
+    const rows = activities.map((activity) => {
+      const date = new Date(activity.createdAt);
+      return [
+        Number.isNaN(date.getTime()) ? '' : date.toISOString(),
+        activity.activityType || '—',
+        formatActivityMessage(activity),
+      ];
+    });
     const csv = [headers, ...rows]
       .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
       .join('\n');
@@ -215,7 +220,7 @@ export function ActivityTimeline({
       ) : (
         <div className="space-y-4">
           {activities.map((activity) => {
-            const Icon = ACTIVITY_ICONS[activity.activityType] || Activity;
+            const date = new Date(activity.createdAt);
             const colorClass = ACTIVITY_COLORS[activity.activityType] || 'text-gray-600';
             const priorityBadge =
               activity.priority === 'critical'
@@ -240,7 +245,9 @@ export function ActivityTimeline({
                     )}
                   </div>
                   <p className="text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                    {Number.isNaN(date.getTime())
+                      ? 'Unknown date'
+                      : formatDistanceToNow(date, { addSuffix: true })}
                   </p>
                 </div>
               </div>
@@ -265,4 +272,3 @@ export function ActivityTimeline({
     </Card>
   );
 }
-

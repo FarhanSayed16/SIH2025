@@ -18,11 +18,14 @@ import {
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requireTeacher } from '../middleware/rbac.middleware.js';
 import { validate } from '../middleware/validator.js';
+import { authorizeAlert } from '../middleware/alertAccess.middleware.js';
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticate);
+router.param('id', authorizeAlert);
+router.param('alertId', authorizeAlert);
 
 // List alerts
 router.get(
@@ -59,6 +62,7 @@ router.post(
 // Phase 4.10: Teacher trigger alert (from mobile)
 router.post(
   '/teacher',
+  requireTeacher,
   body('type').isIn(['fire', 'earthquake', 'flood', 'cyclone', 'stampede', 'medical', 'other']).withMessage('Invalid alert type'),
   body('severity').optional().isIn(['low', 'medium', 'high', 'critical']),
   body('title').optional().trim(),
@@ -138,4 +142,3 @@ router.post(
 );
 
 export default router;
-

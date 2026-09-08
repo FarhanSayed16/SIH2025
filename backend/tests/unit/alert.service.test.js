@@ -3,15 +3,6 @@ import mongoose from 'mongoose';
 import Alert from '../../src/models/Alert.js';
 import { createAlert, resolveAlert } from '../../src/services/alert.service.js';
 
-// Mock logger
-jest.mock('../../src/config/logger.js', () => ({
-  default: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  }
-}));
-
 describe('Alert Service', () => {
   const testInstitutionId = new mongoose.Types.ObjectId();
   const testUserId = new mongoose.Types.ObjectId();

@@ -183,7 +183,7 @@ class _AREvacuationScreenState extends ConsumerState<AREvacuationScreen> {
         if (_arService?.currentMode == AREvacuationMode.compass) {
           final compassData = await _arService!.getCompassNavigationData();
           
-          if (mounted && compassData != null) {
+          if (mounted) {
             setState(() {
               _compassData = compassData;
             });
@@ -395,7 +395,7 @@ class _AREvacuationScreenState extends ConsumerState<AREvacuationScreen> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: const Text(
-          'Calculating evacuation path...',
+          'Evacuation route unavailable. Follow posted emergency plans and staff instructions.',
           style: TextStyle(color: Colors.white, fontSize: 16),
         ),
       );

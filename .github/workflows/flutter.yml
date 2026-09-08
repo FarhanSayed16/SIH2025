@@ -2,121 +2,182 @@ name: Flutter CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.35.4'
+
+defaults:
+  run:
+    working-directory: mobile
+    shell: bash
 
 jobs:
-  analyze:
-    name: Analyze
+  checks:
+    name: Flutter ${{ matrix.command }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        command: [analyze, test]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          sed -i 's/^GEMINI_API_KEY=.*/GEMINI_API_KEY=/' .env
       - name: Install dependencies
+        run: flutter pub get
+      - name: Run check
         run: |
-          cd mobile
-          flutter pub get
-      - name: Analyze code
-        run: |
-          cd mobile
-          flutter analyze
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-      - name: Install dependencies
-        run: |
-          cd mobile
-          flutter pub get
-      - name: Run tests
-        run: |
-          cd mobile
-          flutter test
+          if [ "${{ matrix.command }}" = "analyze" ]; then
+            flutter analyze --no-fatal-infos
+          else
+            flutter test
+          fi
 
   build-debug:
     name: Build Debug APK
     runs-on: ubuntu-latest
-    needs: [analyze, test]
+    needs: checks
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - name: Prepare development configuration
+        # This debug artifact uses placeholder Firebase configuration, with no
+        # release signing identity or production Firebase credentials.
+        run: |
+          cp .env.example .env
+          sed -i 's/^GEMINI_API_KEY=.*/GEMINI_API_KEY=/' .env
+          cp android/app/google-services.json.example android/app/google-services.json
       - name: Install dependencies
-        run: |
-          cd mobile
-          flutter pub get
+        run: flutter pub get
       - name: Build Debug APK
-        run: |
-          cd mobile
-          flutter build apk --debug
+        run: flutter build apk --debug
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: kavach-debug-apk
           path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
           retention-days: 7
 
   build-release:
-    name: Build Release APK
+    name: Build Release ${{ matrix.target }}
     runs-on: ubuntu-latest
-    needs: [analyze, test]
-    if: github.ref == 'refs/heads/main'
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Configure required reviewers and restrict this environment to main in GitHub.
+    environment: android-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: apk
+            artifact: kavach-release-apk
+            path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          - target: appbundle
+            artifact: kavach-app-bundle
+            path: mobile/build/app/outputs/bundle/release/app-release.aab
+    env:
+      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/kavach-release.jks
+      ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-      - name: Install dependencies
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+      - name: Prepare protected release configuration
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          FIREBASE_GOOGLE_SERVICES_BASE64: ${{ secrets.FIREBASE_GOOGLE_SERVICES_BASE64 }}
+          MOBILE_BASE_URL: ${{ vars.MOBILE_BASE_URL }}
+          MOBILE_SOCKET_URL: ${{ vars.MOBILE_SOCKET_URL }}
         run: |
-          cd mobile
-          flutter pub get
-      - name: Build Release APK
-        run: |
-          cd mobile
-          flutter build apk --release
-      - name: Upload Release APK artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: kavach-release-apk
-          path: mobile/build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 30
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import re
+          from pathlib import Path
+          from urllib.parse import urlsplit
 
-  build-appbundle:
-    name: Build App Bundle
-    runs-on: ubuntu-latest
-    needs: [analyze, test]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.24.0'
-          channel: 'stable'
-      - name: Install dependencies
-        run: |
-          cd mobile
-          flutter pub get
-      - name: Build App Bundle
-        run: |
-          cd mobile
-          flutter build appbundle --release
-      - name: Upload App Bundle artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: kavach-app-bundle
-          path: mobile/build/app/outputs/bundle/release/app-release.aab
-          retention-days: 30
+          required = (
+              'ANDROID_KEYSTORE_BASE64', 'ANDROID_STORE_PASSWORD',
+              'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD',
+              'FIREBASE_GOOGLE_SERVICES_BASE64', 'MOBILE_BASE_URL',
+          )
+          missing = [name for name in required if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing protected release inputs: ' + ', '.join(missing))
+          base_url = os.environ['MOBILE_BASE_URL'].rstrip('/')
+          socket_url = (os.environ.get('MOBILE_SOCKET_URL') or base_url).rstrip('/')
+          for value in (base_url, socket_url):
+              url = urlsplit(value)
+              if (url.scheme != 'https' or not url.hostname or url.username or url.password
+                      or url.query or url.fragment or re.search(r'\s', value)):
+                  raise SystemExit('Release backend/socket URLs must be HTTPS URLs without credentials or whitespace.')
 
+          os.umask(0o077)
+          Path(os.environ['ANDROID_KEYSTORE_PATH']).write_bytes(
+              base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64'], validate=True))
+          firebase = base64.b64decode(os.environ['FIREBASE_GOOGLE_SERVICES_BASE64'], validate=True)
+          config = json.loads(firebase)
+          clients = config.get('client', [])
+          if not any(client.get('client_info', {}).get('android_client_info', {}).get('package_name')
+                     == 'com.kavach.app' for client in clients):
+              raise SystemExit('Firebase configuration must contain the com.kavach.app Android client.')
+          if config.get('project_info', {}).get('project_id') in (None, '', 'your-project-id'):
+              raise SystemExit('Release Firebase configuration must reference the real project.')
+          Path('android/app/google-services.json').write_bytes(firebase)
+
+          # .env is bundled into the app: include only public client settings.
+          settings = dict(BASE_URL=base_url, SOCKET_URL=socket_url,
+                          ENVIRONMENT='production', GEMINI_API_KEY='')
+          environment = Path('.env.example').read_text(encoding='utf-8-sig')
+          for name, value in settings.items():
+              environment = re.sub(r'^' + name + r'=.*$', lambda _: name + '=' + value,
+                                   environment, flags=re.MULTILINE)
+          Path('.env').write_text(environment)
+          PY
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Build signed release
+        run: flutter build "${{ matrix.target }}" --release
+      - name: Upload signed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.path }}
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove release inputs
+        if: always()
+        run: rm -f "$ANDROID_KEYSTORE_PATH" android/app/google-services.json .env

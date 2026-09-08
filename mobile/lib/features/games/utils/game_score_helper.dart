@@ -60,8 +60,8 @@ class GameScoreHelper {
       }
       
       // 4. Show success message
-      if (_context != null && _context!.mounted) {
-        ScaffoldMessenger.of(_context!).showSnackBar(
+      if (_context != null && _context.mounted) {
+        ScaffoldMessenger.of(_context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
@@ -79,8 +79,8 @@ class GameScoreHelper {
       print('❌ [GAME SCORE HELPER] Error submitting score: $e');
       
       // Show error message
-      if (_context != null && _context!.mounted) {
-        ScaffoldMessenger.of(_context!).showSnackBar(
+      if (_context != null && _context.mounted) {
+        ScaffoldMessenger.of(_context).showSnackBar(
           SnackBar(
             content: const Text('Score saved offline. Will sync when online.'),
             backgroundColor: Colors.orange,

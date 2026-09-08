@@ -15,8 +15,7 @@ export const sanitizeString = (value) => {
   
   // Remove null bytes, control characters
   return value
-    .replace(/\0/g, '')
-    .replace(/[\x00-\x1F\x7F]/g, '')
+    .split('').filter(char => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127).join('')
     .trim();
 };
 
@@ -106,49 +105,14 @@ export const handleValidationErrors = (req, res, next) => {
  * Prevent NoSQL injection
  */
 export const preventNoSQLInjection = (req, res, next) => {
-  // Check query parameters
-  const dangerousPatterns = [
-    /\$where/i,
-    /\$ne/i,
-    /\$gt/i,
-    /\$lt/i,
-    /\$regex/i,
-    /javascript:/i,
-    /on\w+\s*=/i
-  ];
-
   const checkObject = (obj) => {
-    if (typeof obj !== 'object' || obj === null) return;
-    
-    for (const key in obj) {
-      const value = obj[key];
-      const keyStr = String(key);
-      const valueStr = String(value);
-      
-      // Check key
-      if (dangerousPatterns.some(pattern => pattern.test(keyStr))) {
-        logger.warn(`Potential NoSQL injection detected in key: ${keyStr}`);
-        return false;
-      }
-      
-      // Check value
-      if (typeof value === 'string' && dangerousPatterns.some(pattern => pattern.test(valueStr))) {
-        logger.warn(`Potential NoSQL injection detected in value: ${valueStr}`);
-        return false;
-      }
-      
-      // Recursive check
-      if (typeof value === 'object') {
-        if (!checkObject(value)) return false;
-      }
-    }
-    
-    return true;
+    if (typeof obj !== 'object' || obj === null) return true;
+    return Object.entries(obj).every(([key, value]) =>
+      !key.startsWith('$') && !key.includes('.') &&
+      !['__proto__', 'prototype', 'constructor'].includes(key) && checkObject(value));
   };
-
-  if (!checkObject(req.query) || !checkObject(req.body) || !checkObject(req.params)) {
-    logger.warn(`NoSQL injection attempt blocked from IP: ${req.ip}`);
-    return errorResponse(res, 'Invalid input detected', 400);
+  if (![req.query, req.body, req.params].every(checkObject)) {
+    return errorResponse(res, 'Invalid input keys', 400);
   }
 
   next();

@@ -1,3 +1,4 @@
+import { canAccessInstitution, isSystemAdmin, referenceId } from '../utils/access.js';
 import Alert from '../models/Alert.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/response.js';
 import {
@@ -15,11 +16,15 @@ import logger from '../config/logger.js';
  */
 export const createAlertNow = async (req, res) => {
   try {
+    const institutionId = referenceId(req.body.institutionId || req.user.institutionId);
+    if (!canAccessInstitution(req.user, institutionId)) {
+      return errorResponse(res, 'Access denied to institution', 403);
+    }
     const alertData = {
       ...req.body,
       type: req.body.type || 'sos',
       severity: req.body.severity || 'critical',
-      institutionId: req.body.institutionId || req.user.institutionId,
+      institutionId,
       triggeredBy: req.userId,
       metadata: {
         ...(req.body.metadata || {}),
@@ -109,7 +114,7 @@ export const cancelAlert = async (req, res) => {
     }
 
     // Verify permissions (admin or institution admin)
-    if (req.user.role !== 'admin' && alert.institutionId.toString() !== req.user.institutionId?.toString()) {
+    if (!canAccessInstitution(req.user, alert.institutionId)) {
       return errorResponse(res, 'Unauthorized to cancel this alert', 403);
     }
 
@@ -143,9 +148,15 @@ export const listAlerts = async (req, res) => {
     const { page = 1, limit = 10, schoolId, status, type } = req.query;
 
     const query = {};
+    if (schoolId && !canAccessInstitution(req.user, schoolId)) {
+      return errorResponse(res, 'Access denied to institution', 403);
+    }
     if (schoolId) query.institutionId = schoolId;
-    else if (req.user.institutionId && req.user.role !== 'admin') {
-      query.institutionId = req.user.institutionId;
+    else if (!isSystemAdmin(req.user)) {
+      if (!req.user.institutionId) {
+        return paginatedResponse(res, [], { page: Number(page), limit: Number(limit), total: 0, totalPages: 0 });
+      }
+      query.institutionId = referenceId(req.user.institutionId);
     }
     if (status) query.status = status;
     if (type) query.type = type;

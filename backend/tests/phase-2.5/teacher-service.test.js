@@ -1,3 +1,5 @@
+import '../../src/models/Device.js';
+import '../../src/models/School.js';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import mongoose from 'mongoose';
 import User from '../../src/models/User.js';

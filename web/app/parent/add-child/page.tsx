@@ -99,7 +99,7 @@ export default function AddChildPage() {
           <div className="max-w-2xl mx-auto">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Add Child to Your Account</h1>
-              <p className="text-gray-600">Link your child's account to monitor their progress and safety</p>
+              <p className="text-gray-600">Link your child&apos;s account to monitor their progress and safety</p>
             </div>
 
             {/* Tabs */}
@@ -144,7 +144,7 @@ export default function AddChildPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      You can scan the QR code from your child's ID card or enter it manually
+                      You can scan the QR code from your child&apos;s ID card or enter it manually
                     </p>
                   </div>
 
@@ -191,7 +191,7 @@ export default function AddChildPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      Enter your child's student ID or registration number
+                      Enter your child&apos;s student ID or registration number
                     </p>
                   </div>
 
@@ -265,11 +265,11 @@ export default function AddChildPage() {
             <Card className="p-6 mt-6 bg-blue-50 border-blue-200">
               <h3 className="font-semibold text-blue-900 mb-2">How it works</h3>
               <ul className="text-sm text-blue-800 space-y-1">
-                <li>• Scan or enter your child's QR code from their ID card</li>
+                <li>• Scan or enter your child&apos;s QR code from their ID card</li>
                 <li>• Or enter their student ID/registration number</li>
-                <li>• If you're in the same institution, linking happens automatically</li>
+                <li>• If you&apos;re in the same institution, linking happens automatically</li>
                 <li>• Otherwise, your request will be sent for approval</li>
-                <li>• You'll be notified once the link is approved</li>
+                <li>• You&apos;ll be notified once the link is approved</li>
               </ul>
             </Card>
           </div>

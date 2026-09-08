@@ -22,6 +22,21 @@ const router = express.Router();
 // All routes require authentication
 router.use(authenticate);
 
+// Phase 3.5.4: Export users (Admin only)
+router.get(
+  '/export',
+  query('format').optional().isIn(['csv', 'excel']),
+  query('role').optional().isIn(['student', 'teacher', 'admin', 'parent']),
+  query('institutionId').optional().isMongoId(),
+  query('search').optional().isString(),
+  query('isActive').optional().isBoolean(),
+  validate,
+  requireAdmin,
+  exportUsers
+);
+
+
+
 // Get user profile (own or admin)
 // Phase 3.5.1: Added caching
 router.get(
@@ -105,19 +120,6 @@ router.post(
   validate,
   requireAdmin,
   bulkUserOperation
-);
-
-// Phase 3.5.4: Export users (Admin only)
-router.get(
-  '/export',
-  query('format').optional().isIn(['csv', 'excel']),
-  query('role').optional().isIn(['student', 'teacher', 'admin', 'parent']),
-  query('institutionId').optional().isMongoId(),
-  query('search').optional().isString(),
-  query('isActive').optional().isBoolean(),
-  validate,
-  requireAdmin,
-  exportUsers
 );
 
 // Get user progress (own or admin/teacher)

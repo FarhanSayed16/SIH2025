@@ -5,7 +5,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { authApi, LoginResponse } from '../api/auth';
-import { apiClient, setErrorHandlers } from '../api/client';
+import { apiClient, setErrorHandlers, setTokenChangeHandler } from '../api/client';
+import { getInstitutionId } from '../utils/institution';
 
 interface User {
   id: string;
@@ -116,9 +117,7 @@ export const useAuthStore = create<AuthState>()(
             
             // Set token in API client
             apiClient.setToken(response.data.accessToken);
-            if (response.data.refreshToken) {
-              apiClient.setRefreshToken(response.data.refreshToken);
-            }
+            apiClient.setRefreshToken(response.data.refreshToken || null);
             set({
               user: {
                 id: user.id,
@@ -171,9 +170,7 @@ export const useAuthStore = create<AuthState>()(
             
             // Set token in API client
             apiClient.setToken(response.data.accessToken);
-            if (response.data.refreshToken) {
-              apiClient.setRefreshToken(response.data.refreshToken);
-            }
+            apiClient.setRefreshToken(response.data.refreshToken || null);
             set({
               user: {
                 id: user.id,
@@ -261,14 +258,16 @@ export const useAuthStore = create<AuthState>()(
           const { authApi } = await import('../api/auth');
           const response = await authApi.getProfile();
           if (response.success && response.data) {
-            const user = response.data.user || response.data;
+            const user = response.data.user;
+            const id = user.id || user._id;
+            if (!id) throw new Error('Profile response is missing user ID');
             set({
               user: {
-                id: user.id || user._id,
+                id,
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                institutionId: user.institutionId || null,
+                institutionId: getInstitutionId(user.institutionId) || null,
                 approvalStatus: user.approvalStatus || 'approved', // Include approvalStatus
               },
             });
@@ -322,3 +321,13 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
+if (typeof window !== 'undefined') {
+  setTokenChangeHandler((accessToken) => {
+    if (accessToken) {
+      useAuthStore.setState({ accessToken });
+    } else {
+      apiClient.setRefreshToken(null);
+      useAuthStore.setState({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+    }
+  });
+}

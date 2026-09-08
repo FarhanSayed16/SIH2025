@@ -1,0 +1,132 @@
+[
+  {
+    "id": 1,
+    "topic": "Reasons for Landslide",
+    "question": "What is a primary natural cause of landslides mentioned in the videos?",
+    "options": [
+      "A. Sunlight hitting the rocks",
+      "B. Heavy rainfall saturating the soil",
+      "C. Strong winds blowing dust",
+      "D. Birds pecking at the ground"
+    ],
+    "answer": "B. Heavy rainfall saturating the soil",
+    "explanation": "Continuous heavy rain saturates the soil, increasing its weight and reducing the friction that holds it in place, leading to a slide."
+  },
+  {
+    "id": 2,
+    "topic": "Reasons for Landslide",
+    "question": "Which human activity significantly increases the risk of landslides?",
+    "options": [
+      "A. Painting houses",
+      "B. Deforestation (cutting down trees)",
+      "C. Riding bicycles",
+      "D. Playing loud music"
+    ],
+    "answer": "B. Deforestation (cutting down trees)",
+    "explanation": "Trees and plants act as a protective cover. Their roots bind the soil together. Removing them makes the soil loose and prone to erosion."
+  },
+  {
+    "id": 3,
+    "topic": "Safety During Landslide",
+    "question": "If you are caught outdoors and see a landslide coming, in which direction should you run?",
+    "options": [
+      "A. Towards the landslide",
+      "B. Down the hill in front of it",
+      "C. Sideways (perpendicular) to the path of the landslide",
+      "D. Stay where you are"
+    ],
+    "answer": "C. Sideways (perpendicular) to the path of the landslide",
+    "explanation": "Running sideways (at a right angle to the slide) is the quickest way to get out of the direct path of the falling debris."
+  },
+  {
+    "id": 4,
+    "topic": "Safety During Landslide",
+    "question": "What is the recommended body position if you are trapped and cannot escape a landslide?",
+    "options": [
+      "A. Stand tall with hands up",
+      "B. Lie flat on your stomach",
+      "C. Curl into a tight ball and protect your head",
+      "D. Sit with legs crossed"
+    ],
+    "answer": "C. Curl into a tight ball and protect your head",
+    "explanation": "Curling into a tight ball (fetal position) minimizes your body surface area and protects your vital organs and head from impact."
+  },
+  {
+    "id": 5,
+    "topic": "Geologist Advice",
+    "question": "According to geologists, where should you avoid constructing a house?",
+    "options": [
+      "A. On flat, open plains",
+      "B. Near a market",
+      "C. On steep slopes or natural drainage paths",
+      "D. Near a park"
+    ],
+    "answer": "C. On steep slopes or natural drainage paths",
+    "explanation": "Natural drainage paths are where water and debris flow during rains. Building there puts the structure directly in danger of destruction."
+  },
+  {
+    "id": 6,
+    "topic": "Geologist Advice",
+    "question": "What happens to river water that serves as a warning sign for landslides?",
+    "options": [
+      "A. It turns blue",
+      "B. It becomes crystal clear",
+      "C. It suddenly turns muddy or the level rises/falls quickly",
+      "D. It freezes instantly"
+    ],
+    "answer": "C. It suddenly turns muddy or the level rises/falls quickly",
+    "explanation": "Sudden muddiness indicates soil disturbance upstream. A drop in water level might mean a landslide has blocked the river upstream, which could burst later."
+  },
+  {
+    "id": 7,
+    "topic": "Safety During Landslide",
+    "question": "Why should you avoid using elevators (lifts) during a landslide or earthquake?",
+    "options": [
+      "A. They are too slow",
+      "B. Power may fail, trapping you inside",
+      "C. They are reserved for firefighters",
+      "D. It is illegal"
+    ],
+    "answer": "B. Power may fail, trapping you inside",
+    "explanation": "Landslides often damage power lines. Getting stuck in an elevator during an emergency is dangerous; always use the stairs."
+  },
+  {
+    "id": 8,
+    "topic": "Reasons for Landslide",
+    "question": "How does blocking natural drains contribute to landslides?",
+    "options": [
+      "A. It makes the water dirty",
+      "B. It forces water to seep into the ground, destabilizing the slope",
+      "C. It kills the fish",
+      "D. It creates bad odors"
+    ],
+    "answer": "B. It forces water to seep into the ground, destabilizing the slope",
+    "explanation": "When drains are blocked, water cannot flow away. It soaks into the ground (pore water pressure), making the slope heavy and unstable."
+  },
+  {
+    "id": 9,
+    "topic": "Safety During Landslide",
+    "question": "If you are indoors when a landslide starts, what is a safe action?",
+    "options": [
+      "A. Run to the roof",
+      "B. Take shelter under a strong table or furniture",
+      "C. Open all windows",
+      "D. Stand on the balcony"
+    ],
+    "answer": "B. Take shelter under a strong table or furniture",
+    "explanation": "Sturdy furniture can provide a void space or protection from falling debris if the building structure is compromised."
+  },
+  {
+    "id": 10,
+    "topic": "Geologist Advice",
+    "question": "What is 'slope cutting' and why is it dangerous?",
+    "options": [
+      "A. A method of farming",
+      "B. Cutting the base of a hill for roads/houses, which removes support",
+      "C. A type of skiing",
+      "D. Pruning trees on a hill"
+    ],
+    "answer": "B. Cutting the base of a hill for roads/houses, which removes support",
+    "explanation": "Cutting into the toe (bottom) of a slope to build roads or houses removes the foundation support, making the soil above it likely to collapse."
+  }
+]

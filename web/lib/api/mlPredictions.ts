@@ -134,8 +134,9 @@ export const mlPredictionsApi = {
    * Get student risk prediction
    */
   async getStudentRisk(userId: string): Promise<StudentRiskPrediction> {
-    const response = await apiClient.get(`/ml-predictions/student-risk/${userId}`);
-    return response.data.data;
+    const response = await apiClient.get<StudentRiskPrediction>(`/ml-predictions/student-risk/${userId}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch student risk prediction');
   },
 
   /**
@@ -146,11 +147,11 @@ export const mlPredictionsApi = {
     institutionId?: string;
   }): Promise<DrillPerformancePrediction | null> {
     try {
-      const response = await apiClient.get('/ml-predictions/drill-performance', { params });
-      if (response?.data?.data) {
-        return response.data.data;
-      }
-      return null;
+      const query = new URLSearchParams();
+      if (params?.drillType) query.set('drillType', params.drillType);
+      if (params?.institutionId) query.set('institutionId', params.institutionId);
+      const response = await apiClient.get<DrillPerformancePrediction>(`/ml-predictions/drill-performance?${query}`);
+      return response.success ? response.data ?? null : null;
     } catch (error) {
       console.error('predictDrillPerformance error:', error);
       return null;
@@ -162,13 +163,10 @@ export const mlPredictionsApi = {
    */
   async getOptimalDrillTiming(institutionId?: string): Promise<OptimalDrillTiming | null> {
     try {
-      const response = await apiClient.get('/ml-predictions/optimal-timing', {
-        params: institutionId ? { institutionId } : undefined,
-      });
-      if (response?.data?.data) {
-        return response.data.data;
-      }
-      return null;
+      const query = new URLSearchParams();
+      if (institutionId) query.set('institutionId', institutionId);
+      const response = await apiClient.get<OptimalDrillTiming>(`/ml-predictions/optimal-timing?${query}`);
+      return response.success ? response.data ?? null : null;
     } catch (error) {
       console.error('getOptimalDrillTiming error:', error);
       return null;
@@ -183,11 +181,11 @@ export const mlPredictionsApi = {
     drillId?: string;
   }): Promise<DrillAnomaliesResult | null> {
     try {
-      const response = await apiClient.get('/ml-predictions/anomalies', { params });
-      if (response?.data?.data) {
-        return response.data.data;
-      }
-      return null;
+      const query = new URLSearchParams();
+      if (params?.institutionId) query.set('institutionId', params.institutionId);
+      if (params?.drillId) query.set('drillId', params.drillId);
+      const response = await apiClient.get<DrillAnomaliesResult>(`/ml-predictions/anomalies?${query}`);
+      return response.success ? response.data ?? null : null;
     } catch (error) {
       console.error('detectAnomalies error:', error);
       return null;
@@ -198,8 +196,9 @@ export const mlPredictionsApi = {
    * Forecast student progress
    */
   async forecastStudentProgress(userId: string): Promise<StudentProgressForecast> {
-    const response = await apiClient.get(`/ml-predictions/student-progress/${userId}`);
-    return response.data.data;
+    const response = await apiClient.get<StudentProgressForecast>(`/ml-predictions/student-progress/${userId}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch student progress forecast');
   },
 
   /**
@@ -210,15 +209,11 @@ export const mlPredictionsApi = {
     userIds?: string[];
   }): Promise<BatchPredictionsResult | null> {
     try {
-      const response = await apiClient.post('/ml-predictions/batch-predict', params || {});
-      if (response?.data?.data) {
-        return response.data.data;
-      }
-      return null;
+      const response = await apiClient.post<BatchPredictionsResult>('/ml-predictions/batch-predict', params || {});
+      return response.success ? response.data ?? null : null;
     } catch (error) {
       console.error('batchPredictStudentRisks error:', error);
       return null;
     }
   },
 };
-

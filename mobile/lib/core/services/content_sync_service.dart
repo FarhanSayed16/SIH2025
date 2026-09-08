@@ -1,6 +1,4 @@
 // import 'package:hive_flutter/hive_flutter.dart'; // Unused import removed
-import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
 import '../constants/app_constants.dart';
@@ -87,67 +85,6 @@ class ContentSyncService {
       // Ignore
     }
     return null;
-  }
-
-  /// Inject mock data (Add-on 3)
-  Future<void> injectMockData() async {
-    try {
-      // Check if already injected
-      final box = await _storageService.openBox(AppConstants.cacheBox);
-      if (box.get('mockDataInjected') == true) {
-        return; // Already injected
-      }
-
-      // Load mock data from assets
-      final jsonString = await rootBundle.loadString('assets/mock_data.json');
-      final mockData = json.decode(jsonString) as Map<String, dynamic>;
-
-      // Inject drill logs
-      if (mockData['drillLogs'] != null) {
-        final drillLogBox =
-            await _storageService.openBox(AppConstants.drillLogsBox);
-        final drillLogs = mockData['drillLogs'] as List;
-        for (var log in drillLogs) {
-          final logMap = log as Map<String, dynamic>;
-          final id = (logMap['id'] as String?) ??
-              DateTime.now().millisecondsSinceEpoch.toString();
-          await drillLogBox.put(id, {
-            ...logMap,
-            'synced': false,
-            'createdAt': DateTime.now().toIso8601String(),
-          });
-        }
-      }
-
-      // Inject badges (store in cache box)
-      if (mockData['badges'] != null) {
-        await box.put('badges', mockData['badges']);
-      }
-
-      // Inject leaderboard data
-      if (mockData['leaderboard'] != null) {
-        await box.put('leaderboard', mockData['leaderboard']);
-      }
-
-      // Mark as injected
-      await box.put('mockDataInjected', true);
-    } catch (e) {
-      print('Failed to inject mock data: $e');
-    }
-  }
-
-  /// Check if mock data should be injected
-  Future<bool> shouldInjectMockData() async {
-    try {
-      final drillLogBox =
-          await _storageService.openBox(AppConstants.drillLogsBox);
-      final cacheBox = await _storageService.openBox(AppConstants.cacheBox);
-
-      // Check if drill logs box is empty and mock data not injected
-      return drillLogBox.isEmpty && cacheBox.get('mockDataInjected') != true;
-    } catch (e) {
-      return false;
-    }
   }
 
   /// Get cached modules last update time

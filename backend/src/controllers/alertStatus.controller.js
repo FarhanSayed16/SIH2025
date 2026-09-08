@@ -1,3 +1,4 @@
+import { canAccessInstitution } from '../utils/access.js';
 /**
  * Phase 4.4: Emergency Acknowledgment & Triage Controller
  * 
@@ -162,7 +163,7 @@ export const markMissing = async (req, res) => {
     }
 
     // Verify permissions (admin or teacher/admin of same institution)
-    if (req.user.role !== 'admin' && alert.institutionId.toString() !== req.user.institutionId?.toString()) {
+    if (!canAccessInstitution(req.user, alert.institutionId)) {
       return errorResponse(res, 'Unauthorized to mark users as missing', 403);
     }
 

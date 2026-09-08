@@ -17,7 +17,7 @@ import logger from '../config/logger.js';
 export const register = async (req, res) => {
   try {
     // Phase 3.4.6.1: Accept all registration fields
-    const { email, password, name, role, phone, institutionId, grade, section, classId } = req.body;
+    const { email, password, name, role, phone, institutionId, grade, section, classId, classCode } = req.body;
 
     const result = await registerUser({
       email,
@@ -28,7 +28,8 @@ export const register = async (req, res) => {
       institutionId,
       grade,
       section,
-      classId
+      classId,
+      classCode
     });
 
     return successResponse(
@@ -208,4 +209,3 @@ export const resetPasswordController = async (req, res) => {
     );
   }
 };
-

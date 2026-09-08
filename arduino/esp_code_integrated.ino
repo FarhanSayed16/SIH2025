@@ -15,6 +15,10 @@
  #include <HTTPClient.h>
  #include <WiFiClientSecure.h>
  #include <ArduinoJson.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <freertos/task.h>
+#include <time.h>
  
  const int PIN_FLAME = 35;
  const int PIN_WATER = 33;
@@ -25,6 +29,15 @@
  const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
  const char* BACKEND_URL = "https://YOUR_TUNNEL_OR_HOST"; // no trailing slash
  const char* API_VERSION = "/api";
+// Paste the PEM root CA that signs BACKEND_URL's certificate here, for example
+// R"PEM(-----BEGIN CERTIFICATE-----
+// ...
+// -----END CERTIFICATE-----)PEM".
+// Obtain it from your server/CA administrator. Empty means HTTPS is disabled.
+const char* BACKEND_ROOT_CA = "";
+const char* NTP_SERVER = "pool.ntp.org"; // Set a reachable time server locally.
+const int NETWORK_TIMEOUT_MS = 5000;
+
  const char* DEVICE_ID = "KAV-NODE-001";
  const char* DEVICE_TOKEN_PRESET = ""; // from register-iot-device.js
  // ===============================================
@@ -45,9 +58,25 @@
 Adafruit_MPU6050 mpu;
 
 // --- NETWORK CLIENT (Static to prevent scope issues) ---
-static WiFiClientSecure secureClient; // Static to persist across calls
+static WiFiClientSecure secureClient; // Owned exclusively by networkWorker.
 
 // --- FUNCTIONS ---
+// Fixed-size messages only: FreeRTOS queues copy bytes, not String ownership.
+struct NetworkMessage {
+  int kind; // 0 telemetry, 1 fire, 2 flood, 3 earthquake
+  int flame;
+  int water;
+  float x;
+  float y;
+  float z;
+  float magnitude;
+};
+QueueHandle_t alertQueue = nullptr;
+QueueHandle_t telemetryQueue = nullptr;
+void networkWorker(void* argument);
+bool queueAlert(int kind, int water, float magnitude);
+void startNetworking();
+
 void connectToWiFi();
 void sendTelemetry(int flame, int water, float accelX, float accelY, float accelZ, float magnitude);
 void sendAlert(String type, float value);
@@ -78,8 +107,8 @@ void playSound(String type);
    mpu.setAccelerometerRange(MPU6050_RANGE_8_G); 
    mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
    
-   // 4. Connect to Wi-Fi
-   connectToWiFi();
+   // Networking never runs on the sensor/alarm task.
+   startNetworking();
 
    if (deviceToken.length() == 0) {
      Serial.println("NO DEVICE TOKEN. Set DEVICE_TOKEN_PRESET from register-iot-device.js");
@@ -89,74 +118,45 @@ void playSound(String type);
  }
  
  void loop() {
-   // Reconnect Wi-Fi if dropped
-   if (WiFi.status() != WL_CONNECTED) {
-     connectToWiFi();
-   }
- 
-  // --- READ SENSORS ---
-  int flameState = digitalRead(PIN_FLAME); // LOW (0) = FIRE
-  int waterLevel = analogRead(PIN_WATER);  // 0 - 4095
-  
+  int flameState = digitalRead(PIN_FLAME);
+  int waterLevel = analogRead(PIN_WATER);
   sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp); 
-  
-  // Calculate magnitude for earthquake detection
+  mpu.getEvent(&a, &g, &temp);
   float magnitude = sqrt(sq(a.acceleration.x) + sq(a.acceleration.y) + sq(a.acceleration.z));
-  float vibration = abs(magnitude - GRAVITY); // Vibration above gravity
- 
-  // --- TELEMETRY (Heartbeat) ---
-  if (millis() - lastTelemetry > TELEMETRY_INTERVAL) {
-    sendTelemetry(flameState, waterLevel, a.acceleration.x, a.acceleration.y, a.acceleration.z, magnitude);
-    lastTelemetry = millis();
-  }
- 
-   // --- ALERTS LOGIC ---
- 
-  // 1. FIRE (Priority 1)
+  float vibration = fabs(magnitude - GRAVITY);
+  const unsigned long now = millis();
+
+  // Local actuation always precedes queuing any network work.
+  int hazard = 0;
   if (flameState == LOW) {
-    Serial.println("🔥🔥 CRITICAL: FIRE DETECTED! 🔥🔥");
+    hazard = 1;
     playSound("FIRE");
-    if (millis() - lastAlertTime > ALERT_COOLDOWN) {
-      delay(300); // Add delay before HTTP call
-      sendAlert("fire", 1.0); // 1.0 = True
-      lastAlertTime = millis();
-      delay(300); // Add delay after
-    }
-  }
-  
-  // 2. FLOOD (Priority 2)
-  else if (waterLevel > WATER_FLOOD_LEVEL) {
-    Serial.print("🌊 FLOOD ALERT! Level: "); Serial.println(waterLevel);
+  } else if (waterLevel > WATER_FLOOD_LEVEL) {
+    hazard = 2;
     playSound("FLOOD");
-    if (millis() - lastAlertTime > ALERT_COOLDOWN) {
-      delay(300); // Add delay before HTTP call
-      sendAlert("flood", (float)waterLevel);
-      lastAlertTime = millis();
-      delay(300); // Add delay after
-    }
+  } else {
+    digitalWrite(PIN_BUZZER, LOW); // Earthquake alerts remain silent.
+    if (vibration > SHAKE_THRESHOLD) hazard = 3;
   }
-   
-    // 3. EARTHQUAKE (Priority 3)
-    else if (vibration > SHAKE_THRESHOLD) {
-      Serial.print("⚠️ SHAKING! Force: "); Serial.println(vibration);
-      // Silent Alarm (No Sound), just data
-      if (millis() - lastAlertTime > ALERT_COOLDOWN) {
-        delay(500); // Add delay before HTTP call to prevent crashes
-        sendAlert("earthquake", vibration);
-        lastAlertTime = millis();
-        delay(500); // Add delay after to prevent rapid calls
-      }
-    }
-   
-   // SAFE STATE
-   else {
-     digitalWrite(PIN_BUZZER, LOW);
+
+  static int previousHazard = 0;
+  if (hazard && (hazard != previousHazard || now - lastAlertTime >= ALERT_COOLDOWN)) {
+    if (queueAlert(hazard, waterLevel, vibration)) {
+      lastAlertTime = now;
+      previousHazard = hazard;
    }
-   
-  delay(200); // Increased delay for stability and to prevent watchdog issues
+  }
+  if (!hazard) previousHazard = 0;
+
+  if (telemetryQueue && now - lastTelemetry >= TELEMETRY_INTERVAL) {
+    NetworkMessage message = {0, flameState, waterLevel, a.acceleration.x,
+                              a.acceleration.y, a.acceleration.z, magnitude};
+    xQueueOverwrite(telemetryQueue, &message); // Retain only the latest reading.
+    lastTelemetry = now;
+  }
+  delay(20); // Yield to ESP32 tasks without waiting for network operations.
 }
- 
+
  // --- NETWORK FUNCTIONS ---
  
  void connectToWiFi() {
@@ -183,20 +183,14 @@ void playSound(String type);
  }
  
 void sendAlert(String type, float value) {
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("⚠️ Wi-Fi not connected. Cannot send alert.");
+  if (WiFi.status() != WL_CONNECTED || deviceToken.length() == 0) {
+    Serial.println("Wi-Fi or device token unavailable. Cannot send alert.");
     return;
   }
 
-  // Add delay to prevent rapid calls
-  delay(200);
-  
-  // Use static client to prevent scope issues
-  secureClient.setInsecure(); // IGNORE SSL ERRORS (Crucial for DevTunnels)
-  secureClient.setTimeout(10000);
-  
   HTTPClient http;
-  http.setTimeout(10000);
+  http.setTimeout(NETWORK_TIMEOUT_MS);
+  http.setConnectTimeout(NETWORK_TIMEOUT_MS);
   http.setReuse(false); // Don't reuse connection
   
   String url = String(BACKEND_URL) + API_VERSION + "/devices/" + String(DEVICE_ID) + "/alert";
@@ -260,18 +254,14 @@ void sendAlert(String type, float value) {
   }
   
   http.end();
-  delay(100); // Small delay after HTTP call
 }
  
 void sendTelemetry(int flame, int water, float accelX, float accelY, float accelZ, float magnitude) {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED || deviceToken.length() == 0) return;
 
-  // Use static client to prevent scope issues
-  secureClient.setInsecure();
-  secureClient.setTimeout(10000);
-  
   HTTPClient http;
-  http.setTimeout(10000);
+  http.setTimeout(NETWORK_TIMEOUT_MS);
+  http.setConnectTimeout(NETWORK_TIMEOUT_MS);
   http.setReuse(false);
   
   String url = String(BACKEND_URL) + API_VERSION + "/devices/" + String(DEVICE_ID) + "/telemetry";
@@ -322,15 +312,72 @@ void sendTelemetry(int flame, int water, float accelX, float accelY, float accel
 }
  
  void playSound(String type) {
-   if (type == "FIRE") {
-     // Siren
-     for(int i=0; i<5; i++) {
-       digitalWrite(PIN_BUZZER, HIGH); delay(50);
-       digitalWrite(PIN_BUZZER, LOW); delay(50);
+  // Nonblocking active-buzzer patterns keep sensors sampling during alarms.
+  const unsigned long now = millis();
+  bool on = type == "FIRE" ? now % 100 < 50 : now % 400 < 300;
+  digitalWrite(PIN_BUZZER, on ? HIGH : LOW);
+}
+
+void startNetworking() {
+  if (!String(BACKEND_URL).startsWith("https://") || strlen(BACKEND_ROOT_CA) == 0) {
+    Serial.println("Networking disabled: configure HTTPS BACKEND_URL and BACKEND_ROOT_CA.");
+    return;
+  }
+  alertQueue = xQueueCreate(6, sizeof(NetworkMessage));
+  telemetryQueue = xQueueCreate(1, sizeof(NetworkMessage));
+  if (!alertQueue || !telemetryQueue ||
+      xTaskCreate(networkWorker, "kavach-network", 8192, nullptr, 1, nullptr) != pdPASS) {
+    if (alertQueue) vQueueDelete(alertQueue);
+    if (telemetryQueue) vQueueDelete(telemetryQueue);
+    alertQueue = nullptr;
+    telemetryQueue = nullptr;
+    Serial.println("Network task unavailable. Local alarms remain active.");
+  }
+}
+
+bool queueAlert(int kind, int water, float magnitude) {
+  if (!alertQueue) return false;
+  NetworkMessage message = {kind, 0, water, 0, 0, 0, magnitude};
+  // Best-effort bounded buffer: a full queue never blocks the safety loop.
+  // Active hazards retry enqueueing on the next sample; queued != delivered.
+  return xQueueSend(alertQueue, &message, 0) == pdTRUE;
+}
+
+void networkWorker(void* argument) {
+  secureClient.setCACert(BACKEND_ROOT_CA);
+  secureClient.setHandshakeTimeout(5); // Seconds; HTTP timeouts use milliseconds.
+  unsigned long lastReconnect = 0;
+  bool attemptedConnection = false;
+  bool timeStarted = false;
+  for (;;) {
+    if (WiFi.status() != WL_CONNECTED) {
+      if (!attemptedConnection || millis() - lastReconnect >= 30000) {
+        connectToWiFi(); // Any connection wait is isolated from local alarms.
+        lastReconnect = millis();
+        attemptedConnection = true;
      }
-   } else if (type == "FLOOD") {
-     // Beep
-     digitalWrite(PIN_BUZZER, HIGH); delay(300);
-     digitalWrite(PIN_BUZZER, LOW); delay(100);
+      vTaskDelay(pdMS_TO_TICKS(100));
+      continue;
    }
- }
+    if (String(BACKEND_URL).startsWith("https://")) {
+      if (!timeStarted) {
+        configTime(0, 0, NTP_SERVER);
+        timeStarted = true;
+     }
+      // Certificate validity needs a synchronized clock. Fail closed until ready.
+      if (time(nullptr) < 1704067200) {
+        vTaskDelay(pdMS_TO_TICKS(100));
+        continue;
+     }
+   }
+    NetworkMessage message;
+    if (xQueueReceive(alertQueue, &message, 0) == pdTRUE) {
+      const char* type = message.kind == 1 ? "fire" : message.kind == 2 ? "flood" : "earthquake";
+      sendAlert(type, message.kind == 1 ? 1.0f : message.kind == 2
+                        ? static_cast<float>(message.water) : message.magnitude);
+    } else if (xQueueReceive(telemetryQueue, &message, 0) == pdTRUE) {
+      sendTelemetry(message.flame, message.water, message.x, message.y, message.z, message.magnitude);
+   }
+    vTaskDelay(pdMS_TO_TICKS(20));
+  }
+}

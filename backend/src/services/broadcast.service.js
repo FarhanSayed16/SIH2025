@@ -125,7 +125,8 @@ const getRecipients = async (broadcastConfig, institutionId, senderRole) => {
       case 'all':
         // Admin: entire school population by institutionId
         // Others: default to entire institution as well (no class restriction here)
-        const allUsers = await User.find({
+        {
+const allUsers = await User.find({
           institutionId,
           isActive: true
         }).select('name email phone deviceToken role');
@@ -141,9 +142,11 @@ const getRecipients = async (broadcastConfig, institutionId, senderRole) => {
           });
         });
         break;
+}
 
       case 'students':
-        const students = await User.find({
+        {
+const students = await User.find({
           institutionId,
           role: 'student',
           isActive: true
@@ -159,9 +162,11 @@ const getRecipients = async (broadcastConfig, institutionId, senderRole) => {
           });
         });
         break;
+}
 
       case 'teachers':
-        const teachers = await User.find({
+        {
+const teachers = await User.find({
           institutionId,
           role: 'teacher',
           isActive: true
@@ -177,9 +182,11 @@ const getRecipients = async (broadcastConfig, institutionId, senderRole) => {
           });
         });
         break;
+}
 
       case 'parents':
-        const parents = await User.find({
+        {
+const parents = await User.find({
           institutionId,
           role: 'parent',
           isActive: true
@@ -195,6 +202,7 @@ const getRecipients = async (broadcastConfig, institutionId, senderRole) => {
           });
         });
         break;
+}
 
       case 'admins': {
         // Include both admin and system-admin roles for the institution
@@ -635,7 +643,7 @@ export const processScheduledBroadcasts = async () => {
           channels: currentBroadcast.channels?.length || 0
         });
 
-        logger.info(`Scheduled broadcast processed: ${currentBroadcast._id} (${successful} successful, ${failed} failed, ${queued} queued)`);
+        logger.info(`Scheduled broadcast processed: ${currentBroadcast._id} (${successful} successful, ${failed} failed, ${skipped} skipped)`);
       } catch (error) {
         logger.error(`Error processing scheduled broadcast ${currentBroadcast._id}:`, error);
         // Mark as failed and clear processing lock

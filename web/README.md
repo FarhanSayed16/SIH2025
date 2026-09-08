@@ -6,7 +6,7 @@ Next.js admin dashboard for managing drills, alerts, and devices.
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 22.12+ (tested on 22.14; use the root workspace lockfile)
 - npm or yarn
 - Backend API running (see `backend/README.md`)
 

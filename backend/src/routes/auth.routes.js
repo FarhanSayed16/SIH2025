@@ -46,7 +46,7 @@ const registerValidation = [
     .withMessage('Enter a valid 10-digit Indian phone number'),
   body('role')
     .optional()
-    .isIn(['student', 'teacher', 'admin', 'parent'])
+    .isIn(['student', 'teacher', 'parent'])
     .withMessage('Invalid role'),
   body('institutionId')
     .optional()
@@ -203,4 +203,3 @@ router.post(
 );
 
 export default router;
-

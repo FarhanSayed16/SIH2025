@@ -19,3 +19,8 @@ export const getSocketIO = () => {
   return ioInstance;
 };
 
+
+/** Disconnect every connection for a user, including idle subscribed sockets. */
+export const disconnectUserSessions = (userId) => {
+  ioInstance?.in(`user:${userId}`).disconnectSockets(true);
+};

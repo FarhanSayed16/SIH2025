@@ -16,9 +16,9 @@ vi.mock('../../lib/api/auth', () => ({
 }));
 
 describe('Auth Store', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset store state
-    useAuthStore.getState().logout();
+    await useAuthStore.getState().logout();
     vi.clearAllMocks();
   });
 

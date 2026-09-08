@@ -1,6 +1,8 @@
+import { canAccessInstitution, referenceId, isSystemAdmin, isStaff } from '../utils/access.js';
 import User from '../models/User.js';
 import { successResponse, errorResponse, paginatedResponse } from '../utils/response.js';
 import { paginate } from '../utils/helpers.js';
+import { disconnectUserSessions } from '../config/socket.js';
 import logger from '../config/logger.js';
 
 /**
@@ -33,29 +35,38 @@ export const getUserById = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const updates = req.body;
-
-    // Don't allow password or role updates through this endpoint
-    delete updates.password;
-    delete updates.role;
-
-    // RBAC Refinement: Handle approval status updates
-    if (updates.approvalStatus) {
-      // Only teachers and admins can approve/reject students
-      if (req.user.role !== 'teacher' && req.user.role !== 'admin') {
-        return errorResponse(res, 'Unauthorized: Only teachers and admins can approve students', 403);
+    const target = await User.findById(id);
+    if (!target) return errorResponse(res, 'User not found', 404);
+    const ownProfile = referenceId(target) === req.userId.toString();
+    if (!ownProfile && !canAccessInstitution(req.user, target.institutionId)) {
+      return errorResponse(res, 'Access denied', 403);
+    }
+    const allowed = new Set(['name', 'phone', 'language', 'deviceToken']);
+    const admin = isStaff(req.user) && ['admin', 'system_admin'].includes(req.user.role.toLowerCase());
+    if (admin && !ownProfile) {
+      for (const field of ['institutionId', 'classId', 'grade', 'section', 'isActive']) allowed.add(field);
+    }
+    if (isStaff(req.user) && !ownProfile && (admin || target.role === 'student')) {
+      allowed.add('approvalStatus');
+      allowed.add('rejectionReason');
+    }
+    if (Object.keys(req.body).some(key => !allowed.has(key))) {
+      return errorResponse(res, 'Profile contains protected fields', 403);
+    }
+    const updates = { ...req.body };
+    if (updates.institutionId && !isSystemAdmin(req.user) && !canAccessInstitution(req.user, updates.institutionId)) {
+      return errorResponse(res, 'Access denied to institution', 403);
+    }
+    if (updates.classId) {
+      const Class = (await import('../models/Class.js')).default;
+      const classroom = await Class.findById(updates.classId);
+      if (!classroom || referenceId(classroom.institutionId) !== referenceId(updates.institutionId || target.institutionId)) {
+        return errorResponse(res, 'Class must belong to the assigned institution', 400);
       }
-
-      // If approving, set approvedBy and approvedAt
-      if (updates.approvalStatus === 'approved') {
-        updates.approvedBy = req.user.userId;
-        updates.approvedAt = new Date();
-      } else if (updates.approvalStatus === 'rejected') {
-        // Keep rejectionReason if provided
-        if (!updates.rejectionReason) {
-          updates.rejectionReason = 'Rejected by ' + req.user.name;
-        }
-      }
+    }
+    if (updates.approvalStatus === 'approved') {
+      updates.approvedBy = req.userId;
+      updates.approvedAt = new Date();
     }
 
     const user = await User.findByIdAndUpdate(
@@ -68,6 +79,10 @@ export const updateUser = async (req, res) => {
 
     if (!user) {
       return errorResponse(res, 'User not found', 404);
+    }
+
+    if (['isActive', 'approvalStatus', 'institutionId', 'classId'].some(key => key in updates)) {
+      disconnectUserSessions(user._id);
     }
 
     logger.info(`User updated: ${user.email}`);
@@ -112,6 +127,7 @@ export const approveUser = async (req, res) => {
     user.approvedAt = new Date();
     user.isActive = true;
     await user.save();
+    disconnectUserSessions(user._id);
     
     // CRITICAL: Re-fetch user to ensure all fields are fresh
     // This ensures the response has the latest data
@@ -169,6 +185,7 @@ export const assignInstitution = async (req, res) => {
     // Update institution
     user.institutionId = institutionId;
     await user.save();
+    disconnectUserSessions(user._id);
 
     logger.info(`Institution ${institutionId} assigned to user ${user.email} by admin ${req.userId}`);
 
@@ -222,6 +239,7 @@ export const rejectUser = async (req, res) => {
     user.rejectionReason = reason || 'Rejected by administrator';
     user.isActive = false; // Deactivate rejected teachers
     await user.save();
+    disconnectUserSessions(user._id);
     
     // CRITICAL: Re-fetch user to ensure all fields are fresh
     const updatedUser = await User.findById(userId)
@@ -324,6 +342,7 @@ export const registerFCMToken = async (req, res) => {
 
     user.deviceToken = fcmToken;
     await user.save();
+    disconnectUserSessions(user._id);
 
     logger.info(`FCM token registered for user ${id}`);
 
@@ -500,6 +519,7 @@ export const bulkUserOperation = async (req, res) => {
         } else {
           user.isActive = action === 'activate';
           await user.save();
+    disconnectUserSessions(user._id);
           affected++;
           results.push({ userId, success: true, action, isActive: user.isActive });
           logger.info(`User ${action}d: ${user.email}`);

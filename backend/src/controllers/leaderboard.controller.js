@@ -62,7 +62,8 @@ export const getLeaderboard = async (req, res) => {
         break;
 
       case 'games':
-        const { gameType } = req.query;
+        {
+const { gameType } = req.query;
         if (!gameType) {
           return errorResponse(
             res,
@@ -88,6 +89,7 @@ export const getLeaderboard = async (req, res) => {
           count: leaderboard.length,
         };
         break;
+}
 
       case 'badges':
         try {
@@ -109,7 +111,8 @@ export const getLeaderboard = async (req, res) => {
 
       case 'class':
         // Import service function with alias to avoid conflict
-        const { getClassLeaderboard: getClassLeaderboardService } = await import('../services/leaderboard.service.js');
+        {
+const { getClassLeaderboard: getClassLeaderboardService } = await import('../services/leaderboard.service.js');
         leaderboard = await getClassLeaderboardService(
           institutionId,
           parseInt(limit)
@@ -121,10 +124,12 @@ export const getLeaderboard = async (req, res) => {
           count: leaderboard.length,
         };
         break;
+}
 
       case 'drills':
         // Keep existing drill logic
-        const DrillLog = (await import('../models/DrillLog.js')).default;
+        {
+const DrillLog = (await import('../models/DrillLog.js')).default;
         const drillStats = await DrillLog.aggregate([
           {
             $match: {
@@ -179,6 +184,7 @@ export const getLeaderboard = async (req, res) => {
           count: leaderboard.length,
         };
         break;
+}
 
       default:
         return errorResponse(res, 'Invalid leaderboard type', 400);

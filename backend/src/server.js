@@ -208,6 +208,7 @@ import { preventNoSQLInjection } from './middleware/input-validation.middleware.
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+app.use('/api', preventNoSQLInjection);
 app.use('/api/auth', authRoutes);
 app.use('/api/teacher', teacherRoutes); // Phase 2.5
 app.use('/api/parent', parentRoutes); // Parent Monitoring System
@@ -253,8 +254,7 @@ app.use('/api/incidents', incidentRoutes); // Phase 4.10
 app.use('/api/mesh', meshRoutes); // Phase 5.3
 app.use('/api/ar', arRoutes); // Phase 5.7
 
-// Phase 3.4.4: Prevent NoSQL injection (apply to all routes)
-app.use(preventNoSQLInjection);
+
 
 app.get('/api', (req, res) => {
   res.json({

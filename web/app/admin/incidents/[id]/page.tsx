@@ -770,7 +770,7 @@ export default function IncidentDetailsPage() {
       <div className="p-6 max-w-4xl mx-auto">
         <Card className="p-6">
           <h2 className="text-lg font-bold">Incident not found</h2>
-          <p className="mt-2 text-sm text-gray-600">This incident either does not exist or you don't have access.</p>
+          <p className="mt-2 text-sm text-gray-600">This incident either does not exist or you don&apos;t have access.</p>
           <div className="mt-4">
             <Button onClick={() => router.push('/admin/incidents')}>Back to list</Button>
           </div>

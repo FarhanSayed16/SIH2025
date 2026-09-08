@@ -16,8 +16,6 @@ import 'core/constants/app_constants.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/localizations/app_localizations_delegate.dart';
 import 'core/navigation/app_router.dart';
-import 'core/services/content_sync_service.dart';
-import 'core/services/storage_service.dart';
 
 // Feature Imports - Auth
 import 'features/auth/providers/auth_provider.dart';
@@ -141,19 +139,6 @@ void main() async {
     }
   } catch (e) {
     debugPrint('⚠️ Error requesting notification permissions: $e');
-  }
-
-  // 6. Inject mock data if needed (Optional Debugging)
-  try {
-    final storageService = StorageService();
-    final contentSyncService = ContentSyncService(
-      storageService: storageService,
-    );
-    if (await contentSyncService.shouldInjectMockData()) {
-      await contentSyncService.injectMockData();
-    }
-  } catch (e) {
-    debugPrint('Mock data injection skipped: $e');
   }
 
   runApp(

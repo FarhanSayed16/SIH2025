@@ -44,11 +44,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     String charFolder = _comicChar; // 'doremon', 'shinchan', 'edusafe'
     String topicFolder = baseTopic; // Default UPPERCASE e.g. 'EARTHQUAKE'
 
-    // Apply lowercase logic for non-doremon characters
-    if (_comicChar != 'doremon') {
-      topicFolder = baseTopic.toLowerCase(); // 'earthquake'
-    }
-
     String langFolder = _comicLang; // 'English' or 'Hindi'
 
     // 2. Construct the asset path prefix: assets/Mod_game/{char}/{topic}/{lang}/

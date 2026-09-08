@@ -110,6 +110,43 @@ export interface QuizAccuracy {
   }>;
 }
 
+export interface GameAttemptAnalytics {
+  byGameType: Array<{ gameType: string; totalAttempts: number; uniquePlayers: number; avgAttemptsPerPlayer: number }>;
+  overTime: Array<{ gameType: string; date: string; attempts: number }>;
+}
+
+export interface ModuleCompletionAnalytics {
+  totalUsers: number;
+  modules: Array<{ moduleId: string; views: number; completions: number; uniqueViewers: number; uniqueCompleters: number; completionRate: number }>;
+  overallCompletionRate: number;
+}
+
+export interface DetailedQuizAccuracy {
+  byModule: Array<{ moduleId: string; totalAttempts: number; avgAccuracy: number | null; minAccuracy: number | null; maxAccuracy: number | null; passRate: number; avgTimeTaken: number | null }>;
+  overTime: Array<{ date: string; avgAccuracy: number; attempts: number }>;
+}
+
+export interface DrillParticipationAnalytics {
+  drills: Array<{ drillId: string; drillName?: string; totalParticipants: number; avgEvacuationTimeSeconds: number | null; avgScore: number; minEvacuationTimeSeconds: number; maxEvacuationTimeSeconds: number }>;
+  totalParticipation: number;
+  avgEvacuationTime: number;
+}
+
+export interface HazardAccuracy {
+  totalGames: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  totalIdentified: number;
+  accuracyRate: number;
+}
+
+export interface StreakAnalytics {
+  streaks: Array<{ userId: string; loginStreak: number; moduleCount: number }>;
+  maxStreak: number;
+  avgStreak: number;
+  totalUsersWithStreaks: number;
+}
+
 export const analyticsApi = {
   /**
    * Get drill performance metrics
@@ -242,8 +279,9 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const response = await apiClient.get(`/analytics/content/game-attempts?${params.toString()}`);
-    return response.data.data;
+    const response = await apiClient.get<GameAttemptAnalytics>(`/analytics/content/game-attempts?${params.toString()}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch game attempt analytics');
   },
 
   /**
@@ -254,8 +292,9 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const response = await apiClient.get(`/analytics/content/module-completion?${params.toString()}`);
-    return response.data.data;
+    const response = await apiClient.get<ModuleCompletionAnalytics>(`/analytics/content/module-completion?${params.toString()}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch module completion analytics');
   },
 
   /**
@@ -267,8 +306,9 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const response = await apiClient.get(`/analytics/content/quiz-accuracy?${params.toString()}`);
-    return response.data.data;
+    const response = await apiClient.get<DetailedQuizAccuracy>(`/analytics/content/quiz-accuracy?${params.toString()}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch quiz accuracy analytics');
   },
 
   /**
@@ -279,8 +319,9 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const response = await apiClient.get(`/analytics/content/drill-participation?${params.toString()}`);
-    return response.data.data;
+    const response = await apiClient.get<DrillParticipationAnalytics>(`/analytics/content/drill-participation?${params.toString()}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch drill participation analytics');
   },
 
   /**
@@ -291,8 +332,9 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
 
-    const response = await apiClient.get(`/analytics/content/hazard-accuracy?${params.toString()}`);
-    return response.data.data;
+    const response = await apiClient.get<HazardAccuracy>(`/analytics/content/hazard-accuracy?${params.toString()}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch hazard recognition analytics');
   },
 
   /**
@@ -302,8 +344,8 @@ export const analyticsApi = {
     const params = new URLSearchParams();
     if (streakType) params.append('streakType', streakType);
 
-    const response = await apiClient.get(`/analytics/content/streaks?${params.toString()}`);
-    return response.data.data;
+    const response = await apiClient.get<StreakAnalytics>(`/analytics/content/streaks?${params.toString()}`);
+    if (response.success && response.data) return response.data;
+    throw new Error(response.message || 'Failed to fetch streak analytics');
   }
 };
-

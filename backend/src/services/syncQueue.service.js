@@ -397,9 +397,10 @@ const checkForConflicts = async (queueItem, dataType) => {
  * @param {string} resolution - Resolution strategy
  * @param {Object} resolvedData - Resolved data (if merge or client-wins)
  */
-export const resolveConflict = async (queueItemId, resolution, resolvedData = null) => {
+export const resolveConflict = async (queueItemId, resolution, resolvedData = null, userId) => {
   try {
-    const queueItem = await SyncQueue.findById(queueItemId);
+    if (!userId) throw new Error('Authenticated user is required');
+    const queueItem = await SyncQueue.findOne({ _id: queueItemId, userId });
     if (!queueItem) {
       throw new Error('Queue item not found');
     }

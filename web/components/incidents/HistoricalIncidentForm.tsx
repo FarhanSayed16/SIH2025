@@ -21,6 +21,7 @@ interface HistoricalIncidentFormProps {
 export function HistoricalIncidentForm({ onClose, onSuccess, institutionId }: HistoricalIncidentFormProps) {
   const { showToast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSummarising, setIsSummarising] = useState(false);
   const [activeSection, setActiveSection] = useState(1);
 
   const [formData, setFormData] = useState<CreateHistoricalIncidentRequest>({
@@ -260,12 +261,13 @@ export function HistoricalIncidentForm({ onClose, onSuccess, institutionId }: Hi
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={isSummarising || !formData.description.trim()}
+                      disabled={isSummarising || !formData.description?.trim()}
                       onClick={async () => {
-                        if (!formData.description.trim()) return;
+                        const description = formData.description?.trim();
+                        if (!description) return;
                         setIsSummarising(true);
                         try {
-                          const result = await aiApi.summariseIncident(formData.description);
+                          const result = await aiApi.summariseIncident(description);
                           const bullets = result?.bullets ?? [];
                           if (bullets.length) {
                             handleInputChange('description', bullets.join('\n• ').replace(/^/, '• '));
@@ -284,7 +286,7 @@ export function HistoricalIncidentForm({ onClose, onSuccess, institutionId }: Hi
                     </Button>
                   </div>
                   <textarea
-                    value={formData.description}
+                    value={formData.description ?? ''}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                     rows={4}
@@ -701,4 +703,3 @@ export function HistoricalIncidentForm({ onClose, onSuccess, institutionId }: Hi
     </div>
   );
 }
-

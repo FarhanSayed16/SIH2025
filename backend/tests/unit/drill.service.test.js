@@ -1,16 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import mongoose from 'mongoose';
 import Drill from '../../src/models/Drill.js';
+import User from '../../src/models/User.js';
 import { scheduleDrill, triggerDrill, acknowledgeDrill } from '../../src/services/drill.service.js';
-
-// Mock logger
-jest.mock('../../src/config/logger.js', () => ({
-  default: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-  }
-}));
 
 describe('Drill Service', () => {
   let testDrill;
@@ -20,6 +12,8 @@ describe('Drill Service', () => {
   beforeEach(async () => {
     // Clear drills collection
     await Drill.deleteMany({});
+    await User.deleteMany({});
+    await User.create({ _id: testUserId, name: 'Test Student', role: 'student', userType: 'roster_record', grade: '5', institutionId: testInstitutionId });
   });
 
   afterEach(async () => {
@@ -87,6 +81,8 @@ describe('Drill Service', () => {
         institutionId: testInstitutionId,
         type: 'fire',
         status: 'in_progress',
+        participants: [{ userId: testUserId, role: 'student' }],
+        scheduledAt: new Date(),
         triggeredAt: new Date()
       });
     });
@@ -95,7 +91,9 @@ describe('Drill Service', () => {
       const acknowledged = await acknowledgeDrill(testDrill._id, testUserId);
 
       expect(acknowledged).toBeDefined();
-      expect(acknowledged.acknowledgedBy).toContainEqual(testUserId);
+      expect(acknowledged.participants.find(p => p.userId.equals(testUserId)).acknowledged).toBe(true);
+      const stored = await Drill.findById(testDrill._id);
+      expect(stored.participants[0].acknowledgedAt).toBeInstanceOf(Date);
     });
 
     it('should throw error for non-existent drill', async () => {

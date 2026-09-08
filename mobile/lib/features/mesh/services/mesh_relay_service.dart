@@ -49,22 +49,17 @@ class MeshRelayService {
         return;
       }
 
-      // 2. Verify HMAC signature (if security service available)
-      if (_securityService != null && message.signature != null && message.signature!.isNotEmpty) {
-        final isValid = await _securityService!.verifySignature(message, message.signature!);
-        if (!isValid) {
-          if (kDebugMode) {
-            print('⚠️ Mesh Relay: Invalid signature for ${message.msgId}, dropping');
-          }
-          return;
-        }
-      }
+      // 2. Reject messages that cannot be authenticated and decrypted.
+      final security = _securityService;
+      if (security == null || message.schoolId.isEmpty) return;
+      final verifiedMessage = await security.verifyAndDecryptMessage(message);
+      if (verifiedMessage == null) return;
 
       // 3. Mark as seen (before processing to prevent race conditions)
       await _deduplicator.markSeen(message.msgId);
 
       // 4. Handle message type (show UI, trigger actions)
-      await _handleMessageType(message);
+      await _handleMessageType(verifiedMessage);
 
       // 5. Relay if TTL > 0
       if (message.shouldRelay()) {
@@ -282,21 +277,18 @@ class MeshRelayService {
       
       await Future<void>.delayed(Duration(milliseconds: jitter));
 
-      // Broadcast to all connected peers
-      // Note: The relayed message needs to be re-signed since TTL/hops changed
-      MeshMessage signedRelayedMessage = relayedMessage;
-      
-      if (_securityService != null && relayedMessage.schoolId.isNotEmpty) {
-        try {
-          // Re-sign the relayed message with updated TTL/hops
-          final signature = await _securityService!.signMessageAsync(relayedMessage);
-          signedRelayedMessage = relayedMessage.copyWith(signature: signature);
-        } catch (e) {
-          if (kDebugMode) {
-            print('⚠️ Mesh Relay: Error re-signing relayed message: $e');
-          }
-          // Continue with unsigned message if signing fails
+      final security = _securityService;
+      if (security == null || relayedMessage.schoolId.isEmpty) return;
+      final MeshMessage signedRelayedMessage;
+      try {
+        final signature = await security.signMessageAsync(relayedMessage);
+        if (signature.isEmpty) return;
+        signedRelayedMessage = relayedMessage.copyWith(signature: signature);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('Mesh relay rejected: signing failed');
         }
+        return;
       }
 
       // Broadcast via send message callback

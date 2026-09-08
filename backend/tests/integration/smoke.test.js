@@ -66,6 +66,7 @@ describe('Login and drills (smoke)', () => {
       password,
       name: 'Smoke Test User',
       role: 'student',
+        phone: '9876543210',
       userType: 'account_user',
     });
   });

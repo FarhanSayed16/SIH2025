@@ -5,26 +5,30 @@ on:
     branches: [ main, develop ]
     paths:
       - 'web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/web.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'web/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/web.yml'
 
 jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: |
-          cd web
-          npm ci
+        run: npm ci
       - name: Run ESLint
         run: |
           cd web
@@ -34,16 +38,14 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: |
-          cd web
-          npm ci
+        run: npm ci
       - name: Run tests
         run: |
           cd web
@@ -54,16 +56,14 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint, test]
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
       - name: Install dependencies
-        run: |
-          cd web
-          npm ci
+        run: npm ci
       - name: Build Next.js app
         run: |
           cd web

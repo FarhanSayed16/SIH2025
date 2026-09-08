@@ -4,7 +4,8 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: '>=3.9.0 <4.0.0'
+  flutter: '>=3.35.0'
 
 dependencies:
   flutter:
@@ -96,6 +97,8 @@ dependencies:
   speech_to_text: ^7.0.0
   flutter_tts: ^4.2.0
 
+  http: ^1.6.0
+  path: ^1.9.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -109,6 +112,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
 
+  socket_io_common: ^2.0.3
 flutter:
   uses-material-design: true
 
@@ -122,6 +126,7 @@ flutter:
   assets:
     - .env
     # General Assets
+    - assets/ndma_summary/
     - assets/Summary_ndrf/
     - assets/module_quiz/
     - assets/360image/
@@ -129,7 +134,7 @@ flutter:
     - assets/audio/
     
     # Quiz Data
-    - assets/quiz/quiz_eng.json
+    - assets/quiz/quiz_eng.JSON
     - assets/quiz/quiz_hin.json
     - assets/quiz/quiz_mar.json
     - assets/quiz/quiz_pun.json
@@ -154,20 +159,20 @@ flutter:
     - assets/Mod_game/doremon/FIRE/Hindi/
 
     # Module Game Assets - Shinchan
-    - assets/Mod_game/shinchan/earthquake/English/
-    - assets/Mod_game/shinchan/earthquake/Hindi/
-    - assets/Mod_game/shinchan/flood/English/
-    - assets/Mod_game/shinchan/flood/Hindi/
-    - assets/Mod_game/shinchan/fire/English/
-    - assets/Mod_game/shinchan/fire/Hindi/
+    - assets/Mod_game/shinchan/EARTHQUAKE/English/
+    - assets/Mod_game/shinchan/EARTHQUAKE/Hindi/
+    - assets/Mod_game/shinchan/FLOOD/English/
+    - assets/Mod_game/shinchan/FLOOD/Hindi/
+    - assets/Mod_game/shinchan/FIRE/English/
+    - assets/Mod_game/shinchan/FIRE/Hindi/
 
     # Module Game Assets - Edusafe
-    - assets/Mod_game/edusafe/earthquake/English/
-    - assets/Mod_game/edusafe/earthquake/Hindi/
-    - assets/Mod_game/edusafe/flood/English/
-    - assets/Mod_game/edusafe/flood/Hindi/
-    - assets/Mod_game/edusafe/fire/English/
-    - assets/Mod_game/edusafe/fire/Hindi/
+    - assets/Mod_game/edusafe/EARTHQUAKE/English/
+    - assets/Mod_game/edusafe/EARTHQUAKE/Hindi/
+    - assets/Mod_game/edusafe/FLOOD/English/
+    - assets/Mod_game/edusafe/FLOOD/Hindi/
+    - assets/Mod_game/edusafe/FIRE/English/
+    - assets/Mod_game/edusafe/FIRE/Hindi/
     
     # 360 Specific
     - assets/360image/Classroom_360.png

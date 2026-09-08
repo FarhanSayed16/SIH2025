@@ -3,11 +3,13 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ..
-      dockerfile: docker/Dockerfile
+      context: ../..
+      dockerfile: backend/docker/Dockerfile
     container_name: kavach-backend
     ports:
       - "3000:3000"
+    env_file:
+      - ../.env
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -17,8 +19,8 @@ services:
       - mongo
       - redis
     volumes:
-      - ../src:/app/src
-      - ../uploads:/app/uploads
+      - ../src:/app/backend/src
+      - ../uploads:/app/backend/uploads
     restart: unless-stopped
 
   mongo:

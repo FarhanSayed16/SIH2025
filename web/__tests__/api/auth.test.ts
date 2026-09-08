@@ -12,6 +12,7 @@ vi.mock('../../lib/api/client', () => ({
     post: vi.fn(),
     get: vi.fn(),
     setToken: vi.fn(),
+    setRefreshToken: vi.fn(),
   },
 }));
 

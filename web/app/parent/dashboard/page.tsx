@@ -218,7 +218,7 @@ export default function ParentDashboardPage() {
                   </div>
                   Parent Dashboard
                 </h1>
-                <p className="text-gray-600 mt-2">Monitor your children's safety and progress</p>
+                <p className="text-gray-600 mt-2">Monitor your children&apos;s safety and progress</p>
               </div>
               <div className="flex items-center gap-3">
                 <Button

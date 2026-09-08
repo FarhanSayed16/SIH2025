@@ -5,7 +5,6 @@ import '../../../core/theme/theme_provider.dart';
 import '../../../../core/services/storage_service.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../sync/providers/sync_provider.dart';
 import '../../iot/screens/iot_device_list_screen.dart';
 import '../../mesh/screens/mesh_test_screen.dart'; // Phase 5.1
 
@@ -109,34 +108,6 @@ class DeveloperMenu extends ConsumerWidget {
               },
             ),
 
-          // Inject Mock Data
-          ListTile(
-            leading: const Icon(Icons.data_object),
-            title: Text(l10n.injectMockData),
-            subtitle: const Text('Load demo data for testing'),
-            onTap: () async {
-              try {
-                await ref.read(syncProvider.notifier).injectMockData();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Mock data injected successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Failed to inject mock data: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
 
           // Phase 5.1: Mesh Networking Test
           ListTile(

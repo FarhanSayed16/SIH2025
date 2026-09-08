@@ -1,4 +1,8 @@
 import crypto from 'crypto';
+import mongoose from 'mongoose';
+import Alert from '../models/Alert.js';
+import User from '../models/User.js';
+import { referenceId, canAccessInstitution, isStaff } from '../utils/access.js';
 import School from '../models/School.js';
 import logger from '../config/logger.js';
 
@@ -15,47 +19,29 @@ const meshKeyCache = new Map();
  * Get or generate mesh key for a school
  * Uses school-level shared key (rotated periodically)
  */
-export const getMeshKey = async (schoolId) => {
-  try {
-    // Check cache first
-    const cached = meshKeyCache.get(schoolId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.key;
-    }
-
-    // Get school document
-    const school = await School.findById(schoolId);
-    if (!school) {
-      throw new Error('School not found');
-    }
-
-    // Check if school has existing mesh key
-    let meshKey;
-    if (school.meshKey && school.meshKeyExpiresAt > new Date()) {
-      meshKey = school.meshKey;
-    } else {
-      // Generate new key (64 bytes = 512 bits)
-      meshKey = crypto.randomBytes(64).toString('base64');
-      
-      // Store in school document (expires in 7 days)
-      school.meshKey = meshKey;
-      school.meshKeyExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-      await school.save();
-      
-      logger.info(`Generated new mesh key for school ${schoolId}`);
-    }
-
-    // Cache for 1 hour
-    meshKeyCache.set(schoolId, {
-      key: meshKey,
-      expiresAt: Date.now() + 60 * 60 * 1000, // 1 hour
-    });
-
-    return meshKey;
-  } catch (error) {
-    logger.error(`Error getting mesh key for school ${schoolId}:`, error);
-    throw error;
+export const getMeshKey = async (schoolId, { includeExpiry = false } = {}) => {
+  const now = new Date();
+  let cached = meshKeyCache.get(schoolId);
+  if (!cached || cached.expiresAt <= now.getTime()) {
+    // Only one caller can replace an expired key. Concurrent callers then read
+    // the winner's key instead of provisioning incompatible keys for one school.
+    let school = await School.findOneAndUpdate({
+      _id: schoolId,
+      $or: [{ meshKey: null }, { meshKeyExpiresAt: null }, { meshKeyExpiresAt: { $lte: now } }],
+    }, { $set: {
+      meshKey: crypto.randomBytes(64).toString('base64'),
+      meshKeyExpiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+    } }, { new: true }).select('+meshKey +meshKeyExpiresAt');
+    if (!school) school = await School.findById(schoolId).select('+meshKey +meshKeyExpiresAt');
+    if (!school) throw new Error('School not found');
+    cached = {
+      key: school.meshKey,
+      keyExpiresAt: new Date(school.meshKeyExpiresAt),
+      expiresAt: Math.min(now.getTime() + 60 * 60 * 1000, new Date(school.meshKeyExpiresAt).getTime()),
+    };
+    meshKeyCache.set(schoolId, cached);
   }
+  return includeExpiry ? { key: cached.key, expiresAt: cached.keyExpiresAt } : cached.key;
 };
 
 /**
@@ -63,7 +49,7 @@ export const getMeshKey = async (schoolId) => {
  */
 export const rotateMeshKey = async (schoolId) => {
   try {
-    const school = await School.findById(schoolId);
+    const school = await School.findById(schoolId).select('+meshKey +meshKeyExpiresAt');
     if (!school) {
       throw new Error('School not found');
     }
@@ -111,81 +97,71 @@ export const deduplicateMessages = (messages) => {
  * Processes messages, deduplicates, and returns sync results
  */
 export const syncMeshMessages = async (userId, messages, schoolId) => {
-  try {
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return {
-        synced: 0,
-        duplicates: 0,
-        failed: 0,
-        errors: [],
-      };
-    }
+  const results = { synced: 0, duplicates: 0, failed: 0, acknowledgedIds: [], errors: [] };
+  if (!Array.isArray(messages)) throw new Error('Messages must be an array');
+  const actor = await User.findById(userId);
+  if (!actor || !canAccessInstitution(actor, schoolId)) throw new Error('School access denied');
+  const acknowledged = new Set();
 
-    // Deduplicate messages by msgId
-    const uniqueMessages = deduplicateMessages(messages);
-    const duplicateCount = messages.length - uniqueMessages.length;
-
-    // Process messages
-    const results = {
-      synced: 0,
-      duplicates: duplicateCount,
-      failed: 0,
-      errors: [],
-    };
-
-    // TODO: Process messages based on type
-    // For now, we just deduplicate and log
-    // In Phase 5.4, we'll implement relay logic and alert processing
-    for (const msg of uniqueMessages) {
-      try {
-        // Process message based on type
-        const msgType = msg.type || msg.messageType;
-        
-        switch (msgType) {
-          case 'CRISIS_ALERT':
-            // Handle crisis alert (already handled by alert pipeline in Phase 4.10)
-            // Just log for now - actual processing happens via alert pipeline
-            logger.info(`Mesh sync: Crisis alert ${msg.msgId} from user ${userId}`);
-            results.synced++;
-            break;
-            
-          case 'DRILL_SCHEDULED':
-          case 'DRILL_START':
-          case 'DRILL_END':
-            // Handle drill events
-            logger.info(`Mesh sync: Drill event ${msg.msgId} from user ${userId}`);
-            results.synced++;
-            break;
-            
-          case 'USER_STATUS_UPDATE':
-            // Handle user status updates
-            logger.info(`Mesh sync: User status update ${msg.msgId} from user ${userId}`);
-            results.synced++;
-            break;
-            
-          default:
-            logger.warn(`Mesh sync: Unknown message type ${msgType} for ${msg.msgId}`);
-            results.synced++; // Still count as synced
-        }
-      } catch (error) {
-        results.failed++;
-        results.errors.push({
-          msgId: msg.msgId || msg.id,
-          error: error.message,
-        });
-        logger.error(`Error processing mesh message ${msg.msgId}:`, error);
+  for (const msg of messages) {
+    const msgId = msg?.msgId;
+    try {
+      if (typeof msgId !== 'string' || !msgId || msgId.length > 200) throw new Error('Invalid message ID');
+      if (acknowledged.has(msgId)) { results.duplicates++; continue; }
+      if (referenceId(msg.schoolId) !== referenceId(schoolId)) throw new Error('Message school mismatch');
+      // A shared school key cannot prove an individual sender's identity. Only
+      // the authenticated user's status (or authorized staff action) is accepted.
+      // Other event types stay queued until a durable handler is implemented.
+      if (msg.type !== 'USER_STATUS_UPDATE') throw new Error('Unsupported mesh sync message type');
+      if (msg.encrypted) throw new Error('Encrypted sync payload is not supported');
+      const payload = msg.payload || {};
+      const targetId = payload.userId || userId;
+      if (!mongoose.isObjectIdOrHexString(targetId) || !mongoose.isObjectIdOrHexString(payload.alertId)) {
+        throw new Error('Invalid user or alert ID');
       }
+      if (referenceId(targetId) !== referenceId(userId)) {
+        if (!isStaff(actor)) throw new Error('Cannot update another user');
+        const target = await User.findById(targetId);
+        if (!target || referenceId(target.institutionId) !== referenceId(schoolId)) throw new Error('User school mismatch');
+      }
+      if (!['safe', 'help', 'missing', 'at_risk', 'potentially_trapped'].includes(payload.status)) {
+        throw new Error('Invalid status');
+      }
+      if (!Number.isSafeInteger(msg.timestamp) || msg.timestamp <= 0 || msg.timestamp > Date.now()) {
+        throw new Error('Invalid message timestamp');
+      }
+      const timestamp = new Date(msg.timestamp);
+      const targetObjectId = new mongoose.Types.ObjectId(referenceId(targetId));
+      const entry = { userId: targetObjectId, status: payload.status, lastUpdate: timestamp };
+      // One atomic update makes replay and concurrent delivery safe. Older
+      // offline statuses cannot overwrite newer online or offline statuses.
+      const alert = await Alert.findOneAndUpdate({
+        _id: payload.alertId,
+        institutionId: schoolId,
+        createdAt: { $lte: timestamp },
+      }, [{ $set: { studentStatus: {
+        $let: { vars: { statuses: { $ifNull: ['$studentStatus', []] } }, in: {
+          $cond: [
+            { $in: [targetObjectId, '$$statuses.userId'] },
+            { $map: { input: '$$statuses', as: 'entry', in: {
+              $cond: [
+                { $and: [ { $eq: ['$$entry.userId', targetObjectId] }, { $lt: ['$$entry.lastUpdate', timestamp] } ] },
+                { $mergeObjects: ['$$entry', { $literal: entry }] },
+                '$$entry',
+              ],
+            } } },
+            { $concatArrays: ['$$statuses', { $literal: [entry] }] },
+          ],
+        } },
+      } } }], { new: true });
+      if (!alert) throw new Error('Alert not found in school or message predates alert');
+      acknowledged.add(msgId);
+      results.acknowledgedIds.push(msgId);
+      results.synced++;
+    } catch (error) {
+      results.failed++;
+      results.errors.push({ msgId: msgId ?? null, error: error.message });
     }
-
-    logger.info(
-      `Mesh sync completed for user ${userId}: ` +
-      `${results.synced} synced, ${results.duplicates} duplicates, ${results.failed} failed`
-    );
-
-    return results;
-  } catch (error) {
-    logger.error(`Error syncing mesh messages for user ${userId}:`, error);
-    throw error;
   }
+  return results;
 };
-

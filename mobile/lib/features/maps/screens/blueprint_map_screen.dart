@@ -47,6 +47,7 @@ class _BlueprintMapScreenState extends State<BlueprintMapScreen> {
   }
 
   Future<void> _requestRoute() async {
+    setState(() => _route = null);
     try {
       final fx = double.tryParse(_fromX.text);
       final fy = double.tryParse(_fromY.text);
@@ -71,7 +72,7 @@ class _BlueprintMapScreenState extends State<BlueprintMapScreen> {
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Route error: $e')),
+        const SnackBar(content: Text('Evacuation route unavailable. Follow posted emergency plans and staff instructions.')),
       );
     }
   }

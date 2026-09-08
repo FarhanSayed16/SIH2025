@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import User from '../models/User.js';
+import { disconnectUserSessions } from '../config/socket.js';
 import logger from '../config/logger.js';
 
 // CRITICAL: JWT_SECRET must be set in environment variables
@@ -16,9 +17,9 @@ const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '7d';
 /**
  * Generate JWT access token
  */
-export const generateAccessToken = (userId, role) => {
+export const generateAccessToken = (userId, role, tokenVersion = 0) => {
   return jwt.sign(
-    { userId, role },
+    { userId, role, tokenVersion },
     JWT_SECRET,
     { expiresIn: JWT_EXPIRE }
   );
@@ -27,9 +28,9 @@ export const generateAccessToken = (userId, role) => {
 /**
  * Generate JWT refresh token
  */
-export const generateRefreshToken = (userId) => {
+export const generateRefreshToken = (userId, tokenVersion = 0) => {
   return jwt.sign(
-    { userId, type: 'refresh' },
+    { userId, type: 'refresh', tokenVersion },
     JWT_SECRET,
     { expiresIn: JWT_REFRESH_EXPIRE }
   );
@@ -51,6 +52,9 @@ export const verifyToken = (token) => {
  */
 export const registerUser = async (userData) => {
   try {
+    if (!['student', 'teacher', 'parent'].includes(userData.role || 'student')) {
+      throw new Error('This role cannot be registered publicly');
+    }
     // Check if user already exists
     const existingUser = await User.findOne({ email: userData.email });
     if (existingUser) {
@@ -65,10 +69,8 @@ export const registerUser = async (userData) => {
       role: userData.role || 'student',
     };
 
-    // Add institutionId (required for non-admin roles)
-    if (userData.institutionId) {
-      userDataToCreate.institutionId = userData.institutionId;
-    }
+    // School membership is assigned through class joining or staff approval,
+    // never by an unverified public registration field.
 
     // CRITICAL REFACTOR: Registration via /api/auth/register always creates account_user
     // Any user who goes through public registration provides credentials, so they are account users
@@ -78,7 +80,7 @@ export const registerUser = async (userData) => {
     userDataToCreate.userType = 'account_user';
     
     // Add student-specific fields if provided (grade is just stored, doesn't affect userType)
-    if (userData.role === 'student') {
+    if (userDataToCreate.role === 'student') {
       // PHASE B2: Student registration with OPTIONAL classCode
       // Students can register without classCode and join a class later via /api/student/join-class
       if (userData.classCode && userData.classCode.trim()) {
@@ -177,8 +179,8 @@ export const registerUser = async (userData) => {
     }
 
     // Generate tokens
-    const accessToken = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id);
+    const accessToken = generateAccessToken(user._id, user.role, user.tokenVersion || 0);
+    const refreshToken = generateRefreshToken(user._id, user.tokenVersion || 0);
 
     // Save refresh token to user
     user.refreshToken = refreshToken;
@@ -258,8 +260,8 @@ export const loginUser = async (email, password) => {
     }
 
     // Generate tokens
-    const accessToken = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id);
+    const accessToken = generateAccessToken(user._id, user.role, user.tokenVersion || 0);
+    const refreshToken = generateRefreshToken(user._id, user.tokenVersion || 0);
 
     // Save refresh token and update last login
     user.refreshToken = refreshToken;
@@ -301,7 +303,7 @@ export const refreshAccessToken = async (refreshToken) => {
     }
 
     // Check if refresh token matches
-    if (user.refreshToken !== refreshToken) {
+    if (user.refreshToken !== refreshToken || (decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
       throw new Error('Invalid refresh token');
     }
 
@@ -317,7 +319,7 @@ export const refreshAccessToken = async (refreshToken) => {
     }
 
     // Generate new access token
-    const accessToken = generateAccessToken(user._id, user.role);
+    const accessToken = generateAccessToken(user._id, user.role, user.tokenVersion || 0);
 
     logger.info(`Token refreshed for user: ${user.email}`);
 
@@ -505,26 +507,12 @@ The Kavach Team
       } else {
         // Email failed, but still log the link for development
         logger.warn(`⚠️ Failed to send password reset email to ${email}: ${emailResult.error}`);
-        logger.info(`Password reset link for ${email}: ${resetUrl}`);
-        console.log('\n🔐 PASSWORD RESET LINK (Email failed, logged for development):');
-        console.log('='.repeat(60));
-        console.log(`Email: ${email}`);
-        console.log(`Reset URL: ${resetUrl}`);
-        console.log(`Token: ${resetToken}`);
-        console.log('='.repeat(60));
-        console.log('⚠️  This link expires in 30 minutes\n');
+
       }
     } catch (emailError) {
       // Email service error, but still log the link
       logger.error(`❌ Error sending password reset email: ${emailError.message}`);
-      logger.info(`Password reset link for ${email}: ${resetUrl}`);
-      console.log('\n🔐 PASSWORD RESET LINK (Email error, logged for development):');
-      console.log('='.repeat(60));
-      console.log(`Email: ${email}`);
-      console.log(`Reset URL: ${resetUrl}`);
-      console.log(`Token: ${resetToken}`);
-      console.log('='.repeat(60));
-      console.log('⚠️  This link expires in 30 minutes\n');
+
     }
 
     return {
@@ -576,9 +564,12 @@ export const resetPassword = async (token, password) => {
 
     // Set new password (will be hashed by pre-save hook)
     user.password = password;
+    user.refreshToken = null;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
     await user.save();
+    disconnectUserSessions(user._id);
 
     logger.info(`Password reset successful for user: ${user.email}`);
 
@@ -590,4 +581,3 @@ export const resetPassword = async (token, password) => {
     throw error;
   }
 };
-

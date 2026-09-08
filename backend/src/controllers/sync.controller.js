@@ -244,7 +244,7 @@ export const resolveConflictController = async (req, res) => {
       return errorResponse(res, 'Invalid resolution strategy', 400);
     }
 
-    const result = await resolveConflict(queueItemId, resolution, resolvedData);
+    const result = await resolveConflict(queueItemId, resolution, resolvedData, req.userId);
 
     return successResponse(res, result, 'Conflict resolved successfully');
   } catch (error) {

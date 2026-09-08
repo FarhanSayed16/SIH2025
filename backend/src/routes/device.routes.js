@@ -1,3 +1,7 @@
+import mongoose from 'mongoose';
+import Class from '../models/Class.js';
+import { requireAdmin, requireTeacher } from '../middleware/rbac.middleware.js';
+import { canAccessInstitution, isSystemAdmin, referenceId } from '../utils/access.js';
 import express from 'express';
 import { body, param } from 'express-validator';
 import { register, deviceLogin } from '../controllers/device-auth.controller.js';
@@ -37,6 +41,7 @@ router.get('/iot/status', (req, res) => {
 router.post(
   '/register',
   authenticate,
+  requireAdmin,
   body('deviceId').notEmpty().withMessage('Device ID is required'),
   body('deviceName').notEmpty().withMessage('Device name is required'),
   body('deviceType').isIn([
@@ -62,6 +67,7 @@ router.post(
 router.get(
   '/',
   authenticate,
+  requireTeacher,
   async (req, res) => {
     try {
       const { institutionId, classId, deviceType, isActive } = req.query;
@@ -72,8 +78,11 @@ router.get(
       if (deviceType) query.deviceType = deviceType;
       if (isActive !== undefined) query.isActive = isActive === 'true';
 
-      if (req.userRole !== 'admin' && req.user?.institutionId) {
-        query.institutionId = req.user.institutionId;
+      if (!isSystemAdmin(req.user)) {
+        if (!canAccessInstitution(req.user, institutionId || req.user.institutionId)) {
+          return errorResponse(res, 'Access denied to institution', 403);
+        }
+        query.institutionId = referenceId(req.user.institutionId);
       }
 
       const devices = await Device.find(query)
@@ -97,6 +106,7 @@ router.get(
 router.get(
   '/health/monitoring',
   authenticate,
+  requireTeacher,
   getHealthMonitoring
 );
 
@@ -117,6 +127,7 @@ router.post(
 router.get(
   '/:deviceId/history',
   authenticate,
+  requireTeacher,
   getHistoricalData
 );
 
@@ -148,27 +159,18 @@ router.post(
 router.get(
   '/:deviceId',
   authenticate,
+  requireTeacher,
   async (req, res) => {
     try {
-      const device = await Device.findById(req.params.deviceId)
-        .populate('institutionId', 'name')
-        .populate('classId', 'grade section classCode');
-
-      if (!device) {
-        // Also allow lookup by business deviceId string
-        const byKey = await Device.findOne({ deviceId: req.params.deviceId })
-          .populate('institutionId', 'name')
-          .populate('classId', 'grade section classCode');
-        if (!byKey) {
-          return errorResponse(res, 'Device not found', 404);
-        }
-        if (req.userRole !== 'admin' && byKey.institutionId?.toString() !== req.user?.institutionId?.toString()) {
-          return errorResponse(res, 'Access denied', 403);
-        }
-        return successResponse(res, byKey, 'Device retrieved successfully');
-      }
-
-      if (req.userRole !== 'admin' && device.institutionId?.toString() !== req.user?.institutionId?.toString()) {
+      const key = req.params.deviceId;
+      let device = mongoose.isObjectIdOrHexString(key) ? await Device.findById(key) : null;
+      if (!device) device = await Device.findOne({ deviceId: key });
+      if (device) await device.populate([
+        { path: 'institutionId', select: 'name' },
+        { path: 'classId', select: 'grade section classCode' },
+      ]);
+      if (!device) return errorResponse(res, 'Device not found', 404);
+      if (!canAccessInstitution(req.user, device.institutionId)) {
         return errorResponse(res, 'Access denied', 403);
       }
 
@@ -184,18 +186,28 @@ router.get(
 router.put(
   '/:deviceId',
   authenticate,
+  requireAdmin,
   async (req, res) => {
     try {
-      let device = await Device.findById(req.params.deviceId);
-      if (!device) {
-        device = await Device.findOne({ deviceId: req.params.deviceId });
-      }
+      const key = req.params.deviceId;
+      let device = mongoose.isObjectIdOrHexString(key) ? await Device.findById(key) : null;
+      if (!device) device = await Device.findOne({ deviceId: key });
+
 
       if (!device) {
         return errorResponse(res, 'Device not found', 404);
       }
 
+      if (!canAccessInstitution(req.user, device.institutionId)) {
+        return errorResponse(res, 'Access denied', 403);
+      }
       const { deviceName, classId, isActive, metadata, status, room, configuration } = req.body;
+      if (classId) {
+        const classroom = await Class.findById(classId);
+        if (!classroom || referenceId(classroom.institutionId) !== referenceId(device.institutionId)) {
+          return errorResponse(res, 'Class must belong to device institution', 400);
+        }
+      }
 
       if (deviceName) device.deviceName = deviceName;
       if (classId !== undefined) device.classId = classId || null;

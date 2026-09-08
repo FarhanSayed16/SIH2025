@@ -322,6 +322,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  tokenVersion: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   isActive: {
     type: Boolean,
     default: true
@@ -427,4 +432,3 @@ userSchema.methods.toJSON = function() {
 const User = mongoose.model('User', userSchema);
 
 export default User;
-

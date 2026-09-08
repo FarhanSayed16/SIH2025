@@ -1,3 +1,5 @@
+import Class from '../../src/models/Class.js';
+import '../../src/models/School.js';
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import mongoose from 'mongoose';
 import Device from '../../src/models/Device.js';
@@ -37,13 +39,14 @@ describe('Phase 2.5: Device Authentication', () => {
 
   describe('loginWithDevice', () => {
     it('should login with valid device token', async () => {
+      const classroom = await Class.create({ institutionId: new mongoose.Types.ObjectId(), teacherId: new mongoose.Types.ObjectId(), grade: '5', section: 'A', classCode: 'DEVICE-CLASS' });
       // First register a device
       const registration = await registerDevice({
         deviceId: 'TEST-DEVICE-LOGIN',
         deviceName: 'Test Login Device',
         deviceType: 'class_tablet',
         institutionId: new mongoose.Types.ObjectId(),
-        classId: new mongoose.Types.ObjectId(),
+        classId: classroom._id,
       });
 
       const result = await loginWithDevice(registration.registrationToken);

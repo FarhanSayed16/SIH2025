@@ -18,8 +18,8 @@ Flutter mobile application for disaster preparedness and emergency response educ
 
 ### Prerequisites
 
-- Flutter SDK 3.24.0 or higher
-- Dart SDK 3.0.0 or higher
+- Flutter SDK 3.35.4 (the CI version)
+- Dart SDK 3.9.2 (bundled with Flutter 3.35.4)
 - Android Studio / VS Code with Flutter extensions
 - Android SDK (for Android development)
 - Xcode (for iOS development, macOS only)

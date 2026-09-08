@@ -24,6 +24,8 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   int _currentPage = 1;
   late AudioPlayer _audioPlayer;
   bool _isPlaying = false;
+  StreamSubscription<void>? _audioCompletion;
+  bool get _hasAudio => widget.characterName == 'doremon';
   String _currentLang = 'English';
   String _basePath = '';
 
@@ -31,6 +33,9 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
   void initState() {
     super.initState();
     _audioPlayer = AudioPlayer();
+    _audioCompletion = _audioPlayer.onPlayerComplete.listen((_) {
+      if (mounted) setState(() => _isPlaying = false);
+    });
     
     // Force Landscape for better comic viewing
     SystemChrome.setPreferredOrientations([
@@ -53,14 +58,14 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   Future<void> _playAudioForPage(int pageIndex) async {
     try {
-      await _audioPlayer.stop(); 
+      await _audioPlayer.stop();
+      if (mounted) setState(() => _isPlaying = false);
+      if (!_hasAudio) return;
       String audioPath = '$_basePath/$pageIndex.mp3';
       await _audioPlayer.play(AssetSource(audioPath));
-      setState(() => _isPlaying = true);
+      if (mounted) setState(() => _isPlaying = true);
       
-      _audioPlayer.onPlayerComplete.listen((event) {
-        if (mounted) setState(() => _isPlaying = false);
-      });
+
 
     } catch (e) {
       debugPrint('Error playing audio for page $pageIndex: $e');
@@ -126,6 +131,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   @override
   void dispose() {
+    _audioCompletion?.cancel();
     _audioPlayer.dispose();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -239,7 +245,7 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
               right: 80,
               child: FloatingActionButton.small(
                 backgroundColor: _isPlaying ? Colors.green : Colors.orangeAccent,
-                onPressed: _replayAudio,
+                onPressed: _hasAudio ? _replayAudio : null,
                 child: Icon(_isPlaying ? Icons.volume_up : Icons.replay),
               ),
             ),

@@ -879,7 +879,7 @@ export default function TeacherClassDetailsPage() {
                 {/* Roster students list */}
                 {rosterStudents.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    No roster students yet. Use the "Add Roster Student" button to create them.
+                    No roster students yet. Use the &quot;Add Roster Student&quot; button to create them.
                   </div>
                 ) : (
                   <div className="space-y-2">

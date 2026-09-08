@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import mongoose from 'mongoose';
 import User from '../../src/models/User.js';
 import Class from '../../src/models/Class.js';
+import '../../src/models/School.js';
 import { loginWithQR, verifyQRCode } from '../../src/services/qr-auth.service.js';
 
 describe('Phase 2.5: QR Authentication', () => {
@@ -35,9 +36,11 @@ describe('Phase 2.5: QR Authentication', () => {
       institutionId: testClass.institutionId,
       qrCode: 'TEST-QR-CODE-12345',
       qrBadgeId: 'KAVACH-5-A-12345',
-      accessLevel: 'teacher_led',
-      canUseApp: false,
-      requiresTeacherAuth: true,
+      userType: 'account_user',
+      phone: '9876543210',
+      accessLevel: 'full',
+      canUseApp: true,
+      requiresTeacherAuth: false,
     });
   });
 

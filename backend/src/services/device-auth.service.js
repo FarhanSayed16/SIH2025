@@ -20,7 +20,7 @@ export const loginWithDevice = async (deviceToken) => {
     }
 
     // Update last seen
-    device.updateLastSeen();
+    await device.updateLastSeen();
 
     // For class devices, return class context
     if (device.deviceType === 'class_tablet' && device.classId) {
@@ -107,19 +107,23 @@ export const registerDevice = async (deviceData) => {
   try {
     const crypto = await import('crypto');
     
-    // Generate registration token
+    // Device provisioning returns credentials only at creation.
     const registrationToken = crypto.randomBytes(32).toString('hex');
+    const sensor = !['class_tablet', 'projector_device', 'teacher_device', 'personal'].includes(deviceData.deviceType);
+    const deviceToken = sensor ? crypto.randomBytes(32).toString('hex') : undefined;
 
     const device = await Device.create({
       ...deviceData,
-      registrationToken
+      registrationToken,
+      ...(deviceToken ? { deviceToken } : {})
     });
 
     logger.info(`Device registered: ${device.deviceName} (${device.deviceType})`);
 
     return {
       device: device.toJSON(),
-      registrationToken // Return token for first-time setup
+      registrationToken,
+      ...(deviceToken ? { deviceToken } : {})
     };
   } catch (error) {
     logger.error('Device registration error:', error);

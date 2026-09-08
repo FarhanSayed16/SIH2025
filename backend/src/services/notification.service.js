@@ -74,15 +74,19 @@ export async function sendIoTAlertNotification(alertData) {
         body = `Fire detected at ${deviceName}${room ? ` (${room})` : ''}. Immediate action required!`;
         break;
       case 'flood':
-        title = '🌊 Flood Alert!';
+        {
+title = '🌊 Flood Alert!';
         const waterLevel = sensorData?.water;
         body = `Flood alert at ${deviceName}${room ? ` (${room})` : ''}${waterLevel ? ` - Water Level: ${waterLevel}` : ''}`;
         break;
+}
       case 'earthquake':
-        title = '⚠️ Earthquake Detected!';
+        {
+title = '⚠️ Earthquake Detected!';
         const magnitude = sensorData?.magnitude;
         body = `Earthquake detected at ${deviceName}${room ? ` (${room})` : ''}${magnitude ? ` - Magnitude: ${magnitude.toFixed(2)}G` : ''}`;
         break;
+}
       default:
         title = '⚠️ Device Alert';
         body = message || `Alert from ${deviceName}`;

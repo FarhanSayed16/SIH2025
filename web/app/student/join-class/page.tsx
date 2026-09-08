@@ -188,7 +188,7 @@ export default function JoinClassPage() {
             <div className="max-w-2xl mx-auto">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Join a Class</h1>
               <p className="text-gray-600 mb-6">
-                Enter your class code to join a class. You'll need approval from your teacher.
+                Enter your class code to join a class. You&apos;ll need approval from your teacher.
               </p>
 
               {/* Current Class Status */}
@@ -222,7 +222,7 @@ export default function JoinClassPage() {
                     <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                       <p className="text-sm text-yellow-800">
                         ⏳ Your join request is pending approval from your teacher. 
-                        You'll be notified once approved.
+                        You&apos;ll be notified once approved.
                       </p>
                     </div>
                   )}
@@ -281,7 +281,7 @@ export default function JoinClassPage() {
                 <ul className="text-sm text-blue-800 space-y-2">
                   <li>• Enter the class code provided by your teacher</li>
                   <li>• Your join request will be sent to the teacher for approval</li>
-                  <li>• Once approved, you'll have full access to class features</li>
+                  <li>• Once approved, you&apos;ll have full access to class features</li>
                   <li>• You can only be in one class at a time</li>
                 </ul>
               </Card>

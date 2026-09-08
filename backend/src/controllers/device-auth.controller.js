@@ -1,3 +1,5 @@
+import { canAccessInstitution, referenceId } from '../utils/access.js';
+import Class from '../models/Class.js';
 import { loginWithDevice, registerDevice } from '../services/device-auth.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
 import logger from '../config/logger.js';
@@ -43,6 +45,15 @@ export const register = async (req, res) => {
       return errorResponse(res, 'Missing required fields: deviceId, deviceName, deviceType, institutionId', 400);
     }
 
+    if (!canAccessInstitution(req.user, institutionId)) {
+      return errorResponse(res, 'Access denied to institution', 403);
+    }
+    if (classId) {
+      const classroom = await Class.findById(classId);
+      if (!classroom || referenceId(classroom.institutionId) !== referenceId(institutionId)) {
+        return errorResponse(res, 'Class must belong to institution', 400);
+      }
+    }
     const result = await registerDevice({
       deviceId,
       deviceName,

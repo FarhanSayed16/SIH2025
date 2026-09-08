@@ -56,12 +56,17 @@ mobile/ios/Flutter/Flutter.podspec
 mobile/ios/Flutter/Generated.xcconfig
 mobile/ios/Flutter/flutter_export_environment.sh
 
+/graphify-out
+/assets
 # Docs & Assets
 docs/
-mobile/assets
 
 # Next.js build output
 web/.next/
 
 # APK files
 *.apk
+# Android release identity (never commit signing credentials)
+**/key.properties
+*.jks
+*.keystore

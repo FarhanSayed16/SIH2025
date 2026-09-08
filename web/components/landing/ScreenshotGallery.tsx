@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /* ─── Image data ─────────────────────────────────────────────── */
@@ -47,7 +47,7 @@ const mobileScreenshots: GalleryItem[] = [
   { src: '/gallery/mobile/parent-2.jpg', label: 'Parent — Notifications' },
 ];
 
-const fadeUp = {
+const fadeUp: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,

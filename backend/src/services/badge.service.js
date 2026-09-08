@@ -70,7 +70,8 @@ const checkBadgeCriteria = async (userId, badge, triggerType, triggerData) => {
     switch (type) {
       case 'module_complete':
         // Badge for completing a specific module or module category
-        const user = await User.findById(userId).select('progress');
+        {
+const user = await User.findById(userId).select('progress');
         if (moduleCategory) {
           // Check if all modules in category are completed
           const modules = await Module.find({ 
@@ -90,17 +91,21 @@ const checkBadgeCriteria = async (userId, badge, triggerType, triggerData) => {
           return completedModules.some(id => id.toString() === value.toString());
         }
         break;
+}
 
       case 'module_all':
         // Badge for completing all modules
-        const totalModules = await Module.countDocuments({ isActive: true });
+        {
+const totalModules = await Module.countDocuments({ isActive: true });
         const userModules = await User.findById(userId).select('progress');
         const completedCount = userModules.progress?.completedModules?.length || 0;
         return completedCount >= totalModules && totalModules > 0;
+}
 
       case 'game_wins':
         // Badge for winning games
-        const winCount = parseInt(value) || 1;
+        {
+const winCount = parseInt(value) || 1;
         const gameScores = await GameScore.find({ 
           userId,
           gameType: gameType === 'all' ? { $exists: true } : gameType
@@ -111,10 +116,12 @@ const checkBadgeCriteria = async (userId, badge, triggerType, triggerData) => {
         ).length;
         
         return wins >= winCount;
+}
 
       case 'game_perfect':
         // Badge for perfect game scores
-        const perfectGames = await GameScore.find({
+        {
+const perfectGames = await GameScore.find({
           userId,
           gameType: gameType === 'all' ? { $exists: true } : gameType,
           maxScore: { $gt: 0 }
@@ -125,12 +132,15 @@ const checkBadgeCriteria = async (userId, badge, triggerType, triggerData) => {
         ).length;
         
         return perfectCount >= (parseInt(value) || 1);
+}
 
       case 'drill_ack':
         // Badge for acknowledging drills
-        const ackCount = parseInt(value) || 1;
+        {
+const ackCount = parseInt(value) || 1;
         const drillLogs = await DrillLog.countDocuments({ userId });
         return drillLogs >= ackCount;
+}
 
       case 'drill_speed':
         // Badge for fast drill acknowledgment
@@ -140,15 +150,19 @@ const checkBadgeCriteria = async (userId, badge, triggerType, triggerData) => {
 
       case 'streak_days':
         // Badge for login streaks
-        const streakDays = parseInt(value) || 30;
+        {
+const streakDays = parseInt(value) || 30;
         const userStreak = await User.findById(userId).select('progress.loginStreak');
         return (userStreak.progress?.loginStreak || 0) >= streakDays;
+}
 
       case 'score_threshold':
         // Badge for reaching preparedness score threshold
-        const threshold = parseInt(value) || 80;
+        {
+const threshold = parseInt(value) || 80;
         const userScore = await User.findById(userId).select('progress.preparednessScore');
         return (userScore.progress?.preparednessScore || 0) >= threshold;
+}
 
       default:
         return false;

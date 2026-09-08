@@ -58,25 +58,25 @@ export const usersApi = {
     if (filters.limit) params.append('limit', String(filters.limit));
 
     const queryString = params.toString();
-    const response = await apiClient.get(`/users${queryString ? `?${queryString}` : ''}`);
+    const response = await apiClient.get<User[] | { users: User[] }>(`/users${queryString ? `?${queryString}` : ''}`);
     
     // Transform paginated response to expected format
     if (response.success && response.data) {
       const users = Array.isArray(response.data) ? response.data : response.data.users || [];
-      const pagination = response.pagination || {};
+      const pagination = response.pagination;
       
       return {
         ...response,
         data: {
           users,
-          total: pagination.total || users.length,
-          page: pagination.page || filters.page || 1,
-          limit: pagination.limit || filters.limit || 20
+          total: pagination?.total ?? users.length,
+          page: pagination?.page ?? filters.page ?? 1,
+          limit: pagination?.limit ?? filters.limit ?? 20
         }
       };
     }
     
-    return response;
+    return { ...response, data: undefined };
   },
 
   /**
@@ -89,7 +89,7 @@ export const usersApi = {
   /**
    * Update user
    */
-  async update(userId: string, updates: Partial<User>): Promise<ApiResponse<{ user: User }>> {
+  async update(userId: string, updates: Omit<Partial<User>, 'institutionId'> & { institutionId?: string }): Promise<ApiResponse<{ user: User }>> {
     return apiClient.put(`/users/${userId}`, updates);
   },
 
@@ -99,8 +99,6 @@ export const usersApi = {
   async approveStudent(userId: string, notes?: string): Promise<ApiResponse<{ user: User }>> {
     return apiClient.put(`/users/${userId}`, {
       approvalStatus: 'approved',
-      approvedBy: 'current_user', // Will be set by backend
-      approvedAt: new Date().toISOString(),
     });
   },
 

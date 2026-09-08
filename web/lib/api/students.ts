@@ -45,20 +45,20 @@ export interface LeaveClassResponse {
  * Join a class using classCode
  * POST /api/student/join-class
  */
-export const joinClass = async (classCode: string): Promise<JoinClassResponse> => {
-  const response = await apiClient.post<JoinClassResponse>('/student/join-class', {
+export const joinClass = async (classCode: string): Promise<ApiResponse<JoinClassResponse['data']>> => {
+  const response = await apiClient.post<JoinClassResponse['data']>('/student/join-class', {
     classCode: classCode.trim(),
   });
-  return response.data;
+  return response;
 };
 
 /**
  * Leave current class
  * POST /api/student/leave-class
  */
-export const leaveClass = async (): Promise<LeaveClassResponse> => {
-  const response = await apiClient.post<LeaveClassResponse>('/student/leave-class');
-  return response.data;
+export const leaveClass = async (): Promise<ApiResponse<LeaveClassResponse['data']>> => {
+  const response = await apiClient.post<LeaveClassResponse['data']>('/student/leave-class');
+  return response;
 };
 
 /**

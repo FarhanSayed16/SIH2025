@@ -39,6 +39,7 @@ class MeshSyncService {
       };
     }
 
+    _isSyncing = true;
     try {
       // Check connectivity
       if (!await _isOnline()) {
@@ -58,8 +59,6 @@ class MeshSyncService {
           'synced': 0,
         };
       }
-
-      _isSyncing = true;
 
       // Prepare messages for sync
       final messagesToSync = unsyncedMessages.map((msg) => msg.toJson()).toList();
@@ -84,12 +83,17 @@ class MeshSyncService {
       final duplicates = syncResults['duplicates'] as int? ?? 0;
       final failed = syncResults['failed'] as int? ?? 0;
       
-      // Mark all messages as synced (server deduplicates)
-      // Remove successfully synced messages from queue
+      // A successful HTTP response may contain failed messages. Delete only
+      // explicit per-message acknowledgments; older servers cannot prove delivery.
+      final acknowledged = (syncResults['acknowledgedIds'] as List?)
+              ?.whereType<String>().toSet() ?? <String>{};
+      var removed = 0;
       for (final msg in unsyncedMessages) {
-        // Mark as synced and remove from queue
-        await _offlineQueue.markAsSynced(msg.msgId);
-        await _offlineQueue.removeMessage(msg.msgId);
+        if (acknowledged.contains(msg.msgId)) {
+          await _offlineQueue.markAsSynced(msg.msgId);
+          await _offlineQueue.removeMessage(msg.msgId);
+          removed++;
+        }
       }
 
       if (kDebugMode) {
@@ -97,8 +101,9 @@ class MeshSyncService {
       }
 
       return {
-        'success': true,
-        'message': 'Sync completed',
+        'success': removed == unsyncedMessages.length,
+        'message': removed == unsyncedMessages.length
+            ? 'Sync completed' : 'Unacknowledged messages retained for retry',
         'synced': synced,
         'duplicates': duplicates,
         'failed': failed,

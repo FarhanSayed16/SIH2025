@@ -22,8 +22,8 @@ export const loginWithQR = async (qrCode) => {
     }
 
     // Generate tokens
-    const accessToken = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id);
+    const accessToken = generateAccessToken(user._id, user.role, user.tokenVersion || 0);
+    const refreshToken = generateRefreshToken(user._id, user.tokenVersion || 0);
 
     // Save refresh token and update last login
     user.refreshToken = refreshToken;

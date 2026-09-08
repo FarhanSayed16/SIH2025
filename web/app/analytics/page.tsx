@@ -37,12 +37,7 @@ import {
   Legend,
   ResponsiveContainer,
   AreaChart,
-  Area,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis
+  Area
 } from 'recharts';
 import {
   TrendingUp,
@@ -68,75 +63,6 @@ const CHART_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#e
 
 type TabType = 'drills' | 'students' | 'institution' | 'modules' | 'games' | 'quizzes';
 
-// Fallback data generators for better visuals when real data is limited
-const generateFallbackDrillData = (): DrillMetrics => ({
-  totalParticipants: 245,
-  avgEvacuationTime: 142.5,
-  minEvacuationTime: 98.3,
-  maxEvacuationTime: 198.7,
-  avgScore: 87.5,
-  participationOverTime: Array.from({ length: 7 }, (_, i) => ({
-    date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    participants: Math.floor(Math.random() * 50) + 20,
-    avgEvacuationTime: Math.floor(Math.random() * 50) + 120
-  }))
-});
-
-const generateFallbackStudentData = (): StudentProgress => ({
-  summary: {
-    totalStudents: 180,
-    avgModulesCompleted: 4.2,
-    avgPreparednessScore: 78.5,
-    avgLoginStreak: 12.3
-  },
-  quiz: {
-    avgQuizzesPerStudent: 6.5,
-    avgQuizScore: 82.3,
-    avgPassRate: 85.7
-  },
-  games: [
-    { gameType: 'Fire Safety', totalGames: 145, avgScore: 88.5, totalXP: 12500 },
-    { gameType: 'Earthquake Prep', totalGames: 132, avgScore: 85.2, totalXP: 11200 },
-    { gameType: 'Evacuation', totalGames: 98, avgScore: 90.1, totalXP: 9800 }
-  ],
-  progressOverTime: Array.from({ length: 10 }, (_, i) => ({
-    date: new Date(Date.now() - (9 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    avgScore: Math.floor(Math.random() * 20) + 70,
-    studentCount: Math.floor(Math.random() * 30) + 150
-  }))
-});
-
-const generateFallbackGameData = (): GamePerformance => ({
-  byGameType: [
-    { gameType: 'Fire Safety', totalGames: 145, uniquePlayers: 120, avgScore: 88.5, totalXP: 12500 },
-    { gameType: 'Earthquake Prep', totalGames: 132, uniquePlayers: 115, avgScore: 85.2, totalXP: 11200 },
-    { gameType: 'Evacuation', totalGames: 98, uniquePlayers: 95, avgScore: 90.1, totalXP: 9800 },
-    { gameType: 'First Aid', totalGames: 87, uniquePlayers: 82, avgScore: 82.7, totalXP: 8700 }
-  ],
-  overTime: Array.from({ length: 7 }, (_, i) => ({
-    gameType: 'Fire Safety',
-    date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    avgScore: Math.floor(Math.random() * 15) + 80,
-    totalGames: Math.floor(Math.random() * 20) + 15
-  }))
-});
-
-const generateFallbackQuizData = (): QuizAccuracy => ({
-  overTime: Array.from({ length: 10 }, (_, i) => ({
-    date: new Date(Date.now() - (9 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    totalQuizzes: Math.floor(Math.random() * 30) + 20,
-    avgScore: Math.floor(Math.random() * 20) + 75,
-    passRate: Math.floor(Math.random() * 15) + 80,
-    accuracyRate: Math.floor(Math.random() * 15) + 82
-  })),
-  byModule: [
-    { moduleId: '1', moduleTitle: 'Fire Safety Basics', totalQuizzes: 145, avgScore: 88.5, passRate: 92.3 },
-    { moduleId: '2', moduleTitle: 'Earthquake Preparedness', totalQuizzes: 132, avgScore: 85.2, passRate: 87.1 },
-    { moduleId: '3', moduleTitle: 'Emergency Evacuation', totalQuizzes: 98, avgScore: 90.1, passRate: 94.2 },
-    { moduleId: '4', moduleTitle: 'First Aid Essentials', totalQuizzes: 87, avgScore: 82.7, passRate: 85.5 }
-  ]
-});
-
 // Main Analytics Page Component
 function AnalyticsPageContent() {
   const router = useRouter();
@@ -144,9 +70,10 @@ function AnalyticsPageContent() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('drills');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   // Data states
@@ -162,123 +89,40 @@ function AnalyticsPageContent() {
     if (!isAuthenticated || !user) return;
     
     setIsLoading(true);
-    const institutionId = getInstitutionId(user.institutionId);
+    setLoadError(null);
+    const institutionId = getInstitutionId(user.institutionId) || undefined;
+    const startDate = dateRange.start || undefined;
+    const endDate = dateRange.end || undefined;
 
     try {
       switch (activeTab) {
         case 'drills':
-          try {
-            const drills = await analyticsApi.getDrillMetrics(
-              institutionId || undefined,
-              undefined,
-              dateRange.start || undefined,
-              dateRange.end || undefined
-            );
-            // Use fallback data if real data is empty or has no participants
-            if (drills && drills.totalParticipants > 0) {
-              setDrillMetrics(drills);
-            } else {
-              setDrillMetrics(generateFallbackDrillData());
-            }
-          } catch (err: any) {
-            console.warn('Drill metrics error:', err);
-            setDrillMetrics(generateFallbackDrillData());
-          }
+          setDrillMetrics(await analyticsApi.getDrillMetrics(institutionId, undefined, startDate, endDate));
           break;
         case 'students':
-          try {
-            const students = await analyticsApi.getStudentProgress(
-              institutionId || undefined,
-              undefined,
-              undefined,
-              dateRange.start || undefined,
-              dateRange.end || undefined
-            );
-            // Use fallback data if real data is empty
-            if (students && students.summary && students.summary.totalStudents > 0) {
-              setStudentProgress(students);
-            } else {
-              setStudentProgress(generateFallbackStudentData());
-            }
-          } catch (err: any) {
-            console.warn('Student progress error:', err);
-            setStudentProgress(generateFallbackStudentData());
-          }
+          setStudentProgress(await analyticsApi.getStudentProgress(institutionId, undefined, undefined, startDate, endDate));
           break;
         case 'institution':
-          try {
-            const institution = await analyticsApi.getInstitutionAnalytics(
-              institutionId || undefined,
-              dateRange.start || undefined,
-              dateRange.end || undefined
-            );
-            setInstitutionAnalytics(institution || null);
-          } catch (err: any) {
-            console.error('Institution analytics error:', err);
-            showToast(`Failed to load institution data: ${err?.message || 'Unknown error'}`, 'error');
-            setInstitutionAnalytics(null);
-          }
+          setInstitutionAnalytics(await analyticsApi.getInstitutionAnalytics(institutionId, startDate, endDate));
           break;
         case 'modules':
-          try {
-            const modules = await analyticsApi.getModuleCompletion(
-              institutionId || undefined,
-              dateRange.start || undefined,
-              dateRange.end || undefined
-            );
-            setModuleCompletion(Array.isArray(modules) && modules.length > 0 ? modules : null);
-          } catch (err: any) {
-            console.warn('Module completion error:', err);
-            setModuleCompletion(null);
-          }
+          setModuleCompletion(await analyticsApi.getModuleCompletion(institutionId, startDate, endDate));
           break;
         case 'games':
-          try {
-            const games = await analyticsApi.getGamePerformance(
-              institutionId || undefined,
-              undefined,
-              dateRange.start || undefined,
-              dateRange.end || undefined
-            );
-            // Use fallback data if real data is empty
-            if (games && games.byGameType && games.byGameType.length > 0) {
-              setGamePerformance(games);
-            } else {
-              setGamePerformance(generateFallbackGameData());
-            }
-          } catch (err: any) {
-            console.warn('Game performance error:', err);
-            setGamePerformance(generateFallbackGameData());
-          }
+          setGamePerformance(await analyticsApi.getGamePerformance(institutionId, undefined, startDate, endDate));
           break;
         case 'quizzes':
-          try {
-            const quizzes = await analyticsApi.getQuizAccuracy(
-              institutionId || undefined,
-              undefined,
-              dateRange.start || undefined,
-              dateRange.end || undefined
-            );
-            // Use fallback data if real data is empty
-            if (quizzes && quizzes.overTime && quizzes.overTime.length > 0) {
-              setQuizAccuracy(quizzes);
-            } else {
-              setQuizAccuracy(generateFallbackQuizData());
-            }
-          } catch (err: any) {
-            console.warn('Quiz accuracy error:', err);
-            setQuizAccuracy(generateFallbackQuizData());
-          }
+          setQuizAccuracy(await analyticsApi.getQuizAccuracy(institutionId, undefined, startDate, endDate));
           break;
       }
       setLastUpdated(new Date());
     } catch (error: any) {
       console.error(`Error loading ${activeTab} data:`, error);
-      showToast(`Failed to load ${activeTab} data: ${error?.message || 'Unknown error'}`, 'error');
+      setLoadError(`Failed to load ${activeTab} data. Use Refresh to try again.`);
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, isAuthenticated, user, dateRange, showToast]);
+  }, [activeTab, isAuthenticated, user, dateRange]);
 
   // Auto-refresh functionality
   useEffect(() => {
@@ -337,6 +181,10 @@ function AnalyticsPageContent() {
   const renderTabContent = () => {
     if (isLoading) {
       return <LoadingSkeleton />;
+    }
+
+    if (loadError) {
+      return <EmptyState title="Analytics unavailable" description={loadError} />;
     }
 
     switch (activeTab) {
@@ -527,7 +375,7 @@ function AnalyticsPageContent() {
                     <h3 className="text-xl font-bold mb-2">Continuous Improvement</h3>
                     <p className="text-sm text-blue-50 leading-relaxed">
                       Regular analytics help identify areas for improvement and track safety education progress.
-                      Use these insights to enhance your school's disaster preparedness.
+                      Use these insights to enhance your school&apos;s disaster preparedness.
                     </p>
                   </div>
                 </div>
@@ -548,7 +396,7 @@ function AnalyticsPageContent() {
 
 // Drill Metrics View Component
 function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
-  if (!data) {
+  if (!data || (data.totalParticipants === 0 && !data.participationOverTime?.length)) {
     return <EmptyState 
       title="No drill data available" 
       description="Conduct emergency drills to start tracking safety performance"
@@ -559,14 +407,6 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
   const timeComparison = data.avgEvacuationTime ? 
     data.avgEvacuationTime < 120 ? 'Excellent' : 
     data.avgEvacuationTime < 180 ? 'Good' : 'Needs Improvement' : 'No Data';
-
-  // Generate drill type distribution for pie chart
-  const drillTypeData = [
-    { name: 'Fire Drills', value: 35, color: '#ef4444' },
-    { name: 'Earthquake', value: 28, color: '#f59e0b' },
-    { name: 'Evacuation', value: 22, color: '#3b82f6' },
-    { name: 'Lockdown', value: 15, color: '#8b5cf6' }
-  ];
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -664,10 +504,10 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
                 <Target className="h-6 w-6 text-emerald-600" />
               </motion.div>
               <div>
-                <div className="text-sm text-gray-500 font-medium mb-1">Safety Score</div>
+                <div className="text-sm text-gray-500 font-medium mb-1">Average Drill Score</div>
                 <div className="text-3xl font-bold text-gray-900">
                   <AnimatedCounter 
-                    value={data.avgEvacuationTime ? Math.max(0, 100 - (data.avgEvacuationTime / 5)) : 0} 
+                    value={data.avgScore || 0}
                     decimals={0} 
                     suffix="%" 
                   />
@@ -675,7 +515,7 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
               </div>
             </div>
             <div className="mt-4 text-xs text-gray-500 font-medium">
-              Based on response times
+              Average score from recorded drills
             </div>
           </Card>
         </motion.div>
@@ -733,81 +573,19 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
           </motion.div>
         )}
 
-        {/* Drill Type Distribution */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          <Card className="p-6 bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Drill Type Distribution</h3>
-                <p className="text-sm text-gray-500 mt-1">Breakdown by drill category</p>
-              </div>
-            </div>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={drillTypeData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {drillTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </motion.div>
+        <EmptyState
+          title="Drill type breakdown unavailable"
+          description="Drill analytics does not include measured results by drill type."
+        />
       </div>
 
-      {/* Drill Types Analysis */}
-      <Card className="p-6 bg-white border border-gray-200 shadow-sm">
-        <h3 className="text-lg font-bold text-gray-900 mb-5">Drill Performance Analysis</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <div className="text-sm font-medium text-gray-700">Fire Drills</div>
-              <div className="text-xl font-bold text-gray-900">85%</div>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-              <div className="text-sm font-medium text-gray-700">Earthquake Drills</div>
-              <div className="text-xl font-bold text-gray-900">78%</div>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-purple-50 rounded-lg border border-purple-100">
-              <div className="text-sm font-medium text-gray-700">Evacuation Drills</div>
-              <div className="text-xl font-bold text-gray-900">92%</div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-100">
-            <div className="text-center">
-              <div className="text-sm text-gray-600 mb-2 font-medium">Overall Drill Performance</div>
-              <div className="text-4xl font-bold text-gray-900 mb-2">
-                {data.avgEvacuationTime ? Math.max(0, 100 - (data.avgEvacuationTime / 5)).toFixed(0) : '0'}%
-              </div>
-              <div className="text-sm text-gray-500">Safety Score</div>
-            </div>
-          </div>
-        </div>
-      </Card>
     </motion.div>
   );
 }
 
 // Student Progress View Component
 function StudentProgressView({ data }: { data: StudentProgress | null }) {
-  if (!data) {
+  if (!data || (data.summary?.totalStudents === 0 && !data.progressOverTime?.length && !data.games?.length)) {
     return <EmptyState 
       title="No student progress data" 
       description="Students need to complete modules to track progress"
@@ -818,18 +596,8 @@ function StudentProgressView({ data }: { data: StudentProgress | null }) {
   const progressChartData = data.progressOverTime?.map(item => ({
     date: item.date,
     score: item.avgScore,
-    modules: (item as any).avgModulesCompleted || 0,
     students: item.studentCount || 0
   })) || [];
-
-  // Prepare radar chart data for student skills
-  const radarData = [
-    { subject: 'Fire Safety', score: 88, fullMark: 100 },
-    { subject: 'Earthquake', score: 85, fullMark: 100 },
-    { subject: 'Evacuation', score: 92, fullMark: 100 },
-    { subject: 'First Aid', score: 83, fullMark: 100 },
-    { subject: 'Communication', score: 90, fullMark: 100 }
-  ];
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -989,15 +757,6 @@ function StudentProgressView({ data }: { data: StudentProgress | null }) {
                     />
                     <Line 
                       type="monotone" 
-                      dataKey="modules" 
-                      stroke="#8b5cf6" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      dot={{ r: 4, fill: '#8b5cf6' }}
-                      name="Avg Modules"
-                    />
-                    <Line 
-                      type="monotone" 
                       dataKey="students" 
                       stroke="#10b981" 
                       strokeWidth={2}
@@ -1011,40 +770,10 @@ function StudentProgressView({ data }: { data: StudentProgress | null }) {
           </motion.div>
         )}
 
-        {/* Skills Radar Chart */}
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
-        >
-          <Card className="p-6 bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Skills Assessment</h3>
-                <p className="text-sm text-gray-500 mt-1">Student competency across safety areas</p>
-              </div>
-            </div>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadarChart data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="subject" stroke="#6b7280" fontSize={12} />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} stroke="#6b7280" />
-                  <Radar
-                    name="Student Skills"
-                    dataKey="score"
-                    stroke="#3b82f6"
-                    fill="#3b82f6"
-                    fillOpacity={0.6}
-                    strokeWidth={2}
-                  />
-                  <Tooltip />
-                  <Legend />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        </motion.div>
+        <EmptyState
+          title="Skills assessment unavailable"
+          description="Student analytics does not include measured scores by safety skill."
+        />
       </div>
 
       {/* Games Performance */}
@@ -1395,7 +1124,7 @@ function ModuleCompletionView({ data }: { data: ModuleCompletion[] | null }) {
 
 // Game Performance View Component
 function GamePerformanceView({ data }: { data: GamePerformance | null }) {
-  if (!data) {
+  if (!data || (!data.byGameType?.length && !data.overTime?.length)) {
     return <EmptyState 
       title="No game performance data" 
       description="Students need to play learning games to generate data"
@@ -1643,7 +1372,7 @@ function GamePerformanceView({ data }: { data: GamePerformance | null }) {
 
 // Quiz Accuracy View Component
 function QuizAccuracyView({ data }: { data: QuizAccuracy | null }) {
-  if (!data) {
+  if (!data || (!data.byModule?.length && !data.overTime?.length)) {
     return <EmptyState 
       title="No quiz data available" 
       description="Students need to complete quizzes to generate data"

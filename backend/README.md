@@ -318,7 +318,7 @@ docker-compose down
 ### Build Docker Image
 
 ```bash
-docker build -f docker/Dockerfile -t kavach-backend:latest .
+docker build -f backend/docker/Dockerfile -t kavach-backend:latest . # Run from repository root
 ```
 
 ---

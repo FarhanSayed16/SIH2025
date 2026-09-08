@@ -264,7 +264,8 @@ export const resolveConflict = (conflict, strategy, options = {}) => {
       };
 
     case RESOLUTION_STRATEGIES.LAST_WRITE_WINS:
-      const serverTime = new Date(serverData.updatedAt || serverData.syncedAt || serverData.completedAt || serverData.createdAt).getTime();
+      {
+const serverTime = new Date(serverData.updatedAt || serverData.syncedAt || serverData.completedAt || serverData.createdAt).getTime();
       const clientTime = new Date(clientData.updatedAt || clientData.syncedAt || clientData.completedAt || clientData.createdAt).getTime();
       
       return {
@@ -273,6 +274,7 @@ export const resolveConflict = (conflict, strategy, options = {}) => {
         strategy: strategy,
         message: `Using data from ${serverTime > clientTime ? 'server' : 'client'} (last write wins)`
       };
+}
 
     case RESOLUTION_STRATEGIES.AUTO_MERGE:
       return autoMerge(serverData, clientData, conflict.type);
@@ -297,9 +299,11 @@ export const resolveConflict = (conflict, strategy, options = {}) => {
 
     default:
       // Default: use recommended strategy from conflict detection
-      const recommendedStrategy = conflict.recommendedStrategy || RESOLUTION_STRATEGIES.LAST_WRITE_WINS;
+      {
+const recommendedStrategy = conflict.recommendedStrategy || RESOLUTION_STRATEGIES.LAST_WRITE_WINS;
       logger.warn(`Unknown resolution strategy: ${strategy}, using ${recommendedStrategy}`);
       return resolveConflict(conflict, recommendedStrategy, options);
+}
   }
 };
 

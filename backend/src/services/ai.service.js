@@ -492,7 +492,7 @@ export const getTodaysSafetyTip = async (lang = 'en') => {
   try {
     const enCached = await getCache('ai', englishKey);
     if (enCached && enCached.tip) englishTip = enCached.tip;
-  } catch (_) {}
+  } catch (_) { /* The optional cache must not prevent serving a safety tip. */ }
   if (!englishTip && tipMemory.date === dateStr && tipMemory.text) englishTip = tipMemory.text;
 
   if (!genAI) {
@@ -533,7 +533,7 @@ export const getTodaysSafetyTip = async (lang = 'en') => {
       const data = { tip: translated || englishTip, date: dateStr };
       try {
         await setCache('ai', cacheKey, data, 86400);
-      } catch (_) {}
+      } catch (_) { /* The optional cache must not prevent serving a safety tip. */ }
       return data;
     }
     return { tip: englishTip, date: dateStr };

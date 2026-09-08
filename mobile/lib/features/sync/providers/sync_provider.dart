@@ -123,21 +123,6 @@ class SyncNotifier extends StateNotifier<SyncState> {
     }
   }
 
-  /// Inject mock data
-  Future<void> injectMockData() async {
-    try {
-      await _contentSyncService.injectMockData();
-      await _checkPendingSync();
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
-  }
-
-  /// Check if mock data should be injected
-  Future<bool> shouldInjectMockData() async {
-    return await _contentSyncService.shouldInjectMockData();
-  }
-
   /// Get pending sync count
   Future<void> refreshPendingCount() async {
     await _checkPendingSync();

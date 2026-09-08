@@ -1562,7 +1562,7 @@ const loadPendingTeachers = async () => {
                     {classes.length === 0 ? (
                       <div className="text-center py-8 text-gray-500">
                         <p className="mb-2">No classes available.</p>
-                        <p className="text-sm">Create a class first in the "Classes" tab.</p>
+                        <p className="text-sm">Create a class first in the &quot;Classes&quot; tab.</p>
                         <Button
                           className="mt-4 bg-gradient-to-r from-green-600 to-[#008000] hover:from-green-700 hover:to-[#006600]"
                           onClick={() => {

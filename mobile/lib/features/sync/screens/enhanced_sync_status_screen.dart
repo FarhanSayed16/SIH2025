@@ -38,8 +38,8 @@ class _EnhancedSyncStatusScreenState extends ConsumerState<EnhancedSyncStatusScr
             icon: const Icon(Icons.refresh),
             onPressed: () {
               ref.read(syncQueueNotifierProvider.notifier).refresh();
-              ref.refresh(syncQueuePendingItemsProvider);
-              ref.refresh(syncQueueConflictsProvider);
+              ref.invalidate(syncQueuePendingItemsProvider);
+              ref.invalidate(syncQueueConflictsProvider);
             },
           ),
         ],
@@ -47,8 +47,8 @@ class _EnhancedSyncStatusScreenState extends ConsumerState<EnhancedSyncStatusScr
       body: RefreshIndicator(
         onRefresh: () async {
           await ref.read(syncQueueNotifierProvider.notifier).refresh();
-          ref.refresh(syncQueuePendingItemsProvider);
-          ref.refresh(syncQueueConflictsProvider);
+          ref.invalidate(syncQueuePendingItemsProvider);
+          ref.invalidate(syncQueueConflictsProvider);
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -289,7 +289,7 @@ class _EnhancedSyncStatusScreenState extends ConsumerState<EnhancedSyncStatusScr
                   ).then((resolved) async {
                     if (resolved == true) {
                       await ref.read(syncQueueNotifierProvider.notifier).refresh();
-                      ref.refresh(syncQueueConflictsProvider);
+                      ref.invalidate(syncQueueConflictsProvider);
                     }
                   });
                 },
@@ -394,8 +394,8 @@ class _EnhancedSyncStatusScreenState extends ConsumerState<EnhancedSyncStatusScr
                   final notifier = ref.read(syncQueueNotifierProvider.notifier);
                   await notifier.processQueue(batchSize: 10);
                   await notifier.refresh();
-                  ref.refresh(syncQueuePendingItemsProvider);
-                  ref.refresh(syncQueueConflictsProvider);
+                  ref.invalidate(syncQueuePendingItemsProvider);
+                  ref.invalidate(syncQueueConflictsProvider);
                 },
                 icon: const Icon(Icons.sync),
                 label: const Text('Process Queue Now'),

@@ -7,6 +7,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 
 let onUnauthorized: (() => void) | null = null;
 let onForbidden: ((message?: string) => void) | null = null;
+let onTokenChange: ((token: string | null) => void) | null = null;
+
+export function setTokenChangeHandler(handler: (token: string | null) => void) {
+  onTokenChange = handler;
+}
 
 export function setErrorHandlers(
   unauthorized: () => void,
@@ -21,6 +26,14 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+  pagination?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage?: boolean;
+    hasPrevPage?: boolean;
+  };
 }
 
 function isAuthSkipRefresh(endpoint: string): boolean {
@@ -65,6 +78,7 @@ class ApiClient {
   }
 
   setToken(token: string | null) {
+    const previousToken = this.token;
     this.token = token;
     if (typeof window !== 'undefined') {
       if (token) {
@@ -73,6 +87,7 @@ class ApiClient {
         localStorage.removeItem('accessToken');
       }
     }
+    if (token !== previousToken) onTokenChange?.(token);
   }
 
   setRefreshToken(refreshToken: string | null) {

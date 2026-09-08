@@ -1,3 +1,5 @@
+import Device from '../models/Device.js';
+import { canAccessInstitution, referenceId } from '../utils/access.js';
 /**
  * Phase 3.4.2: Enhanced IoT Device Controller
  * Handles sensor telemetry, monitoring, and historical data
@@ -19,6 +21,9 @@ import logger from '../config/logger.js';
 export const processTelemetry = async (req, res) => {
   try {
     const { deviceId } = req.params;
+    if (!req.device || req.device.deviceId !== deviceId) {
+      return errorResponse(res, 'Device ID mismatch', 403);
+    }
     // Support nested ESP32 format and flat body
     const telemetryData = req.body.readings ? req.body : { readings: req.body };
 
@@ -89,7 +94,8 @@ export const getHealthMonitoring = async (req, res) => {
       return errorResponse(res, 'Institution ID is required', 400);
     }
 
-    const healthData = await getDeviceHealthMonitoring(targetInstitutionId);
+    if (!canAccessInstitution(req.user, targetInstitutionId)) return errorResponse(res, 'Access denied', 403);
+    const healthData = await getDeviceHealthMonitoring(referenceId(targetInstitutionId));
 
     return successResponse(
       res,
@@ -125,6 +131,9 @@ export const getHistoricalData = async (req, res) => {
     const { deviceId } = req.params;
     const { startDate, endDate, interval, limit } = req.query;
 
+    const device = await Device.findOne({ deviceId });
+    if (!device) return errorResponse(res, 'Device not found', 404);
+    if (!canAccessInstitution(req.user, device.institutionId)) return errorResponse(res, 'Access denied', 403);
     const historicalData = await getHistoricalSensorData(deviceId, {
       startDate,
       endDate,

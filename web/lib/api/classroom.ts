@@ -49,7 +49,7 @@ export const classroomApi = {
   async generateQR(classId: string): Promise<ApiResponse<ClassroomQR>> {
     try {
       console.log(`[ClassroomAPI] Generating QR for class: ${classId}`);
-      const response = await apiClient.post(`/classroom/${classId}/qr/generate`, {});
+      const response = await apiClient.post<ClassroomQR>(`/classroom/${classId}/qr/generate`, {});
       console.log(`[ClassroomAPI] QR generation response:`, response);
       return response;
     } catch (error: any) {

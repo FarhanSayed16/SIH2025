@@ -1,5 +1,6 @@
 import { getMeshKey, rotateMeshKey, syncMeshMessages } from '../services/mesh.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
+import { referenceId } from '../utils/access.js';
 import logger from '../config/logger.js';
 
 /**
@@ -13,19 +14,19 @@ import logger from '../config/logger.js';
  */
 export const getMeshKeyController = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const schoolId = req.user.institutionId;
+    const userId = req.userId;
+    const schoolId = referenceId(req.user.institutionId);
 
     if (!schoolId) {
       return errorResponse(res, 'User does not belong to a school', 400);
     }
 
-    const key = await getMeshKey(schoolId.toString());
+    const { key, expiresAt } = await getMeshKey(schoolId, { includeExpiry: true });
 
     return successResponse(res, {
       schoolId: schoolId.toString(),
       meshKey: key,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
+      expiresAt: expiresAt.toISOString(),
     });
   } catch (error) {
     logger.error('Error getting mesh key:', error);
@@ -39,9 +40,9 @@ export const getMeshKeyController = async (req, res) => {
  */
 export const rotateMeshKeyController = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.userId;
     const userRole = req.user.role;
-    const schoolId = req.user.institutionId;
+    const schoolId = referenceId(req.user.institutionId);
 
     // Only admin can rotate keys
     if (userRole !== 'admin') {
@@ -74,8 +75,8 @@ export const rotateMeshKeyController = async (req, res) => {
  */
 export const syncMeshMessagesController = async (req, res) => {
   try {
-    const userId = req.user.userId;
-    const schoolId = req.user.institutionId;
+    const userId = req.userId;
+    const schoolId = referenceId(req.user.institutionId);
     const { messages } = req.body;
 
     if (!messages || !Array.isArray(messages)) {

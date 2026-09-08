@@ -49,15 +49,10 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
 
   Future<void> _loadSummaries() async {
     try {
-      String fileName = '${widget.language}.json';
-
-      // Filename overrides
-      if (widget.language == 'Telugu') fileName = 'Telgu.json';
-      if (widget.language == 'Marathi') fileName = 'marathi.json';
-      if (widget.language == 'Punjabi') fileName = 'Punjabi.json';
-      if (widget.language == 'Hindi') fileName = 'Hindi.json';
-      if (widget.language == 'Gujarati') fileName = 'Gujarati.json';
-      if (widget.language == 'English') fileName = 'English.json';
+      // The display label may include a native name; assets use ASCII languages.
+      final language = RegExp(r'\(([^)]+)\)$').firstMatch(widget.language)?.group(1)
+          ?? widget.language;
+      final fileName = '$language.json';
 
       debugPrint(
           'Attempting to load summary file: assets/Summary_ndrf/$fileName');

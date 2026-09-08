@@ -862,14 +862,15 @@ class _QuizMenuState extends State<QuizMenu> {
       langCode = 'pun';
     }
 
-    String fileName = 'assets/quiz/quiz_$langCode.json';
+    final fileName = langCode == 'eng'
+        ? 'assets/quiz/quiz_eng.JSON' : 'assets/quiz/quiz_$langCode.json';
 
     try {
       await _loadQuizFile(fileName);
     } catch (e) {
       debugPrint('Error loading $fileName: $e');
       try {
-        await _loadQuizFile('assets/quiz/quiz_eng.json');
+        await _loadQuizFile('assets/quiz/quiz_eng.JSON');
       } catch (e2) {
         if (mounted) {
           setState(() {

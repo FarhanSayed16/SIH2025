@@ -2,13 +2,11 @@
 /// Camera-based navigation with route overlay and AR markers
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:camera/camera.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/ar_navigation_service.dart';
 import 'dart:async';
-import '../../maps/models/map_models.dart';
 
 /// AR Navigation Screen
 class ARNavigationScreen extends ConsumerStatefulWidget {
@@ -32,13 +30,15 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
   List<CameraDescription>? _cameras;
   bool _isCameraInitialized = false;
   bool _isLoading = true;
+  bool _isRouteLoading = false;
+  static const _routeUnavailableMessage =
+      'Route unavailable. Follow posted evacuation plans and staff instructions.';
 
   ARRoute? _currentRoute;
   List<ARMarker> _markers = [];
   Position? _currentPosition;
 
   ARNavigationService? _arService;
-  NavigationRouteModel? _blueprintRoute;
   int _currentInstructionIndex = 0;
 
   Timer? _locationUpdateTimer;
@@ -96,22 +96,6 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
         // Load AR markers
         await _loadMarkers();
 
-        // Fetch blueprint-based indoor route (placeholder from (0,0) to (100,100); replace with real target)
-        try {
-          _blueprintRoute = await _arService!.getBlueprintRoute(
-            schoolId: widget.schoolId!,
-            fromX: 0,
-            fromY: 0,
-            toX: 100,
-            toY: 100,
-            floor: 0,
-          );
-          if (mounted) {
-            setState(() {});
-          }
-        } catch (_) {
-          // Non-fatal; ignore
-        }
       }
 
       // Start location updates
@@ -170,12 +154,18 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
   }
 
   Future<void> _calculateRoute() async {
+    if (!mounted || _isRouteLoading) return;
+    setState(() {
+      _currentRoute = null;
+      _currentInstructionIndex = 0;
+    });
     if (_currentPosition == null ||
         widget.schoolId == null ||
         _arService == null) {
       return;
     }
 
+    setState(() => _isRouteLoading = true);
     try {
       final route = await _arService!.calculateRoute(
         schoolId: widget.schoolId!,
@@ -183,22 +173,20 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
         startLng: _currentPosition!.longitude,
         alertType: widget.alertType,
       );
-
-      if (mounted) {
-        setState(() {
-          _currentRoute = route;
-          _currentInstructionIndex = 0;
-        });
+      if (route.waypoints.length < 2 || route.instructions.isEmpty) {
+        throw StateError('No usable evacuation route returned');
+      }
+      if (mounted && _currentPosition != null) {
+        setState(() => _currentRoute = route);
       }
     } catch (e) {
       print('❌ Calculate route error: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to calculate route: $e'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        setState(() => _currentRoute = null);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isRouteLoading = false);
       }
     }
   }
@@ -242,6 +230,12 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
         }
       } catch (e) {
         print('❌ Location update error: $e');
+        if (mounted) {
+          setState(() {
+            _currentPosition = null;
+            _currentRoute = null;
+          });
+        }
       }
     });
   }
@@ -327,7 +321,7 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
         ),
         body: const Center(
           child: Text(
-            'Camera not available',
+            'Camera not available. $_routeUnavailableMessage',
             style: TextStyle(color: Colors.white),
           ),
         ),
@@ -422,9 +416,9 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
           color: Colors.black.withOpacity(0.8),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Text(
-          'Calculating route...',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+        child: Text(
+          _isRouteLoading ? 'Calculating route...' : _routeUnavailableMessage,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
       );
     }
@@ -511,22 +505,6 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
             ),
           ],
 
-          if (_blueprintRoute != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Indoor (blueprint) route preview',
-              style: TextStyle(
-                color: Colors.grey[300],
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 160,
-              child: _IndoorRoutePreview(route: _blueprintRoute!),
-            ),
-          ],
         ],
       ),
     );
@@ -576,84 +554,6 @@ class _ARNavigationScreenState extends ConsumerState<ARNavigationScreen> {
       return '< 1 min';
     }
     return '$minutes min';
-  }
-}
-
-class _IndoorRoutePreview extends StatelessWidget {
-  final NavigationRouteModel route;
-  const _IndoorRoutePreview({required this.route});
-
-  @override
-  Widget build(BuildContext context) {
-    if (route.route.isEmpty) {
-      return const Center(
-          child:
-              Text('No indoor route', style: TextStyle(color: Colors.white70)));
-    }
-    // Normalize to container size 1x1, then fit into box with padding
-    double minX = route.route.map((p) => p.x).reduce((a, b) => a < b ? a : b);
-    double maxX = route.route.map((p) => p.x).reduce((a, b) => a > b ? a : b);
-    double minY = route.route.map((p) => p.y).reduce((a, b) => a < b ? a : b);
-    double maxY = route.route.map((p) => p.y).reduce((a, b) => a > b ? a : b);
-    double dx = (maxX - minX).abs();
-    double dy = (maxY - minY).abs();
-    if (dx == 0) dx = 1;
-    if (dy == 0) dy = 1;
-
-    List<Offset> normalized = route.route
-        .map((p) => Offset((p.x - minX) / dx, (p.y - minY) / dy))
-        .toList();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white24),
-      ),
-      padding: const EdgeInsets.all(8),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final h = constraints.maxHeight;
-          final pts =
-              normalized.map((p) => Offset(p.dx * w, p.dy * h)).toList();
-          return CustomPaint(
-            painter: _IndoorRoutePainter(points: pts),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _IndoorRoutePainter extends CustomPainter {
-  final List<Offset> points;
-  _IndoorRoutePainter({required this.points});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
-    final path = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-    final paint = Paint()
-      ..color = Colors.orangeAccent
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, paint);
-
-    final dotPaint = Paint()
-      ..color = Colors.orangeAccent
-      ..style = PaintingStyle.fill;
-    for (final p in points) {
-      canvas.drawCircle(p, 4, dotPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _IndoorRoutePainter oldDelegate) {
-    return oldDelegate.points != points;
   }
 }
 

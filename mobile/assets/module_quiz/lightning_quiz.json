@@ -1,0 +1,132 @@
+[
+  {
+    "id": 1,
+    "topic": "Lightning",
+    "question": "Which of the following is a recommended step to prepare before a thunderstorm hits?",
+    "options": [
+      "A. Open all windows for ventilation",
+      "B. Unplug unnecessary electrical appliances",
+      "C. Take a bath to stay cool",
+      "D. Stand on the roof to watch clouds"
+    ],
+    "answer": "B. Unplug unnecessary electrical appliances",
+    "explanation": "Unplugging electronics prevents damage from power surges caused by lightning strikes."
+  },
+  {
+    "id": 2,
+    "topic": "Lightning",
+    "question": "What is the safest location to seek shelter during a lightning storm?",
+    "options": [
+      "A. Under a tall isolated tree",
+      "B. Inside a sturdy, enclosed building",
+      "C. Under a picnic tent",
+      "D. Near a metal fence"
+    ],
+    "answer": "B. Inside a sturdy, enclosed building",
+    "explanation": "Sturdy buildings with plumbing and wiring conduct electricity to the ground better than open structures, keeping occupants safer."
+  },
+  {
+    "id": 3,
+    "topic": "Lightning",
+    "question": "What is a common myth regarding lightning strike victims?",
+    "options": [
+      "A. They may have burns",
+      "B. They retain an electric charge and are dangerous to touch",
+      "C. They require immediate medical attention",
+      "D. They may suffer from cardiac arrest"
+    ],
+    "answer": "B. They retain an electric charge and are dangerous to touch",
+    "explanation": "It is a myth that victims stay electrified. It is perfectly safe to touch them and administer First Aid immediately."
+  },
+  {
+    "id": 4,
+    "topic": "Lightning",
+    "question": "If you are caught outdoors with no shelter and your hair stands on end, what should you do?",
+    "options": [
+      "A. Run as fast as possible",
+      "B. Lie flat on the ground",
+      "C. Perform the 'lightning crouch' (squat low on balls of feet)",
+      "D. Hide under the nearest tree"
+    ],
+    "answer": "C. Perform the 'lightning crouch' (squat low on balls of feet)",
+    "explanation": "Squatting low minimizes your height while keeping contact with the ground small, reducing the risk of a direct hit or ground current injury."
+  },
+  {
+    "id": 5,
+    "topic": "Lightning",
+    "question": "Which of the following is a characteristic skin symptom often seen in lightning survivors?",
+    "options": [
+      "A. Frostbite",
+      "B. Lichtenberg figures (fern-like patterns)",
+      "C. Sunburn",
+      "D. Blue rashes"
+    ],
+    "answer": "B. Lichtenberg figures (fern-like patterns)",
+    "explanation": "Lichtenberg figures are temporary, fern-like branching patterns on the skin caused by the rupture of capillaries under the skin due to the lightning discharge."
+  },
+  {
+    "id": 6,
+    "topic": "Lightning",
+    "question": "Is it safe to be inside a car during a lightning storm?",
+    "options": [
+      "A. No, cars are made of metal and attract lightning",
+      "B. Yes, but only if it is a convertible",
+      "C. Yes, if it has a hard top and windows are rolled up",
+      "D. No, the rubber tires are flammable"
+    ],
+    "answer": "C. Yes, if it has a hard top and windows are rolled up",
+    "explanation": "A hard-topped metal vehicle acts as a Faraday cage, directing the current around the outside of the car and into the ground, protecting those inside."
+  },
+  {
+    "id": 7,
+    "topic": "Lightning",
+    "question": "What is the most immediate life-threatening injury caused by a lightning strike?",
+    "options": [
+      "A. Broken bones",
+      "B. Cardiac arrest (heart stopping)",
+      "C. Loss of hearing",
+      "D. Confusion"
+    ],
+    "answer": "B. Cardiac arrest (heart stopping)",
+    "explanation": "While burns and trauma occur, cardiac arrest is the most common cause of immediate death, which is why CPR is critical."
+  },
+  {
+    "id": 8,
+    "topic": "Lightning",
+    "question": "Which activity should be AVOIDED inside the house during a thunderstorm?",
+    "options": [
+      "A. Reading a book",
+      "B. Using a corded landline telephone",
+      "C. Sitting on a wooden chair",
+      "D. Eating food"
+    ],
+    "answer": "B. Using a corded landline telephone",
+    "explanation": "Electricity from a lightning strike can travel through phone lines and shock the person holding the corded phone."
+  },
+  {
+    "id": 9,
+    "topic": "Lightning",
+    "question": "How long should you wait after the last thunder is heard before resuming outdoor activities?",
+    "options": [
+      "A. 5 minutes",
+      "B. 10 minutes",
+      "C. 30 minutes",
+      "D. 1 hour"
+    ],
+    "answer": "C. 30 minutes",
+    "explanation": "Lightning can strike up to 10 miles away from the rain area. Waiting 30 minutes ensures the storm has moved a safe distance away."
+  },
+  {
+    "id": 10,
+    "topic": "Lightning",
+    "question": "Why is standing under a tall tree dangerous during lightning?",
+    "options": [
+      "A. Trees attract rain",
+      "B. Leaves block the view of the storm",
+      "C. Trees are likely targets for strikes and can explode or conduct side flashes",
+      "D. Birds in trees might attack"
+    ],
+    "answer": "C. Trees are likely targets for strikes and can explode or conduct side flashes",
+    "explanation": "Lightning tends to hit the tallest object. Being under a tree puts you at risk of a 'side flash' jumping from the tree to you."
+  }
+]

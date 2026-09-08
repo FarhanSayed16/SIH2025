@@ -5,6 +5,16 @@ import '../../../core/constants/api_endpoints.dart';
 import '../models/auth_response.dart';
 import '../models/user_model.dart';
 
+class AuthValidationException implements Exception {
+  final String message;
+  final Map<String, String> fieldErrors;
+
+  AuthValidationException(this.message, this.fieldErrors);
+
+  @override
+  String toString() => 'Exception: $message';
+}
+
 /// Authentication Service
 class AuthService {
   final ApiService _apiService;
@@ -21,7 +31,6 @@ class AuthService {
     try {
       // Reset logout flag before attempting login to allow the request
       _apiService.resetLogoutFlag();
-      print('🔐 Attempting login for: $email');
       final response = await _apiService.post(
         ApiEndpoints.login,
         data: {
@@ -30,8 +39,6 @@ class AuthService {
         },
       );
 
-      print('🔐 Login response received: ${response.statusCode}');
-      print('🔐 Response data: ${response.data}');
 
       final responseData = response.data as Map<String, dynamic>;
       final authResponse = AuthResponse.fromJson(responseData);
@@ -54,19 +61,13 @@ class AuthService {
       // Reset logout flag after successful login
       _apiService.resetLogoutFlag();
 
-      print('✅ Login successful for: ${authResponse.user.email}');
       return authResponse;
     } catch (e) {
-      print('❌ Login error: $e');
       if (e is DioException) {
         final errorMessage = _handleDioError(e);
-        print('🔍 Processed error message: $errorMessage');
         // Preserve the original error message for approval pending detection
         // The login screen checks for "pending teacher approval" in the error string
-        final exception = Exception(errorMessage);
-        // Add the message as a property for easier checking
-        (exception as dynamic).message = errorMessage;
-        throw exception;
+        throw Exception(errorMessage);
       }
       rethrow;
     }
@@ -89,7 +90,6 @@ class AuthService {
     try {
       // Reset logout flag before attempting registration to allow the request
       _apiService.resetLogoutFlag();
-      print('📝 Attempting registration for: $email');
       final data = <String, dynamic>{
         'email': email,
         'password': password,
@@ -121,8 +121,6 @@ class AuthService {
         data: data,
       );
 
-      print('📝 Registration response received: ${response.statusCode}');
-      print('📝 Response data: ${response.data}');
 
       final responseData = response.data as Map<String, dynamic>;
       final authResponse = AuthResponse.fromJson(responseData);
@@ -145,19 +143,12 @@ class AuthService {
       // Reset logout flag after successful registration
       _apiService.resetLogoutFlag();
 
-      print('✅ Registration successful for: ${authResponse.user.email}');
       return authResponse;
     } catch (e) {
-      print('❌ Registration error: $e');
       if (e is DioException) {
         final errorMessage = _handleDioError(e);
         final fieldErrors = extractFieldErrors(e);
-        print('🔍 Field errors: $fieldErrors');
-        final exception = Exception(errorMessage);
-        // Add field errors for display in text fields
-        (exception as dynamic).fieldErrors = fieldErrors;
-        (exception as dynamic).message = errorMessage;
-        throw exception;
+        throw AuthValidationException(errorMessage, fieldErrors);
       }
       rethrow;
     }
@@ -236,8 +227,6 @@ class AuthService {
       // Check if response is HTML (wrong server/route)
       if (response.data is String &&
           (response.data as String).contains('<!DOCTYPE html>')) {
-        print('⚠️ WARNING: Received HTML instead of JSON for user profile');
-        print('⚠️ This indicates a routing issue. Check API base URL.');
         return null;
       }
 
@@ -256,7 +245,6 @@ class AuthService {
 
       return UserModel.fromJson(userData);
     } catch (e) {
-      print('❌ Error getting current user: $e');
       return null;
     }
   }
@@ -280,7 +268,6 @@ class AuthService {
   /// Phase 2.5: Login with QR code
   Future<AuthResponse> loginWithQR(String qrCode) async {
     try {
-      print('📱 Attempting QR login');
       final response = await _apiService.post(
         ApiEndpoints.qrLogin,
         data: {
@@ -288,7 +275,6 @@ class AuthService {
         },
       );
 
-      print('📱 QR login response received: ${response.statusCode}');
       final responseData = response.data as Map<String, dynamic>;
       final authResponse = AuthResponse.fromJson(responseData);
 
@@ -307,10 +293,8 @@ class AuthService {
       // Reset logout flag after successful QR login
       _apiService.resetLogoutFlag();
 
-      print('✅ QR login successful for: ${authResponse.user.name}');
       return authResponse;
     } catch (e) {
-      print('❌ QR login error: $e');
       if (e is DioException) {
         throw _handleDioError(e);
       }
@@ -321,7 +305,6 @@ class AuthService {
   /// Phase 2.5: Login with device token
   Future<Map<String, dynamic>> loginWithDevice(String deviceToken) async {
     try {
-      print('📱 Attempting device login');
       final response = await _apiService.post(
         ApiEndpoints.deviceLogin,
         data: {
@@ -329,7 +312,6 @@ class AuthService {
         },
       );
 
-      print('📱 Device login response received: ${response.statusCode}');
       final responseData = response.data as Map<String, dynamic>;
       final data =
           responseData['data'] as Map<String, dynamic>? ?? responseData;
@@ -337,7 +319,6 @@ class AuthService {
       // Device login doesn't return user tokens - returns device/class context
       return data;
     } catch (e) {
-      print('❌ Device login error: $e');
       if (e is DioException) {
         throw _handleDioError(e);
       }
@@ -354,9 +335,7 @@ class AuthService {
           'classId': classId,
         },
       );
-      print('✅ Class selected: $classId');
     } catch (e) {
-      print('❌ Class selection error: $e');
       if (e is DioException) {
         throw _handleDioError(e);
       }
@@ -367,7 +346,6 @@ class AuthService {
   /// Forgot password - Request password reset link
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     try {
-      print('🔐 Requesting password reset for: $email');
       final response = await _apiService.post(
         ApiEndpoints.forgotPassword,
         data: {
@@ -375,7 +353,6 @@ class AuthService {
         },
       );
 
-      print('🔐 Forgot password response received: ${response.statusCode}');
       final responseData = response.data as Map<String, dynamic>;
 
       return {
@@ -384,12 +361,9 @@ class AuthService {
             'If this email is registered, a password reset link has been sent.',
       };
     } catch (e) {
-      print('❌ Forgot password error: $e');
       if (e is DioException) {
         final errorMessage = _handleDioError(e);
-        final exception = Exception(errorMessage);
-        (exception as dynamic).message = errorMessage;
-        throw exception;
+        throw Exception(errorMessage);
       }
       rethrow;
     }
@@ -399,7 +373,6 @@ class AuthService {
   Future<Map<String, dynamic>> resetPassword(
       String token, String password) async {
     try {
-      print('🔐 Resetting password with token');
       final response = await _apiService.post(
         ApiEndpoints.resetPassword,
         data: {
@@ -408,7 +381,6 @@ class AuthService {
         },
       );
 
-      print('🔐 Reset password response received: ${response.statusCode}');
       final responseData = response.data as Map<String, dynamic>;
 
       return {
@@ -417,12 +389,9 @@ class AuthService {
             responseData['message'] ?? 'Password has been reset successfully.',
       };
     } catch (e) {
-      print('❌ Reset password error: $e');
       if (e is DioException) {
         final errorMessage = _handleDioError(e);
-        final exception = Exception(errorMessage);
-        (exception as dynamic).message = errorMessage;
-        throw exception;
+        throw Exception(errorMessage);
       }
       rethrow;
     }

@@ -1,3 +1,4 @@
+import { canAccessInstitution, referenceId } from '../utils/access.js';
 import logger from '../config/logger.js';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
@@ -33,15 +34,18 @@ export const initializeSocket = (io) => {
       // Get user
       const user = await User.findById(decoded.userId).select('-password -refreshToken');
       
-      if (!user || !user.isActive) {
+      if (!user || !user.isActive || ['blocked', 'rejected'].includes(user.approvalStatus) ||
+          (decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
         return next(new Error('Authentication error: User not found or inactive'));
       }
 
       // Attach user to socket
       socket.userId = decoded.userId;
-      socket.userRole = decoded.role;
+      socket.userRole = user.role;
+      socket.tokenVersion = decoded.tokenVersion || 0;
+      socket.tokenExpiresAt = decoded.exp * 1000;
       socket.user = user.toJSON();
-      socket.institutionId = user.institutionId?.toString();
+      socket.institutionId = referenceId(user.institutionId);
 
       next();
     } catch (error) {
@@ -54,8 +58,32 @@ export const initializeSocket = (io) => {
   io.on('connection', async (socket) => {
     logger.info(`✅ Client connected: ${socket.id} (User: ${socket.user?.email || 'unknown'})`);
 
+    await socket.join(`user:${socket.userId}`);
+    const expiryTimer = setTimeout(() => socket.disconnect(true),
+      Math.max(0, socket.tokenExpiresAt - Date.now()));
+    expiryTimer.unref?.();
+    socket.on('disconnect', () => clearTimeout(expiryTimer));
+
+    // Revalidate the session before each client event, including password-reset revocation.
+    socket.use(async (_packet, next) => {
+      try {
+        const current = await User.findById(socket.userId);
+        if (!current || current.isActive === false || ['blocked', 'rejected'].includes(current.approvalStatus) ||
+            (current.tokenVersion || 0) !== socket.tokenVersion ||
+            referenceId(current.institutionId) !== socket.institutionId || current.role !== socket.userRole ||
+            current.approvalStatus !== socket.user.approvalStatus || Date.now() >= socket.tokenExpiresAt) {
+          socket.disconnect(true);
+          return next(new Error('Session revoked'));
+        }
+        socket.user = current.toJSON();
+        next();
+      } catch {
+        next(new Error('Cannot verify session'));
+      }
+    });
+
     // Join user's school room automatically
-    if (socket.institutionId) {
+    if (canAccessInstitution(socket.user, socket.institutionId)) {
       const roomName = `school:${socket.institutionId}`;
       await socket.join(roomName);
       logger.info(`User ${socket.userId} joined room: ${roomName}`);
@@ -78,7 +106,7 @@ export const initializeSocket = (io) => {
         }
 
         // Verify user has access to this school
-        if (socket.userRole !== 'admin' && socket.institutionId !== schoolId) {
+        if (!canAccessInstitution(socket.user, schoolId)) {
           socket.emit('ERROR', { message: 'Access denied to this school' });
           return;
         }
@@ -135,6 +163,10 @@ export const initializeSocket = (io) => {
           return;
         }
 
+        if (!canAccessInstitution(socket.user, drill.institutionId)) {
+          socket.emit('ERROR', { message: 'Access denied to drill' });
+          return;
+        }
         // Acknowledge drill
         await drill.acknowledgeDrill(socket.userId);
 
@@ -170,18 +202,27 @@ export const initializeSocket = (io) => {
 
     const relaySos = (eventName) => async (data = {}) => {
       try {
-        const schoolId = data.institutionId || socket.institutionId;
+        const schoolId = socket.institutionId;
+        if (!canAccessInstitution(socket.user, schoolId)) {
+          socket.emit('ERROR', { message: 'Approved school membership required' });
+          return;
+        }
+        if ((data.institutionId && data.institutionId !== schoolId) ||
+            (data.userId && data.userId !== socket.userId)) {
+          socket.emit('ERROR', { message: 'Cannot send SOS for another user or institution' });
+          return;
+        }
         if (!schoolId) {
           socket.emit('ERROR', { message: 'Institution ID is required for SOS' });
           return;
         }
         const payload = {
           ...data,
-          userId: data.userId || socket.userId,
-          userName: data.userName || socket.user?.name,
-          role: data.role || socket.userRole,
+          userId: socket.userId,
+          userName: socket.user?.name,
+          role: socket.userRole,
           institutionId: schoolId,
-          timestamp: data.timestamp || new Date().toISOString()
+          timestamp: new Date().toISOString()
         };
         io.to(`school:${schoolId}`).emit(eventName, payload);
         logger.info(`${eventName} from ${payload.userId} school:${schoolId}`);
@@ -226,6 +267,10 @@ export const initializeSocket = (io) => {
           return;
         }
 
+        if (!canAccessInstitution(socket.user, alert.institutionId)) {
+          socket.emit('ERROR', { message: 'Access denied to alert' });
+          return;
+        }
         // Update alert student status
         await alert.updateStudentStatus(socket.userId, 'safe', location);
 
@@ -271,6 +316,10 @@ export const initializeSocket = (io) => {
           return;
         }
 
+        if (!canAccessInstitution(socket.user, alert.institutionId)) {
+          socket.emit('ERROR', { message: 'Access denied to alert' });
+          return;
+        }
         // Update alert student status to 'at_risk' (help requested)
         await alert.updateStudentStatus(socket.userId, 'at_risk', location);
 
@@ -295,6 +344,10 @@ export const initializeSocket = (io) => {
     // Legacy: Handle SAFETY_STATUS_UPDATE (backward compatibility)
     socket.on('SAFETY_STATUS_UPDATE', async (data) => {
       try {
+        if (!canAccessInstitution(socket.user, socket.institutionId)) {
+          socket.emit('ERROR', { message: 'Approved school membership required' });
+          return;
+        }
         const { status, location } = data;
         
         // Update user status

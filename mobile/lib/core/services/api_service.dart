@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import '../config/env.dart';
 import '../constants/app_constants.dart';
 import '../../features/auth/services/auth_service.dart';
@@ -47,10 +47,9 @@ class ApiService {
       final token = await storageService.getAccessToken();
       if (token != null && token.isNotEmpty) {
         setAuthToken(token);
-        print('✅ Token loaded from storage on ApiService initialization');
       }
     } catch (e) {
-      print('⚠️ Could not load token from storage on initialization: $e');
+      // Requests can retry loading storage or refresh authentication later.
     }
   }
 
@@ -80,18 +79,11 @@ class ApiService {
 
           // If this is a login/register attempt, reset logout flag to allow it
           if (isAuthEndpoint && _isLoggingOut) {
-            print('🔄 Resetting logout flag to allow new login attempt');
             _isLoggingOut = false;
           }
 
-          // Log request for debugging
-          print('📤 [API SERVICE] Request: ${options.method} ${options.baseUrl}${options.path}');
-          print('📤 [API SERVICE] Headers: ${options.headers}');
-          if (options.data != null) {
-            print('📤 [API SERVICE] Data: ${options.data}');
-          }
-          if (options.queryParameters.isNotEmpty) {
-            print('📤 [API SERVICE] Query: ${options.queryParameters}');
+          if (kDebugMode) {
+            debugPrint('API request: ${options.method}');
           }
 
           // Ensure token is attached from storage if not already set
@@ -112,46 +104,26 @@ class ApiService {
 
               if (token != null && token.isNotEmpty) {
                 options.headers['Authorization'] = 'Bearer $token';
-                print(
-                    '✅ Token attached to request: ${token.substring(0, 20)}...');
-              } else {
-                print('⚠️ No token available for request');
               }
             } catch (e) {
               // Ignore errors - token will be refreshed on 401
-              print('⚠️ Warning: Could not get token from storage: $e');
             }
           }
 
           handler.next(options);
         },
         onResponse: (response, handler) {
-          // Log successful response
-          print(
-              '✅ API Response: ${response.statusCode} ${response.requestOptions.path}');
-
-          // Check if response is HTML (should be JSON)
-          if (response.data is String &&
-              (response.data as String).contains('<!DOCTYPE html>')) {
-            print(
-                '⚠️ WARNING: Received HTML instead of JSON. This might indicate a routing issue.');
-            print('⚠️ Full URL: ${response.requestOptions.uri}');
-            print('⚠️ Base URL: ${_dio.options.baseUrl}');
-          } else {
-            print('✅ Data: ${response.data}');
+          if (kDebugMode) {
+            debugPrint('API response: ${response.statusCode}');
           }
 
           handler.next(response);
         },
         onError: (error, handler) async {
-          // Log error for debugging
-          print(
-              '❌ [API SERVICE] Error: ${error.requestOptions.method} ${error.requestOptions.baseUrl}${error.requestOptions.path}');
-          print('❌ [API SERVICE] Status: ${error.response?.statusCode ?? "No response"}');
-          print('❌ [API SERVICE] Error Type: ${error.type}');
-          print('❌ [API SERVICE] Message: ${error.message}');
-          if (error.response?.data != null) {
-            print('❌ [API SERVICE] Response Data: ${error.response?.data}');
+          if (kDebugMode) {
+            debugPrint(
+              'API error: ${error.type}, status: ${error.response?.statusCode}',
+            );
           }
 
           // Don't try to refresh token on connection errors or if already logging out
@@ -160,7 +132,6 @@ class ApiService {
               error.type == DioExceptionType.receiveTimeout ||
               error.type == DioExceptionType.sendTimeout) {
             // Connection errors - just pass through, don't try to refresh
-            print('⚠️ Connection error - skipping token refresh');
             handler.next(error);
             return;
           }
@@ -173,8 +144,6 @@ class ApiService {
 
             if (isRefreshRequest) {
               // Refresh token itself failed - force logout to break the loop
-              print(
-                  '❌ Refresh token invalid/expired - forcing logout to break loop');
               await _handleLogout();
               handler.next(error);
               return;
@@ -182,14 +151,12 @@ class ApiService {
 
             // Prevent multiple simultaneous refresh attempts
             if (_isRefreshing) {
-              print('⏳ Token refresh already in progress, skipping...');
               handler.next(error);
               return;
             }
 
             // Prevent refresh if logout is in progress
             if (_isLoggingOut) {
-              print('🚪 Logout in progress, skipping token refresh');
               handler.next(error);
               return;
             }
@@ -216,13 +183,9 @@ class ApiService {
                   );
                   handler.resolve(response);
                   return;
-                } else {
-                  // Refresh failed or logout was triggered
-                  print('❌ Token refresh failed - logout triggered');
                 }
               } catch (e) {
                 _isRefreshing = false;
-                print('❌ Token refresh exception: $e');
 
                 // Check if error is 401 on refresh endpoint
                 if (e is DioException && e.response?.statusCode == 401) {
@@ -260,7 +223,6 @@ class ApiService {
     }
 
     _isLoggingOut = true;
-    print('🚪 Forcing logout due to invalid refresh token - breaking 401 loop');
 
     try {
       // Clear tokens and storage
@@ -272,23 +234,19 @@ class ApiService {
         await storageService.clearSecureStorage();
         clearAuthToken();
       }
-
-      print('✅ Logout completed - user should be redirected to login');
     } catch (e) {
-      print('❌ Error during logout: $e');
       // Even if logout fails, clear local state
       try {
         final storageService = StorageService();
         await storageService.clearSecureStorage();
         clearAuthToken();
       } catch (e2) {
-        print('❌ Error clearing storage: $e2');
+        // Preserve logout cleanup even when secure storage is unavailable.
       }
     } finally {
       // Reset logout flag after cleanup to allow new login attempts
       // Storage is already cleared, so it's safe to allow new requests
       _isLoggingOut = false;
-      print('🔄 Logout flag reset - ready for new login attempts');
     }
   }
 
@@ -311,7 +269,9 @@ class ApiService {
   /// POST request
   /// Use [options] to override timeouts (e.g. for AI image endpoints: Options(receiveTimeout: Duration(seconds: 90)))
   Future<Response<dynamic>> post(String path,
-      {dynamic data, Map<String, dynamic>? queryParameters, Options? options}) async {
+      {dynamic data,
+      Map<String, dynamic>? queryParameters,
+      Options? options}) async {
     try {
       return await _dio.post<dynamic>(path,
           data: data, queryParameters: queryParameters, options: options);

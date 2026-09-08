@@ -154,13 +154,13 @@ class MeshService {
     Future.microtask(() async {
       try {
         if (_offlineQueue != null) {
-          await _offlineQueue!.initialize();
+          await _offlineQueue.initialize();
         }
         if (_syncService != null) {
-          await _syncService!.initialize();
+          await _syncService.initialize();
         }
         if (_deduplicator != null) {
-          await _deduplicator!.initialize();
+          await _deduplicator.initialize();
         }
         
         if (kDebugMode) {
@@ -331,27 +331,30 @@ class MeshService {
   /// Send message to connected peers
   /// Phase 5.3: Automatically signs message and queues if offline
   Future<bool> sendMessage(MeshMessage message) async {
-    // Phase 5.3: Sign message if security service is available
+    final security = _securityService;
+    if (security == null || message.schoolId.isEmpty) return false;
+
     MeshMessage secureMessage = message;
-    if (_securityService != null && message.schoolId.isNotEmpty) {
-      try {
-        // Ensure message is signed
-        if (message.signature == null || message.signature!.isEmpty) {
-          final signature = await _securityService!.signMessageAsync(message);
-          secureMessage = message.copyWith(signature: signature);
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('⚠️ Mesh Service: Error signing message: $e');
-        }
-        // Continue without signature if signing fails
+    try {
+      final signature = message.signature;
+      if (signature == null || signature.isEmpty) {
+        final newSignature = await security.signMessageAsync(message);
+        if (newSignature.isEmpty) return false;
+        secureMessage = message.copyWith(signature: newSignature);
+      } else if (!await security.verifySignature(message, signature)) {
+        return false;
       }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Mesh send rejected: signing or verification failed');
+      }
+      return false;
     }
-    
+
     // Phase 5.3: Add to offline queue for sync
     if (_offlineQueue != null) {
       try {
-        await _offlineQueue!.addMessage(secureMessage);
+        await _offlineQueue.addMessage(secureMessage);
       } catch (e) {
         if (kDebugMode) {
           print('⚠️ Mesh Service: Error queueing message: $e');
@@ -416,47 +419,27 @@ class MeshService {
       return false;
     }
     
-    // Phase 5.3: Create secure message using security service
-    MeshMessage message;
-    if (_securityService != null) {
-      try {
-        message = await _securityService!.createSecureMessage(
-          msgId: payload['msgId'] as String? ?? 
-                 '${DateTime.now().millisecondsSinceEpoch}_${_generateRandomString(8)}',
-          type: payload['type'] as String? ?? MeshMessageType.crisisAlert,
-          schoolId: schoolId,
-          source: payload['source'] as String? ?? MeshMessageSource.mesh,
-          payload: payload,
-          encryptPayload: encryptPayload,
-        );
-      } catch (e) {
-        if (kDebugMode) {
-          print('⚠️ Mesh Service: Error creating secure message: $e');
-        }
-        // Fallback to basic message
-        message = MeshMessage(
-          msgId: DateTime.now().millisecondsSinceEpoch.toString(),
-          type: payload['type'] as String? ?? MeshMessageType.crisisAlert,
-          schoolId: schoolId,
-          source: payload['source'] as String? ?? MeshMessageSource.mesh,
-          payload: payload,
-          timestamp: DateTime.now().millisecondsSinceEpoch,
-          ttl: payload['ttl'] as int? ?? 3,
-        );
-      }
-    } else {
-      // Basic message without security
-      message = MeshMessage(
-        msgId: DateTime.now().millisecondsSinceEpoch.toString(),
+    final security = _securityService;
+    if (security == null) return false;
+
+    final MeshMessage message;
+    try {
+      message = await security.createSecureMessage(
+        msgId: payload['msgId'] as String? ??
+            '${DateTime.now().millisecondsSinceEpoch}_${_generateRandomString(8)}',
         type: payload['type'] as String? ?? MeshMessageType.crisisAlert,
         schoolId: schoolId,
         source: payload['source'] as String? ?? MeshMessageSource.mesh,
         payload: payload,
-        timestamp: DateTime.now().millisecondsSinceEpoch,
-        ttl: payload['ttl'] as int? ?? 3,
+        encryptPayload: encryptPayload,
       );
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Mesh broadcast rejected: secure message creation failed');
+      }
+      return false;
     }
-    
+
     return sendMessage(message);
   }
   
@@ -543,7 +526,7 @@ class MeshService {
         final message = MeshMessage.decode(jsonString);
         
         // Phase 5.4: Use deduplicator if available for early duplicate check
-        if (_deduplicator != null && _deduplicator!.hasSeen(message.msgId)) {
+        if (_deduplicator != null && _deduplicator.hasSeen(message.msgId)) {
           if (kDebugMode) {
             print('⚠️ Mesh Service: Duplicate message ${message.msgId}, dropping');
           }
@@ -562,48 +545,29 @@ class MeshService {
   /// Phase 5.3/5.4: Verify signature, decrypt, queue, and optionally relay
   Future<void> _processReceivedMessage(MeshMessage message, String endpointId) async {
     try {
-      MeshMessage verifiedMessage = message;
-      
-      // Phase 5.3: Verify signature if security service is available
-      if (_securityService != null && message.signature != null && message.signature!.isNotEmpty) {
-        final isValid = await _securityService!.verifySignature(message, message.signature!);
-        if (!isValid) {
-          if (kDebugMode) {
-            print('⚠️ Mesh Service: Invalid signature for message ${message.msgId}, dropping');
-          }
-          _errorController.add('Invalid signature for message ${message.msgId}');
-          return; // Drop message with invalid signature
-        }
-        
-        // Phase 5.3: Decrypt payload if encrypted
-        if (message.encrypted) {
-          final decryptedMessage = await _securityService!.verifyAndDecryptMessage(message);
-          if (decryptedMessage == null) {
-            if (kDebugMode) {
-              print('⚠️ Mesh Service: Failed to decrypt message ${message.msgId}');
-            }
-            _errorController.add('Failed to decrypt message ${message.msgId}');
-            return; // Drop message that can't be decrypted
-          }
-          verifiedMessage = decryptedMessage;
-        }
+      final security = _securityService;
+      if (security == null || message.schoolId.isEmpty) return;
+      final verifiedMessage = await security.verifyAndDecryptMessage(message);
+      if (verifiedMessage == null) {
+        _errorController.add('Received mesh message could not be verified');
+        return;
       }
-      
+
       // Phase 5.4: Use relay service for complete processing (deduplication + relay)
       if (_relayService != null) {
         // Relay service handles: deduplication, message type handling, and relay
-        await _relayService!.processMessage(verifiedMessage);
+        await _relayService!.processMessage(message);
       } else {
         // Fallback: Use basic deduplication (Phase 5.3)
         // Phase 5.4: Check deduplicator if available
         if (_deduplicator != null) {
-          if (_deduplicator!.hasSeen(verifiedMessage.msgId)) {
+          if (_deduplicator.hasSeen(verifiedMessage.msgId)) {
             if (kDebugMode) {
               print('⚠️ Mesh Service: Duplicate message ${verifiedMessage.msgId}, dropping');
             }
             return; // Drop duplicate
           }
-          await _deduplicator!.markSeen(verifiedMessage.msgId);
+          await _deduplicator.markSeen(verifiedMessage.msgId);
         }
       }
       
@@ -631,7 +595,7 @@ class MeshService {
       
       // Add to offline queue for sync
       if (_offlineQueue != null) {
-        await _offlineQueue!.addMessage(verifiedMessage);
+        await _offlineQueue.addMessage(message);
       }
       
       // Emit message to listeners (this triggers UI updates)

@@ -95,7 +95,7 @@ export const authApi = {
     return apiClient.post('/auth/refresh', { refreshToken });
   },
 
-  getProfile: async (): Promise<ApiResponse<LoginResponse['user']>> => {
+  getProfile: async (): Promise<ApiResponse<{ user: Omit<LoginResponse['user'], 'institutionId'> & { _id?: string; institutionId?: string | { _id: string } | null } }>> => {
     return apiClient.get('/auth/profile');
   },
 

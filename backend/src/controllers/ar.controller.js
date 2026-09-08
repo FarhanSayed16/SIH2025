@@ -10,7 +10,6 @@ import {
   getSchoolARSessions,
   getARSessionStatistics,
 } from '../services/ar.service.js';
-import { triggerARPath } from '../services/arTrigger.service.js';
 import logger from '../config/logger.js';
 
 /**
@@ -130,39 +129,8 @@ export const getARSessionStatisticsController = async (req, res) => {
  * Trigger AR path remotely (admin/teacher only)
  * POST /api/ar/trigger-path
  */
-export const triggerARPathController = async (req, res) => {
-  try {
-    const { schoolId, waypoints, safeZone, alertType, alertId, drillId, assetUrl } = req.body;
-
-    if (!schoolId) {
-      return errorResponse(res, 'School ID is required', 400);
-    }
-
-    // Verify user has access to this school
-    if (req.user.role !== 'admin' && req.user.institutionId?.toString() !== schoolId) {
-      return errorResponse(res, 'Access denied to this school', 403);
-    }
-
-    const io = req.app.get('io');
-    if (!io) {
-      return errorResponse(res, 'Socket.io server not available', 500);
-    }
-
-    const result = await triggerARPath(io, schoolId, {
-      waypoints,
-      safeZone,
-      alertType,
-      alertId,
-      drillId,
-      assetUrl,
-    }, {
-      triggeredBy: req.userId,
-    });
-
-    return successResponse(res, result, 'AR path triggered successfully');
-  } catch (error) {
-    logger.error('Trigger AR path error:', error);
-    return errorResponse(res, error.message || 'Failed to trigger AR path', 500);
-  }
-};
-
+export const triggerARPathController = async (_req, res) => errorResponse(
+  res,
+  'Evacuation route guidance is unavailable until a validated map and calibrated traversable paths are configured. Follow posted emergency plans and staff instructions.',
+  503
+);

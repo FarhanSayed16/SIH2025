@@ -1,6 +1,6 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { ARCHITECTURE } from '@/lib/content/landing';
 import {
   Smartphone,
@@ -26,7 +26,7 @@ const fadeUp = {
   }),
 };
 
-const pulseAnim = {
+const pulseAnim: Variants = {
   hidden: { opacity: 0, x: -20 },
   visible: { 
     opacity: [0, 1, 0], 

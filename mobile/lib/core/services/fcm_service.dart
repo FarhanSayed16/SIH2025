@@ -1,6 +1,5 @@
 ﻿import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:flutter/material.dart';
 import 'dart:io';
 
 
@@ -127,49 +126,6 @@ class FcmService {
   void _handleMessage(RemoteMessage message) {
     // This will be handled by the app's navigation
     onMessageReceived?.call(message);
-  }
-
-  /// Show local notification
-  Future<void> _showLocalNotification(RemoteMessage message) async {
-    final notification = message.notification;
-    final android = message.notification?.android;
-
-    if (notification == null) return;
-
-    final androidDetails = AndroidNotificationDetails(
-      'high_importance_channel',
-      'EduSafe Alerts',
-      channelDescription: 'Emergency alerts and notifications',
-      importance:
-          Importance.max, // Maximum importance for heads-up notifications
-      priority: Priority.max, // Maximum priority
-      icon: android?.smallIcon ?? '@mipmap/ic_launcher',
-      color: const Color(0xFFFF0000), // Red color for alerts
-      playSound: true,
-      enableVibration: true,
-      showWhen: true,
-      enableLights: true,
-      ledColor: const Color(0xFFFF0000), // Red LED for alerts
-    );
-
-    final iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    final details = NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
-
-    await _localNotifications.show(
-      message.hashCode,
-      notification.title ?? 'EduSafe Alert',
-      notification.body ?? '',
-      details,
-      payload: message.data.toString(),
-    );
   }
 
   /// Handle notification tap

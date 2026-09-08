@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:lottie/lottie.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../core/design/design_system.dart';
 import '../providers/auth_provider.dart';
@@ -53,19 +52,10 @@ class _ApprovalPendingScreenState extends ConsumerState<ApprovalPendingScreen> {
               children: [
                 SizedBox(height: size.height * 0.1),
 
-                // Animated Lottie
-                Container(
+                const SizedBox(
                   height: 200,
-                  child: Lottie.asset(
-                    'assets/animations/loading.json',
-                    fit: BoxFit.contain,
-                    repeat: true,
-                  ),
-                )
-                    .animate()
-                    .scale(
-                        delay: 100.ms, duration: 800.ms, curve: Curves.easeOut)
-                    .fadeIn(delay: 100.ms, duration: 800.ms),
+                  child: Icon(Icons.hourglass_top, size: 100),
+                ),
 
                 SizedBox(height: AppSpacing.xxl),
 

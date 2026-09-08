@@ -216,7 +216,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
             _buildScenarioOption(ctx, context, 'Pandemic Lockdown', 'assets/360image/Pandamic_Lockdown_360.png', Icons.local_hospital, isVr),
             _buildScenarioOption(ctx, context, 'Landslide', 'assets/360image/Landslide_360.png', Icons.terrain, isVr),
             _buildScenarioOption(ctx, context, 'Heatwave', 'assets/360image/Heatwave_360.png', Icons.wb_sunny, isVr),
-            _buildScenarioOption(ctx, context, 'Chemical Disaster', 'assets/360image/chemical_disaster_360', Icons.warning_amber, isVr),
+            _buildScenarioOption(ctx, context, 'Chemical Disaster', 'assets/360image/chemical_disaster_360.png', Icons.warning_amber, isVr),
           ],
         ),
         actions: [

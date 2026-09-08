@@ -184,7 +184,7 @@ export function QRCodeScanner({ isOpen, onClose, onVerified }: QRCodeScannerProp
             )}
 
             <div className="text-sm text-gray-500 text-center">
-              <p>Point your camera at the parent's QR code</p>
+              <p>Point your camera at the parent&apos;s QR code</p>
               <p className="mt-1">Or use manual input if camera is unavailable</p>
             </div>
           </>

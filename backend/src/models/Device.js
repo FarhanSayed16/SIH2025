@@ -37,9 +37,9 @@ const deviceSchema = new mongoose.Schema({
   },
   registrationToken: {
     type: String,
+    select: false,
     unique: true,
-    sparse: true,
-    default: null
+    sparse: true
   },
   isActive: {
     type: Boolean,
@@ -82,9 +82,9 @@ const deviceSchema = new mongoose.Schema({
   },
   deviceToken: {
     type: String,
+    select: false,
     unique: true,
-    sparse: true,
-    default: null
+    sparse: true
   },
   // Telemetry array (limited to last 100 entries for quick access)
   telemetry: [{
@@ -93,6 +93,14 @@ const deviceSchema = new mongoose.Schema({
   }]
 }, {
   timestamps: true
+});
+
+deviceSchema.set('toJSON', {
+  transform: (_doc, value) => {
+    delete value.registrationToken;
+    delete value.deviceToken;
+    return value;
+  }
 });
 
 // Indexes

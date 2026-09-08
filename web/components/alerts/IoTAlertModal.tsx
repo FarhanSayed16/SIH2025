@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 interface IoTAlertData {
   deviceId: string;
   alertId?: string;
+  autoDismiss?: boolean;
   alertType: string;
   deviceName?: string;
   deviceType?: string;
@@ -36,23 +37,23 @@ export function IoTAlertModal({
   onClose,
   onViewDevice,
 }: IoTAlertModalProps) {
-  if (!isOpen || !alertData) return null;
-
-  const alertType = alertData.alertType?.toUpperCase() || 'ALERT';
-  const deviceName = alertData.deviceName || alertData.deviceId || 'Unknown Device';
-  const severity = alertData.severity?.toUpperCase() || 'HIGH';
+  const alertType = alertData?.alertType?.toUpperCase() || 'ALERT';
+  const deviceName = alertData?.deviceName || alertData?.deviceId || 'Unknown Device';
+  const severity = alertData?.severity?.toUpperCase() || 'HIGH';
   const isCritical = severity === 'CRITICAL' || alertType === 'FIRE';
-  const autoDismiss = alertData.autoDismiss === true;
+  const autoDismiss = alertData?.autoDismiss === true;
 
   // Auto-dismiss after 30s for non-critical alerts
   useEffect(() => {
-    if (autoDismiss && !isCritical) {
+    if (isOpen && autoDismiss && !isCritical) {
       const timer = setTimeout(() => {
         onClose();
       }, 30000);
       return () => clearTimeout(timer);
     }
-  }, [autoDismiss, isCritical, onClose]);
+  }, [isOpen, autoDismiss, isCritical, onClose]);
+
+  if (!isOpen || !alertData) return null;
 
   const getAlertConfig = () => {
     switch (alertType) {

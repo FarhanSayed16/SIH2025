@@ -345,7 +345,7 @@ export default function ClassDetailsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
                       </svg>
                       <p className="text-sm text-gray-500 mt-2">No QR code generated yet</p>
-                      <p className="text-xs text-gray-400 mt-1">Click "Generate QR" to create one</p>
+                      <p className="text-xs text-gray-400 mt-1">Click &quot;Generate QR&quot; to create one</p>
                     </div>
                   )}
                 </div>
@@ -389,7 +389,7 @@ export default function ClassDetailsPage() {
                         <p className="text-xs text-gray-600 mb-1 font-semibold">Instructions for Students:</p>
                         <ul className="text-xs text-gray-500 space-y-1 text-left">
                           <li>• Open the mobile app</li>
-                          <li>• Go to "Join a Class"</li>
+                          <li>• Go to &quot;Join a Class&quot;</li>
                           <li>• Enter this code manually or scan QR</li>
                           <li>• Wait for teacher approval</li>
                         </ul>
@@ -409,7 +409,7 @@ export default function ClassDetailsPage() {
                     <p className="font-semibold mb-1">Both methods work!</p>
                     <p className="text-xs">
                       Students can use either the QR code (scan with mobile app) or the class code (enter manually). 
-                      If QR code doesn't work, students can always use the manual class code.
+                      If QR code doesn&apos;t work, students can always use the manual class code.
                     </p>
                   </div>
                 </div>
@@ -629,7 +629,7 @@ export default function ClassDetailsPage() {
 
                 {/* Roster students list would go here - can be loaded from classData.studentIds filtered by userType='roster_record' */}
                 <div className="text-center py-8 text-gray-500">
-                  Roster students will appear here. Use the "Add Roster Student" button to create them.
+                  Roster students will appear here. Use the &quot;Add Roster Student&quot; button to create them.
                 </div>
               </div>
             </Card>

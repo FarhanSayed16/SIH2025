@@ -36,6 +36,7 @@ class AREvacuationService {
   ARPath? _currentPath;
   Position? _currentPosition;
   Waypoint? _nextWaypoint;
+  int _pathRequestId = 0;
   
   // Callbacks
   void Function(AREvacuationMode mode)? onModeChanged;
@@ -151,6 +152,10 @@ class AREvacuationService {
     Position? startPosition,
     String? alertType,
   }) async {
+    final requestId = ++_pathRequestId;
+    _currentPath = null;
+    _nextWaypoint = null;
+    onPathChanged?.call(null);
     try {
       // Get current position if not provided
       Position position = startPosition ?? await Geolocator.getCurrentPosition(
@@ -183,6 +188,12 @@ class AREvacuationService {
         endLng: safeZone.location.lng,
         alertType: alertType,
       );
+      if (requestId != _pathRequestId) return null;
+      if (route.waypoints.length < 2 || route.instructions.isEmpty ||
+          route.waypoints.last.lat != safeZone.location.lat ||
+          route.waypoints.last.lng != safeZone.location.lng) {
+        throw StateError('No usable evacuation route returned');
+      }
       
       // Convert route to ARPath with waypoints
       final waypoints = route.waypoints.map((wp) {
@@ -236,9 +247,7 @@ class AREvacuationService {
       );
       
       _currentPath = path;
-      _nextWaypoint = waypoints.isNotEmpty
-          ? (waypoints.length > 1 ? waypoints[1] : safeZoneWaypoint)
-          : safeZoneWaypoint;
+      _nextWaypoint = waypoints[1];
       
       onPathChanged?.call(path);
       
@@ -308,6 +317,7 @@ class AREvacuationService {
     if (_currentPosition == null || _nextWaypoint == null) {
       return null;
     }
+    final requestId = _pathRequestId;
     
     try {
       final targetBearing = await _compassService.calculateBearingToWaypoint(
@@ -326,6 +336,9 @@ class AREvacuationService {
         currentPosition: _currentPosition!,
       );
       
+      if (requestId != _pathRequestId || _currentPath == null || _nextWaypoint == null) {
+        return null;
+      }
       return CompassNavigationData(
         targetBearing: targetBearing,
         currentHeading: currentHeading,
@@ -359,6 +372,9 @@ class AREvacuationService {
   
   /// Dispose resources
   void dispose() {
+    _pathRequestId++;
+    _currentPath = null;
+    _nextWaypoint = null;
     _planeDetectionTimer?.cancel();
     _compassService.dispose();
   }
@@ -411,4 +427,3 @@ class CompassNavigationData {
     return '$minutes min';
   }
 }
-

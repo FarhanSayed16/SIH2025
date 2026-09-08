@@ -853,7 +853,8 @@ class _QuizMenuState extends State<QuizMenu> {
     else if (selectedLang == 'Punjabi' || selectedLang == '\u0A2A\u0A70\u0A1C\u0A3E\u0A21\u0A40')
       langCode = 'pun';
 
-    String fileName = 'assets/quiz/quiz_$langCode.json';
+    final fileName = langCode == 'eng'
+        ? 'assets/quiz/quiz_eng.JSON' : 'assets/quiz/quiz_$langCode.json';
 
     // Safety timeout to prevent freezing indefinitely
     try {
@@ -864,7 +865,7 @@ class _QuizMenuState extends State<QuizMenu> {
       // If error, try English fallback
       if (langCode != 'eng') {
         try {
-          await _loadQuizFile('assets/quiz/quiz_eng.json')
+          await _loadQuizFile('assets/quiz/quiz_eng.JSON')
               .timeout(const Duration(seconds: 2));
         } catch (e2) {
           _handleLoadError(e2.toString());

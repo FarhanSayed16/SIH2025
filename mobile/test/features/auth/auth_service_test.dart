@@ -1,4 +1,5 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'dart:async';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mockito/annotations.dart';
 import 'package:dio/dio.dart';
@@ -16,6 +17,8 @@ void main() {
   setUp(() {
     mockApiService = MockApiService();
     mockStorageService = MockStorageService();
+    when(mockApiService.resetLogoutFlag()).thenReturn(null);
+    when(mockApiService.setAuthToken(any)).thenReturn(null);
     authService = AuthService(
       apiService: mockApiService,
       storageService: mockStorageService,
@@ -55,11 +58,20 @@ void main() {
             .thenAnswer((_) async => {});
 
         // Act
-        final result = await authService.login('test@example.com', 'password123');
+        final logs = <String>[];
+        final result = await runZoned(
+          () => authService.login('test@example.com', 'password123'),
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, message) => logs.add(message),
+          ),
+        );
 
         // Assert
         expect(result, isNotNull);
         expect(result.user.email, 'test@example.com');
+        expect(logs.join('\n'), isNot(contains('test_access_token')));
+        expect(logs.join('\n'), isNot(contains('test_refresh_token')));
+        expect(logs.join('\n'), isNot(contains('test@example.com')));
         verify(mockStorageService.storeAccessToken('test_access_token')).called(1);
         verify(mockStorageService.storeRefreshToken('test_refresh_token')).called(1);
       });
@@ -77,12 +89,62 @@ void main() {
             ));
 
         // Act & Assert
-        expect(
-          () => authService.login('test@example.com', 'wrongpassword'),
-          throwsA(isA<String>()),
+        await expectLater(
+          authService.login('test@example.com', 'wrongpassword'),
+          throwsA(isA<Exception>().having(
+            (error) => error.toString(),
+            'message',
+            'Exception: Invalid credentials',
+          )),
         );
         verifyNever(mockStorageService.storeAccessToken(any));
       });
+    });
+
+    test('registration preserves validation message and field errors', () async {
+      when(mockApiService.post(any, data: anyNamed('data')))
+          .thenThrow(DioException(
+        requestOptions: RequestOptions(path: '/auth/register'),
+        response: Response<Map<String, dynamic>>(
+          data: {
+            'message': 'Validation failed',
+            'errors': {
+              'fields': {'email': 'Email is already registered'}
+            },
+          },
+          statusCode: 400,
+          requestOptions: RequestOptions(path: '/auth/register'),
+        ),
+      ));
+
+      await expectLater(
+        authService.register(
+          email: 'test@example.com', password: 'password123', name: 'Student',
+          role: 'student', phone: '1234567890',
+        ),
+        throwsA(isA<AuthValidationException>()
+            .having((error) => error.message, 'message', 'Validation failed')
+            .having((error) => error.fieldErrors, 'field errors',
+                {'email': 'Email is already registered'})),
+      );
+      verifyNever(mockStorageService.storeAccessToken(any));
+    });
+
+    test('password recovery errors preserve the server message', () async {
+      when(mockApiService.post(any, data: anyNamed('data')))
+          .thenThrow(DioException(
+        requestOptions: RequestOptions(path: '/auth/reset-password'),
+        response: Response<Map<String, dynamic>>(
+          data: {'message': 'Invalid reset request'},
+          statusCode: 400,
+          requestOptions: RequestOptions(path: '/auth/reset-password'),
+        ),
+      ));
+      final expectedError = throwsA(isA<Exception>().having(
+        (error) => error.toString(), 'message', 'Exception: Invalid reset request',
+      ));
+      await expectLater(authService.forgotPassword('test@example.com'), expectedError);
+      await expectLater(authService.resetPassword('reset-token', 'new-password'), expectedError);
     });
 
     group('logout', () {
@@ -100,4 +162,3 @@ void main() {
     });
   });
 }
-

@@ -23,6 +23,35 @@ if (flutterVersionName == null) {
     flutterVersionName = '1.0'
 }
 
+// Local signing values belong in android/key.properties (never in source control).
+// CI uses protected environment variables; relative storeFile paths use android/.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+def releaseSigning = [
+    storeFile: System.getenv('ANDROID_KEYSTORE_PATH') ?: keystoreProperties.getProperty('storeFile'),
+    storePassword: System.getenv('ANDROID_STORE_PASSWORD') ?: keystoreProperties.getProperty('storePassword'),
+    keyAlias: System.getenv('ANDROID_KEY_ALIAS') ?: keystoreProperties.getProperty('keyAlias'),
+    keyPassword: System.getenv('ANDROID_KEY_PASSWORD') ?: keystoreProperties.getProperty('keyPassword')
+]
+
+// Check the selected graph so debug builds, analysis and tests need no release key.
+gradle.taskGraph.whenReady { graph ->
+    def releaseRequested = ['assembleRelease', 'bundleRelease', 'packageRelease', 'validateSigningRelease']
+        .any { graph.hasTask("${project.path}:${it}") }
+    if (releaseRequested) {
+        def missing = releaseSigning.findAll { key, value -> !value }.keySet()
+        if (!missing.isEmpty()) {
+            throw new GradleException("Release signing is required. Set ANDROID_KEYSTORE_PATH, ANDROID_STORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD, or android/key.properties. Missing: ${missing.join(', ')}")
+        }
+        if (!rootProject.file(releaseSigning.storeFile).isFile()) {
+            throw new GradleException('Release signing keystore does not exist. Check ANDROID_KEYSTORE_PATH or storeFile in android/key.properties.')
+        }
+    }
+}
+
 android {
     namespace "com.kavach.app"
     compileSdk 36
@@ -50,9 +79,18 @@ android {
         versionName flutterVersionName
     }
 
+    signingConfigs {
+        release {
+            storeFile releaseSigning.storeFile ? rootProject.file(releaseSigning.storeFile) : null
+            storePassword releaseSigning.storePassword
+            keyAlias releaseSigning.keyAlias
+            keyPassword releaseSigning.keyPassword
+        }
+    }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
         }
     }
 }
@@ -71,4 +109,3 @@ dependencies {
 
 // Fix namespace for plugins that don't have it defined
 // Note: AndroidX Core version is now explicitly set in dependencies block above
-

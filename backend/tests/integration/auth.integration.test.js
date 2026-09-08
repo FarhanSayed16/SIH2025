@@ -29,7 +29,8 @@ describe('Auth Integration Tests', () => {
         email: 'test@example.com',
         password: 'Test123!@#',
         name: 'Test User',
-        role: 'student'
+        role: 'student',
+        phone: '9876543210'
       };
 
       const response = await request(app)
@@ -48,7 +49,8 @@ describe('Auth Integration Tests', () => {
         email: 'duplicate@example.com',
         password: 'Test123!@#',
         name: 'Test User',
-        role: 'student'
+        role: 'student',
+        phone: '9876543210'
       };
 
       // Register first time
@@ -74,7 +76,8 @@ describe('Auth Integration Tests', () => {
         email: 'login@example.com',
         password: 'Test123!@#',
         name: 'Login Test User',
-        role: 'student'
+        role: 'student',
+        phone: '9876543210'
       });
     });
 
@@ -126,7 +129,8 @@ describe('Auth Integration Tests', () => {
         email: 'refresh@example.com',
         password: 'Test123!@#',
         name: 'Refresh Test User',
-        role: 'student'
+        role: 'student',
+        phone: '9876543210'
       });
 
       const loginResponse = await request(app)
