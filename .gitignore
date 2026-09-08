@@ -66,6 +66,8 @@ web/.next/
 
 # APK files
 *.apk
+mobile/assets.zip
+
 # Android release identity (never commit signing credentials)
 **/key.properties
 *.jks

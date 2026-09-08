@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "B. Boiled or chlorinated water",
     "explanation": "Cyclones often contaminate water supplies; boiling or chlorinating ensures water is safe from water-borne diseases."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "Early Warning",
+    "question": "What is the app launched by NDMA for disaster alerts?",
+    "options": [
+      "A. Google Maps",
+      "B. Sachet",
+      "C. Facebook",
+      "D. WhatsApp"
+    ],
+    "answer": "B. Sachet",
+    "explanation": "The 'Sachet' app is the NDMA's integrated alert system that provides geo-targeted alerts for cyclones and other disasters."
+  },
+  {
+    "id": 2,
+    "topic": "Fishermen Safety",
+    "question": "What is the primary instruction for fishermen when a cyclone alert is issued?",
+    "options": [
+      "A. Go fishing immediately",
+      "B. Do not venture into the sea",
+      "C. Anchor in deep sea",
+      "D. Ignore the warning"
+    ],
+    "answer": "B. Do not venture into the sea",
+    "explanation": "The NDMA strictly advises fishermen not to venture into the sea during a cyclone warning due to rough sea conditions."
+  },
+  {
+    "id": 3,
+    "topic": "Indoors Safety",
+    "question": "What should you do with electrical mains during a cyclone?",
+    "options": [
+      "A. Leave them on",
+      "B. Switch them off",
+      "C. Touch them with wet hands",
+      "D. Cover them with cloth"
+    ],
+    "answer": "B. Switch them off",
+    "explanation": "Switching off electrical mains prevents short circuits and electrocution hazards in case of water ingress or structural damage."
+  },
+  {
+    "id": 4,
+    "topic": "Secure Your House",
+    "question": "Why should you trim dry tree branches before a cyclone?",
+    "options": [
+      "A. To make the tree look good",
+      "B. To prevent them from falling and causing damage",
+      "C. To use as firewood",
+      "D. To help the tree grow"
+    ],
+    "answer": "B. To prevent them from falling and causing damage",
+    "explanation": "Loose or dead branches can become dangerous projectiles in high winds, causing injury or property damage."
+  },
+  {
+    "id": 5,
+    "topic": "Outdoors Safety",
+    "question": "What should you avoid touching if caught outdoors?",
+    "options": [
+      "A. Trees",
+      "B. Broken electric poles and wires",
+      "C. Cars",
+      "D. Gates"
+    ],
+    "answer": "B. Broken electric poles and wires",
+    "explanation": "Broken electric wires may still be live and pose a fatal risk of electrocution, especially in wet conditions."
+  },
+  {
+    "id": 6,
+    "topic": "General Preparedness",
+    "question": "What should you do regarding rumors during a cyclone?",
+    "options": [
+      "A. Spread them",
+      "B. Ignore them and rely on official warnings",
+      "C. Believe them immediately",
+      "D. Post them on social media"
+    ],
+    "answer": "B. Ignore them and rely on official warnings",
+    "explanation": "Rumors cause unnecessary panic; citizens must rely only on official bulletins from NDMA or IMD."
+  },
+  {
+    "id": 7,
+    "topic": "Indoors Safety",
+    "question": "Why is the 'Eye' of the cyclone dangerous?",
+    "options": [
+      "A. It is too hot",
+      "B. It is a false lull, and violent winds will resume",
+      "C. It causes heavy rain only",
+      "D. It has no wind at all"
+    ],
+    "answer": "B. It is a false lull, and violent winds will resume",
+    "explanation": "The Eye brings a temporary calm, but winds will return violently from the opposite direction immediately after it passes."
+  },
+  {
+    "id": 8,
+    "topic": "Fishermen Safety",
+    "question": "How should fishermen secure their boats?",
+    "options": [
+      "A. Leave them loose",
+      "B. Tie them up in a safe place",
+      "C. Take them to deep sea",
+      "D. Sell them"
+    ],
+    "answer": "B. Tie them up in a safe place",
+    "explanation": "Boats must be tied securely in a safe harbor to prevent them from being washed away or damaging other vessels."
+  },
+  {
+    "id": 9,
+    "topic": "Secure Your House",
+    "question": "What is a 'fatal spear' in the context of a cyclone?",
+    "options": [
+      "A. A type of weapon",
+      "B. A loose object carried by high winds",
+      "C. A lightning strike",
+      "D. A sharp rain drop"
+    ],
+    "answer": "B. A loose object carried by high winds",
+    "explanation": "NDMA videos describe loose objects like sharp wood or metal as potential 'fatal spears' when propelled by cyclone winds."
+  },
+  {
+    "id": 10,
+    "topic": "Indoors Safety",
+    "question": "What type of water is safe to drink during a cyclone?",
+    "options": [
+      "A. Tap water directly",
+      "B. Boiled or chlorinated water",
+      "C. Rain water",
+      "D. Sea water"
+    ],
+    "answer": "B. Boiled or chlorinated water",
+    "explanation": "Cyclones often contaminate water supplies; boiling or chlorinating ensures water is safe from water-borne diseases."
+  }
+>>>>>>> origin/main
 ]

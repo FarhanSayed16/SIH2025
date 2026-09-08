@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "B. Sleeping on the cold floor without insulation",
     "explanation": "Direct contact with the cold ground sucks heat from the body (conduction); one should always use cardboard, wood, or blankets."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "General Cold Wave Safety",
+    "question": "What is the most effective way to dress to retain body heat during a cold wave?",
+    "options": [
+      "A. Wearing one very thick woolen coat",
+      "B. Wearing multiple layers of loose-fitting clothing",
+      "C. Wearing tight-fitting synthetic clothes",
+      "D. Wearing cotton clothes only"
+    ],
+    "answer": "B. Wearing multiple layers of loose-fitting clothing",
+    "explanation": "Layering clothes traps warm air between the layers, providing better insulation than a single thick garment."
+  },
+  {
+    "id": 2,
+    "topic": "Crop Protection",
+    "question": "For farmers, how does 'light irrigation' help protect crops during a cold wave?",
+    "options": [
+      "A. It releases latent heat and keeps the soil temperature higher",
+      "B. It freezes the pests",
+      "C. It washes away the frost",
+      "D. It makes the crops grow faster overnight"
+    ],
+    "answer": "A. It releases latent heat and keeps the soil temperature higher",
+    "explanation": "Water has a high heat capacity; applying it releases latent heat, which prevents the soil temperature from dropping below freezing."
+  },
+  {
+    "id": 3,
+    "topic": "General Cold Wave Safety",
+    "question": "Why should you avoid drinking alcohol to keep warm during a cold wave?",
+    "options": [
+      "A. It causes dehydration only",
+      "B. It dilates blood vessels, leading to rapid body heat loss",
+      "C. It freezes in your stomach",
+      "D. It makes you sleepy"
+    ],
+    "answer": "B. It dilates blood vessels, leading to rapid body heat loss",
+    "explanation": "Alcohol expands blood vessels near the skin, making you feel warm temporarily while actually draining heat from your vital organs, increasing hypothermia risk."
+  },
+  {
+    "id": 4,
+    "topic": "Elderly Care",
+    "question": "What is a major indoor hazard for elderly people using coal or gas heaters during winter?",
+    "options": [
+      "A. Excessive humidity",
+      "B. Carbon Monoxide (CO) poisoning",
+      "C. Bright light damaging eyes",
+      "D. Attracting insects"
+    ],
+    "answer": "B. Carbon Monoxide (CO) poisoning",
+    "explanation": "Burning fuels in poorly ventilated rooms produces odorless, deadly Carbon Monoxide gas."
+  },
+  {
+    "id": 5,
+    "topic": "Hilly Regions",
+    "question": "In hilly regions, what does the term 'Black Ice' refer to?",
+    "options": [
+      "A. Coal dust on the road",
+      "B. A transparent coating of ice on roads that is hard to see",
+      "C. Frozen mud",
+      "D. Dark colored snow"
+    ],
+    "answer": "B. A transparent coating of ice on roads that is hard to see",
+    "explanation": "It is called 'black' because you see the black asphalt through the clear ice, making it extremely slippery and dangerous for drivers."
+  },
+  {
+    "id": 6,
+    "topic": "Health & First Aid",
+    "question": "What is a common sign of Frostbite?",
+    "options": [
+      "A. Numbness and pale or waxy-looking skin",
+      "B. Profuse sweating",
+      "C. High fever",
+      "D. Extreme hunger"
+    ],
+    "answer": "A. Numbness and pale or waxy-looking skin",
+    "explanation": "Frostbite causes tissues to freeze, leading to loss of feeling and a change in skin color to white, gray, or yellow."
+  },
+  {
+    "id": 7,
+    "topic": "Crop Protection",
+    "question": "How can farmers use smoke to protect crops from frost damage?",
+    "options": [
+      "A. It kills bacteria",
+      "B. It creates a canopy that traps ground heat",
+      "C. It dries out the plants",
+      "D. It alerts neighbors"
+    ],
+    "answer": "B. It creates a canopy that traps ground heat",
+    "explanation": "Burning waste around the field creates a smoke blanket that reduces radiational cooling, keeping the ground slightly warmer."
+  },
+  {
+    "id": 8,
+    "topic": "General Cold Wave Safety",
+    "question": "Why is it important to cover your head during a cold wave?",
+    "options": [
+      "A. To prevent hair loss",
+      "B. To look fashionable",
+      "C. A significant amount of body heat is lost through an uncovered head",
+      "D. To help you hear better"
+    ],
+    "answer": "C. A significant amount of body heat is lost through an uncovered head",
+    "explanation": "The head has a large surface area and high blood flow, making it a major point of heat loss if not insulated."
+  },
+  {
+    "id": 9,
+    "topic": "Health & Nutrition",
+    "question": "Which nutrient is particularly recommended to boost immunity during winter?",
+    "options": [
+      "A. Vitamin C",
+      "B. Caffeine",
+      "C. Sugar",
+      "D. Salt"
+    ],
+    "answer": "A. Vitamin C",
+    "explanation": "Vitamin C, found in citrus fruits, helps strengthen the immune system against common winter illnesses like flu and colds."
+  },
+  {
+    "id": 10,
+    "topic": "Labourer Safety",
+    "question": "What should labourers and field workers avoid doing to stay safe while resting?",
+    "options": [
+      "A. Eating warm food",
+      "B. Sleeping on the cold floor without insulation",
+      "C. Drinking warm water",
+      "D. Sharing a shelter"
+    ],
+    "answer": "B. Sleeping on the cold floor without insulation",
+    "explanation": "Direct contact with the cold ground sucks heat from the body (conduction); one should always use cardboard, wood, or blankets."
+  }
+>>>>>>> origin/main
 ]

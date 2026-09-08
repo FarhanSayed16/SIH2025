@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "C. The upper floors of a high, reinforced concrete building",
     "explanation": "While high ground is best, the upper floors of a sturdy, reinforced concrete building can serve as a vertical evacuation refuge if trapped."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "Tsunami Warning Signs",
+    "question": "What does it mean if the sea water suddenly recedes (moves back) very far from the shore?",
+    "options": [
+      "A. It is low tide",
+      "B. A tsunami wave is approaching",
+      "C. The fish are migrating",
+      "D. The sea is drying up"
+    ],
+    "answer": "B. A tsunami wave is approaching",
+    "explanation": "A sudden, rapid withdrawal of the sea is a classic natural warning sign that a massive Tsunami wave is about to hit."
+  },
+  {
+    "id": 2,
+    "topic": "Immediate Action",
+    "question": "If you feel a strong earthquake while near the coast, what should you do immediately?",
+    "options": [
+      "A. Wait for the official siren",
+      "B. Run towards the beach to check for waves",
+      "C. Move to high ground or inland immediately",
+      "D. Call your friends"
+    ],
+    "answer": "C. Move to high ground or inland immediately",
+    "explanation": "Do not wait for an official warning. Ground shaking near the coast is a natural warning; move to high ground instantly."
+  },
+  {
+    "id": 3,
+    "topic": "Boat Safety",
+    "question": "If you are in a boat out at sea and hear a Tsunami warning, what should you do?",
+    "options": [
+      "A. Return to the port immediately",
+      "B. Drop the anchor",
+      "C. Move deeper into the ocean",
+      "D. Jump into the water"
+    ],
+    "answer": "C. Move deeper into the ocean",
+    "explanation": "Tsunami waves are barely noticeable in the deep ocean. It is safer to go deeper than to return to shallow ports where waves become destructive."
+  },
+  {
+    "id": 4,
+    "topic": "Tsunami Characteristics",
+    "question": "Is a Tsunami usually just a single wave?",
+    "options": [
+      "A. Yes, it is one big splash",
+      "B. No, it is a series of waves",
+      "C. It is only a high tide",
+      "D. It is caused by wind only"
+    ],
+    "answer": "B. No, it is a series of waves",
+    "explanation": "A Tsunami is a series of waves (a wave train). The first wave is not always the largest, and danger can last for hours."
+  },
+  {
+    "id": 5,
+    "topic": "Safety Precautions",
+    "question": "Why should you NOT go to the beach to watch a Tsunami?",
+    "options": [
+      "A. You might get wet",
+      "B. If you can see the wave, you are too close to escape",
+      "C. It is illegal",
+      "D. It will be too crowded"
+    ],
+    "answer": "B. If you can see the wave, you are too close to escape",
+    "explanation": "Tsunami waves move faster than a person can run. Watching from the beach puts you in the direct path of danger."
+  },
+  {
+    "id": 6,
+    "topic": "Preparedness",
+    "question": "What critical information should you know about your street/home for Tsunami preparedness?",
+    "options": [
+      "A. The name of the street",
+      "B. The height of your street above sea level",
+      "C. The number of streetlights",
+      "D. The color of the pavement"
+    ],
+    "answer": "B. The height of your street above sea level",
+    "explanation": "Knowing your height above sea level helps you understand if you are in an inundation zone and where the nearest high ground is."
+  },
+  {
+    "id": 7,
+    "topic": "Evacuation Routes",
+    "question": "When evacuating during a Tsunami warning, what should you follow?",
+    "options": [
+      "A. The shortest path to the beach",
+      "B. Tsunami Evacuation Route signs",
+      "C. The path of the wind",
+      "D. Random directions"
+    ],
+    "answer": "B. Tsunami Evacuation Route signs",
+    "explanation": "Coastal areas often have specific Tsunami Evacuation Route signs that lead to designated Safe Assembly Areas on high ground."
+  },
+  {
+    "id": 8,
+    "topic": "After the Tsunami",
+    "question": "When is it safe to return to your home after a Tsunami?",
+    "options": [
+      "A. As soon as the water recedes",
+      "B. When the rain stops",
+      "C. Only when officials declare it 'Safe'",
+      "D. After 10 minutes"
+    ],
+    "answer": "C. Only when officials declare it 'Safe'",
+    "explanation": "More waves may follow, and infrastructure may be damaged. Only return when local authorities confirm the threat is over."
+  },
+  {
+    "id": 9,
+    "topic": "Emergency Kit",
+    "question": "Which item is most crucial in your emergency kit to receive news if power lines fail?",
+    "options": [
+      "A. A television",
+      "B. A battery-operated radio",
+      "C. A laptop",
+      "D. A gaming device"
+    ],
+    "answer": "B. A battery-operated radio",
+    "explanation": "Power often goes out during disasters. A battery-operated radio is the most reliable way to receive official warnings and updates."
+  },
+  {
+    "id": 10,
+    "topic": "Vertical Evacuation",
+    "question": "If you cannot reach high ground in time, what is a 'last resort' shelter option?",
+    "options": [
+      "A. A car",
+      "B. A wooden hut",
+      "C. The upper floors of a high, reinforced concrete building",
+      "D. Under a tree"
+    ],
+    "answer": "C. The upper floors of a high, reinforced concrete building",
+    "explanation": "While high ground is best, the upper floors of a sturdy, reinforced concrete building can serve as a vertical evacuation refuge if trapped."
+  }
+>>>>>>> origin/main
 ]

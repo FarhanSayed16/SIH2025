@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "C. Slopes between 30 and 45 degrees",
     "explanation": "This angle is steep enough for gravity to pull the snow down but flat enough for snow to accumulate in large amounts."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "Avalanche Safety",
+    "question": "If you are caught in an avalanche, what motion should you make to stay on top?",
+    "options": [
+      "A. Curl into a ball",
+      "B. Make a swimming motion",
+      "C. Keep hands in pockets",
+      "D. Lie flat on your stomach"
+    ],
+    "answer": "B. Make a swimming motion",
+    "explanation": "Swimming helps you stay on the surface of the moving snow and prevents you from being buried deep."
+  },
+  {
+    "id": 2,
+    "topic": "Avalanche Safety",
+    "question": "What is the most critical step to take when the avalanche slows down and you are buried?",
+    "options": [
+      "A. Scream loudly",
+      "B. Create an air pocket in front of your face",
+      "C. Eat the snow",
+      "D. Go to sleep"
+    ],
+    "answer": "B. Create an air pocket in front of your face",
+    "explanation": "Cupping your hands over your mouth and nose creates a small space for air, preventing suffocation (asphyxia) as the snow hardens."
+  },
+  {
+    "id": 3,
+    "topic": "Avalanche Safety",
+    "question": "If you notice an avalanche starting, in which direction should you try to escape?",
+    "options": [
+      "A. Run downhill",
+      "B. Run uphill",
+      "C. Move to the side (flank) of the avalanche path",
+      "D. Wait in the middle"
+    ],
+    "answer": "C. Move to the side (flank) of the avalanche path",
+    "explanation": "The snow moves fastest in the center; moving sideways to the edge of the flow increases your chance of avoiding the slide."
+  },
+  {
+    "id": 4,
+    "topic": "Avalanche Safety",
+    "question": "Why should you try to keep one arm raised above your head as the avalanche stops?",
+    "options": [
+      "A. To catch a falling branch",
+      "B. To signal a helicopter",
+      "C. So rescuers can see your hand above the snow surface",
+      "D. To check wind direction"
+    ],
+    "answer": "C. So rescuers can see your hand above the snow surface",
+    "explanation": "If a hand or limb is visible above the snow, it drastically reduces the search time for rescuers."
+  },
+  {
+    "id": 5,
+    "topic": "Avalanche Safety",
+    "question": "What is the primary danger if you are buried under snow?",
+    "options": [
+      "A. Sunburn",
+      "B. Asphyxiation (suffocation) and Hypothermia",
+      "C. Dehydration",
+      "D. Hunger"
+    ],
+    "answer": "B. Asphyxiation (suffocation) and Hypothermia",
+    "explanation": "Lack of oxygen is the immediate threat, followed closely by the rapid drop in body temperature due to the cold snow."
+  },
+  {
+    "id": 6,
+    "topic": "Avalanche Safety",
+    "question": "Why should you avoid shouting unless you hear rescuers nearby?",
+    "options": [
+      "A. It scares animals",
+      "B. It consumes limited oxygen and snow muffles the sound",
+      "C. It causes more snow to fall",
+      "D. It is rude"
+    ],
+    "answer": "B. It consumes limited oxygen and snow muffles the sound",
+    "explanation": "Snow is a sound insulator, so shouting is rarely heard from above. Panic breathing uses up the air in your air pocket faster."
+  },
+  {
+    "id": 7,
+    "topic": "Avalanche Safety",
+    "question": "If you are swept away, what should you try to grab onto?",
+    "options": [
+      "A. Loose snow",
+      "B. Another person",
+      "C. A sturdy tree or rock",
+      "D. Your skis"
+    ],
+    "answer": "C. A sturdy tree or rock",
+    "explanation": "Anchoring yourself to a fixed object can prevent you from being swept down into the valley or buried deeper."
+  },
+  {
+    "id": 8,
+    "topic": "Avalanche Equipment",
+    "question": "Which device helps rescuers pinpoint the exact location of a buried victim?",
+    "options": [
+      "A. A compass",
+      "B. An Avalanche Transceiver (Beacon)",
+      "C. A map",
+      "D. A flashlight"
+    ],
+    "answer": "B. An Avalanche Transceiver (Beacon)",
+    "explanation": "This electronic device transmits a signal that other transceivers can detect to locate a buried person."
+  },
+  {
+    "id": 9,
+    "topic": "Avalanche Equipment",
+    "question": "What is the purpose of an 'Avalanche Probe'?",
+    "options": [
+      "A. To measure snow temperature",
+      "B. To physically feel for the victim under the snow",
+      "C. To use as a walking stick",
+      "D. To set up a tent"
+    ],
+    "answer": "B. To physically feel for the victim under the snow",
+    "explanation": "A probe is a collapsible pole used to poke through the snow to find the person before digging."
+  },
+  {
+    "id": 10,
+    "topic": "Avalanche Prevention",
+    "question": "What slope angle is most prone to avalanches?",
+    "options": [
+      "A. Flat ground (0 degrees)",
+      "B. Very steep cliffs (90 degrees)",
+      "C. Slopes between 30 and 45 degrees",
+      "D. Gentle hills (10 degrees)"
+    ],
+    "answer": "C. Slopes between 30 and 45 degrees",
+    "explanation": "This angle is steep enough for gravity to pull the snow down but flat enough for snow to accumulate in large amounts."
+  }
+>>>>>>> origin/main
 ]

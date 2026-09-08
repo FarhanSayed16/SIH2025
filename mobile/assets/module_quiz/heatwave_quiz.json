@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "A. Concrete and glass",
     "explanation": "Concrete retains heat, and glass buildings trap solar radiation, worsening the heat in cities."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "Protecting Animals",
+    "question": "When is the best time to graze cattle during a heatwave?",
+    "options": [
+      "A. Between 12 PM and 3 PM",
+      "B. Early morning or late evening",
+      "C. Immediately after feeding",
+      "D. Whenever the sun is brightest"
+    ],
+    "answer": "B. Early morning or late evening",
+    "explanation": "Grazing during the cooler parts of the day prevents heat stress and dehydration in animals."
+  },
+  {
+    "id": 2,
+    "topic": "Protecting Animals",
+    "question": "What kind of shelter is recommended for animals during summer?",
+    "options": [
+      "A. A closed metal shed",
+      "B. An open area with direct sunlight",
+      "C. A shaded, well-ventilated area",
+      "D. A glass enclosure"
+    ],
+    "answer": "C. A shaded, well-ventilated area",
+    "explanation": "Proper shade and airflow reduce the ambient temperature and protect animals from direct solar radiation."
+  },
+  {
+    "id": 3,
+    "topic": "Protecting Animals",
+    "question": "What diet change helps animals cope with heat?",
+    "options": [
+      "A. High-protein dry fodder only",
+      "B. Mineral mixture and green fodder",
+      "C. Leftover human food",
+      "D. Reduced water intake"
+    ],
+    "answer": "B. Mineral mixture and green fodder",
+    "explanation": "Green fodder contains more water, and mineral mixtures help replenish electrolytes lost through panting/sweating."
+  },
+  {
+    "id": 4,
+    "topic": "Protecting Animals",
+    "question": "Why should you splash water on cattle during the day?",
+    "options": [
+      "A. To clean them",
+      "B. To bring down their body temperature",
+      "C. To wake them up",
+      "D. To make their coat shiny"
+    ],
+    "answer": "B. To bring down their body temperature",
+    "explanation": "Evaporative cooling is very effective for animals like buffaloes that have dark skin and absorb more heat."
+  },
+  {
+    "id": 5,
+    "topic": "Protecting Animals",
+    "question": "What is a sign of heat stress in poultry?",
+    "options": [
+      "A. Increased egg production",
+      "B. Panting and lifting wings away from the body",
+      "C. Eating more feed",
+      "D. Sleeping soundly"
+    ],
+    "answer": "B. Panting and lifting wings away from the body",
+    "explanation": "Birds do not sweat; they pant and lift wings to release trapped body heat."
+  },
+  {
+    "id": 6,
+    "topic": "Cool Cities",
+    "question": "What is the 'Urban Heat Island' effect?",
+    "options": [
+      "A. Cities being cooler than rural areas",
+      "B. Cities becoming significantly warmer than surrounding rural areas",
+      "C. Islands located near cities",
+      "D. A new holiday destination"
+    ],
+    "answer": "B. Cities becoming significantly warmer than surrounding rural areas",
+    "explanation": "Concrete and asphalt absorb heat during the day and release it slowly at night, keeping cities hot."
+  },
+  {
+    "id": 7,
+    "topic": "Cool Cities",
+    "question": "How do 'Cool Roofs' help reduce city temperatures?",
+    "options": [
+      "A. By using air conditioning",
+      "B. By reflecting sunlight and absorbing less heat",
+      "C. By using solar panels",
+      "D. By growing grass"
+    ],
+    "answer": "B. By reflecting sunlight and absorbing less heat",
+    "explanation": "Painting roofs white or using reflective materials reduces indoor temperatures and the overall heat load of the city."
+  },
+  {
+    "id": 8,
+    "topic": "Cool Cities",
+    "question": "What is a natural way to cool down urban areas?",
+    "options": [
+      "A. Building more skyscrapers",
+      "B. Increasing green cover and planting trees",
+      "C. Removing lakes",
+      "D. Paving all parks"
+    ],
+    "answer": "B. Increasing green cover and planting trees",
+    "explanation": "Trees provide shade and release moisture through transpiration, which cools the surrounding air."
+  },
+  {
+    "id": 9,
+    "topic": "Cool Cities",
+    "question": "How does preserving water bodies help cities during heatwaves?",
+    "options": [
+      "A. It looks nice",
+      "B. It acts as a natural heat sink and cools the breeze",
+      "C. It increases traffic",
+      "D. It provides fishing spots"
+    ],
+    "answer": "B. It acts as a natural heat sink and cools the breeze",
+    "explanation": "Water absorbs heat and evaporation from lakes helps lower the ambient temperature of the nearby areas."
+  },
+  {
+    "id": 10,
+    "topic": "Cool Cities",
+    "question": "What material should be avoided in excess in city planning to reduce heat?",
+    "options": [
+      "A. Concrete and glass",
+      "B. Mud and clay",
+      "C. Wood",
+      "D. Bamboo"
+    ],
+    "answer": "A. Concrete and glass",
+    "explanation": "Concrete retains heat, and glass buildings trap solar radiation, worsening the heat in cities."
+  }
+>>>>>>> origin/main
 ]

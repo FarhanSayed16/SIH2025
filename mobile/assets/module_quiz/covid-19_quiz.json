@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "B. Smoking and alcohol",
     "explanation": "Smoking and alcohol consumption weaken the immune system and respiratory health, increasing vulnerability to COVID-19."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "Elderly Care",
+    "question": "What helps reduce stress in older adults according to NDMA?",
+    "options": [
+      "A. Watching news continuously",
+      "B. Maintaining a regular daily routine",
+      "C. Sleeping all day",
+      "D. Ignoring daily chores"
+    ],
+    "answer": "B. Maintaining a regular daily routine",
+    "explanation": "NDMA guidelines state that a regular daily routine helps provide a sense of normalcy and predictability, significantly reducing stress in older adults."
+  },
+  {
+    "id": 2,
+    "topic": "Elderly Care",
+    "question": "Why should caregivers explain the necessity of handwashing to the elderly?",
+    "options": [
+      "A. To scare them",
+      "B. To ensure compliance through understanding",
+      "C. To assert authority",
+      "D. To waste time"
+    ],
+    "answer": "B. To ensure compliance through understanding",
+    "explanation": "Explaining the 'why' helps the elderly understand the risk and importance, making them more likely to adopt the habit willingly."
+  },
+  {
+    "id": 3,
+    "topic": "Elderly Care",
+    "question": "What is the preferred method for checking in on elderly relatives living apart?",
+    "options": [
+      "A. Visiting in person",
+      "B. Video calls",
+      "C. Sending letters",
+      "D. Ignoring them"
+    ],
+    "answer": "B. Video calls",
+    "explanation": "Video calls are preferred as they allow visual assessment of wellbeing while maintaining strict physical isolation."
+  },
+  {
+    "id": 4,
+    "topic": "Elderly Care",
+    "question": "What specific type of content should be limited for the elderly?",
+    "options": [
+      "A. Comedies",
+      "B. Negative news",
+      "C. Music",
+      "D. Family photos"
+    ],
+    "answer": "B. Negative news",
+    "explanation": "Continuous exposure to negative news and pandemic statistics increases anxiety and stress, which can negatively impact their immune system."
+  },
+  {
+    "id": 5,
+    "topic": "Elderly Care",
+    "question": "What essential items should have an 'enough supply' at home for the elderly?",
+    "options": [
+      "A. New clothes",
+      "B. Medications and groceries",
+      "C. Electronics",
+      "D. Furniture"
+    ],
+    "answer": "B. Medications and groceries",
+    "explanation": "Ensuring a supply of meds and groceries prevents the need for high-risk individuals to venture out into public spaces."
+  },
+  {
+    "id": 6,
+    "topic": "Elderly Care",
+    "question": "What should be kept on 'speed dial' for the elderly?",
+    "options": [
+      "A. Restaurants",
+      "B. Important contact numbers",
+      "C. Radio stations",
+      "D. Travel agents"
+    ],
+    "answer": "B. Important contact numbers",
+    "explanation": "Having emergency contacts on speed dial ensures immediate access to help if the elderly person falls ill or faces an emergency."
+  },
+  {
+    "id": 7,
+    "topic": "Immunity Boosters",
+    "question": "Which herbal decoction is recommended by the Ministry of AYUSH?",
+    "options": [
+      "A. Green Tea",
+      "B. Ayush Kwath/Kadha",
+      "C. Coffee",
+      "D. Soda"
+    ],
+    "answer": "B. Ayush Kwath/Kadha",
+    "explanation": "Ayush Kwath is a formulation of herbs recommended by the Ministry of AYUSH to support immune function."
+  },
+  {
+    "id": 8,
+    "topic": "Immunity Boosters",
+    "question": "What is 'Golden Milk'?",
+    "options": [
+      "A. Milk with gold flakes",
+      "B. Milk with turmeric (Haldi)",
+      "C. Milk with honey",
+      "D. Milk with saffron"
+    ],
+    "answer": "B. Milk with turmeric (Haldi)",
+    "explanation": "Golden Milk is milk mixed with turmeric, known for its anti-inflammatory and immunity-boosting properties."
+  },
+  {
+    "id": 9,
+    "topic": "Immunity Boosters",
+    "question": "Which activity is recommended to reduce stress and boost immunity?",
+    "options": [
+      "A. Heavy gym workout",
+      "B. Yoga and Meditation",
+      "C. Marathon running",
+      "D. Contact sports"
+    ],
+    "answer": "B. Yoga and Meditation",
+    "explanation": "Yoga and meditation are recommended to manage stress, which in turn helps maintain a healthy immune system."
+  },
+  {
+    "id": 10,
+    "topic": "Immunity Boosters",
+    "question": "What should be avoided to protect immunity?",
+    "options": [
+      "A. Drinking water",
+      "B. Smoking and alcohol",
+      "C. Eating fruits",
+      "D. Sleeping early"
+    ],
+    "answer": "B. Smoking and alcohol",
+    "explanation": "Smoking and alcohol consumption weaken the immune system and respiratory health, increasing vulnerability to COVID-19."
+  }
+>>>>>>> origin/main
 ]

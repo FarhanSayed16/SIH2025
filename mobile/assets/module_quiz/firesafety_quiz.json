@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [
   {
     "id": 1,
@@ -129,4 +130,137 @@
     "answer": "C. Block smoke with cloth and signal from a window",
     "explanation": "Hiding makes it hard for firefighters to find you. seal the door gaps to stop smoke and stay near a window to shout or signal for help."
   }
+=======
+[
+  {
+    "id": 1,
+    "topic": "Fire Safety",
+    "question": "What is the most important rule if your clothes catch fire?",
+    "options": [
+      "A. Run as fast as you can",
+      "B. Stop, Drop, and Roll",
+      "C. Jump up and down",
+      "D. Pour water on yourself immediately"
+    ],
+    "answer": "B. Stop, Drop, and Roll",
+    "explanation": "Running provides more oxygen to the fire, making it burn faster. You must Stop, Drop to the ground, and Roll over to smother the flames."
+  },
+  {
+    "id": 2,
+    "topic": "Fire Safety",
+    "question": "How should you exit a building if there is thick smoke in the air?",
+    "options": [
+      "A. Walk normally",
+      "B. Run quickly to the exit",
+      "C. Crawl low on the floor",
+      "D. Hide in a corner"
+    ],
+    "answer": "C. Crawl low on the floor",
+    "explanation": "Smoke and poisonous gases rise up. The air is cleaner and cooler near the floor, so crawling helps you breathe and see the exit path."
+  },
+  {
+    "id": 3,
+    "topic": "Fire Safety",
+    "question": "What should you NEVER do in case of a fire in a multi-story building?",
+    "options": [
+      "A. Use the stairs",
+      "B. Use the elevator (lift)",
+      "C. Follow the exit signs",
+      "D. Help others if safe"
+    ],
+    "answer": "B. Use the elevator (lift)",
+    "explanation": "Elevators can malfunction, lose power, or the shaft can fill with smoke, trapping you inside. Always use the staircase."
+  },
+  {
+    "id": 4,
+    "topic": "Fire Safety",
+    "question": "Which item should be kept nearby when lighting firecrackers?",
+    "options": [
+      "A. A blanket",
+      "B. A bucket of water or sand",
+      "C. Fuel",
+      "D. Paper"
+    ],
+    "answer": "B. A bucket of water or sand",
+    "explanation": "A bucket of water or sand is essential to immediately extinguish any accidental fire or to safely dispose of used sparklers."
+  },
+  {
+    "id": 5,
+    "topic": "Fire Safety",
+    "question": "What is the correct emergency number to call for the Fire Brigade in India?",
+    "options": [
+      "A. 100",
+      "B. 101",
+      "C. 102",
+      "D. 108"
+    ],
+    "answer": "B. 101",
+    "explanation": "Dialing 101 connects you directly to the Fire Control Room. It is a toll-free emergency number."
+  },
+  {
+    "id": 6,
+    "topic": "Fire Safety",
+    "question": "What should be done with the gas cylinder regulator when cooking is finished or at night?",
+    "options": [
+      "A. Leave it ON",
+      "B. Turn it OFF",
+      "C. Cover it with a cloth",
+      "D. Keep it loose"
+    ],
+    "answer": "B. Turn it OFF",
+    "explanation": "Always turn off the regulator knob of the LPG cylinder when not in use to prevent gas leaks, a major cause of home fires."
+  },
+  {
+    "id": 7,
+    "topic": "Fire Safety",
+    "question": "Why should you avoid overloading an electrical socket with many plugs?",
+    "options": [
+      "A. It looks messy",
+      "B. It uses too much electricity",
+      "C. It causes overheating and can start a fire",
+      "D. It slows down the appliances"
+    ],
+    "answer": "C. It causes overheating and can start a fire",
+    "explanation": "Drawing more current than the socket is designed for can melt the internal wiring and insulation, leading to short circuits and fires."
+  },
+  {
+    "id": 8,
+    "topic": "Fire Safety",
+    "question": "If you see a box of matches or a lighter lying around, what should you do?",
+    "options": [
+      "A. Light a candle",
+      "B. Play with it carefully",
+      "C. Throw it in the bin",
+      "D. Do not touch it and inform an adult"
+    ],
+    "answer": "D. Do not touch it and inform an adult",
+    "explanation": "Matches and lighters are tools for adults, not toys. Kids should never play with them as accidental fires can start instantly."
+  },
+  {
+    "id": 9,
+    "topic": "Fire Safety",
+    "question": "What is a 'Safe Assembly Point'?",
+    "options": [
+      "A. A room inside the house",
+      "B. The roof of the building",
+      "C. A designated open area outside the building",
+      "D. The basement"
+    ],
+    "answer": "C. A designated open area outside the building",
+    "explanation": "A Safe Assembly Point is an open space away from the building where everyone gathers after evacuation so heads can be counted."
+  },
+  {
+    "id": 10,
+    "topic": "Fire Safety",
+    "question": "If you are trapped in a room and cannot get out, what is the safest action?",
+    "options": [
+      "A. Hide under the bed",
+      "B. Hide inside a cupboard",
+      "C. Block smoke with cloth and signal from a window",
+      "D. Try to run through the flames"
+    ],
+    "answer": "C. Block smoke with cloth and signal from a window",
+    "explanation": "Hiding makes it hard for firefighters to find you. seal the door gaps to stop smoke and stay near a window to shout or signal for help."
+  }
+>>>>>>> origin/main
 ]
