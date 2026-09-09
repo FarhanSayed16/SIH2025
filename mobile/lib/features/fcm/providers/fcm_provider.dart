@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../../core/services/fcm_service.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/storage_service.dart';
@@ -63,13 +64,30 @@ class FcmNotifier extends StateNotifier<FcmState> {
   /// Initialize FCM
   Future<void> initialize() async {
     try {
-      await _fcmService.initialize();
+      await _fcmService.initialize(requestPermission: false);
       state = state.copyWith(
-        isInitialized: true,
+        isInitialized: _fcmService.isInitialized,
         token: _fcmService.fcmToken,
       );
     } catch (e) {
       state = state.copyWith(error: e.toString());
+    }
+  }
+
+  /// Request alert notification permission from a contextual UI (e.g. Profile).
+  Future<bool> requestAlertPermission() async {
+    try {
+      final status = await _fcmService.requestAlertPermission();
+      final granted = status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional;
+      state = state.copyWith(
+        isInitialized: _fcmService.isInitialized,
+        token: _fcmService.fcmToken,
+      );
+      return granted;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return false;
     }
   }
 

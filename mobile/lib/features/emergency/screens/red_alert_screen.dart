@@ -262,13 +262,14 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
     _lastSentAt = DateTime.now();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Emergency alert sent'),
-          backgroundColor: Colors.red,
+        const SnackBar(
+          content: Text(
+            'Help request submitted. Delivery is not confirmed until the school acknowledges it.',
+          ),
+          backgroundColor: Colors.orange,
         ),
       );
-      // Auto-open primary emergency dialer (112) then show directory
-      await _autoDialPrimary();
+      // Do not auto-dial. Offer directory only after explicit user choice.
       _showCallDirectory();
     }
 
@@ -280,13 +281,15 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
     await _emitSos(status: 'safe', user: user, position: null);
     _lastSentAt = DateTime.now();
     if (mounted) {
-      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Marked safe'),
+        const SnackBar(
+          content: Text(
+            'Safe report submitted. Delivery is not confirmed until acknowledged.',
+          ),
           backgroundColor: Colors.green,
         ),
       );
+      Navigator.of(context).pop();
     }
     setState(() => _isSending = false);
   }
@@ -333,7 +336,6 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
           {'label': 'Police (112)', 'number': '112'},
           {'label': 'Fire (101)', 'number': '101'},
           {'label': 'Ambulance (108)', 'number': '108'},
-          {'label': 'Campus Security', 'number': '9999999999'},
         ];
         return SafeArea(
           child: Padding(
@@ -343,16 +345,22 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Call Directory',
+                  'Call a national number',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Campus contacts appear here only when configured. '
+                  'Calls start only when you tap a number.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
                 ),
                 const SizedBox(height: 12),
                 ...contacts.map((c) => ListTile(
                       leading: const Icon(Icons.phone),
                       title: Text(c['label']!),
                       subtitle: _lastLocation != null
-                          ? Text('Share location: $_lastLocation')
-                          : null,
+                          ? Text('Your last noted location: $_lastLocation')
+                          : const Text('Location unavailable'),
                       onTap: () async {
                         final uri = Uri(scheme: 'tel', path: c['number']!);
                         if (await canLaunchUrl(uri)) {
@@ -379,16 +387,4 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
     );
   }
 
-  /// Try to auto-open the primary emergency dialer (112) for the user.
-  Future<void> _autoDialPrimary() async {
-    const primaryNumber = '112';
-    final uri = Uri(scheme: 'tel', path: primaryNumber);
-    try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri);
-      }
-    } catch (_) {
-      // If auto-launch fails, silently ignore.
-    }
-  }
 }

@@ -26,7 +26,7 @@ class _EvacuationCheckScreenState extends State<EvacuationCheckScreen> {
   String? _accessibilityDescription;
   bool _descriptionLoading = false;
 
-  Future<void> _pickAndCheck({required ImageSource source}) async {
+  Future<void> _pickImage({required ImageSource source}) async {
     final picker = ImagePicker();
     final xFile = await picker.pickImage(
       source: source,
@@ -38,6 +38,16 @@ class _EvacuationCheckScreenState extends State<EvacuationCheckScreen> {
 
     setState(() {
       _pickedImage = File(xFile.path);
+      _error = null;
+      _result = null;
+      _accessibilityDescription = null;
+    });
+  }
+
+  Future<void> _analyzeImage() async {
+    if (_pickedImage == null || _loading) return;
+
+    setState(() {
       _error = null;
       _result = null;
       _loading = true;
@@ -161,7 +171,8 @@ class _EvacuationCheckScreenState extends State<EvacuationCheckScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Take or pick a photo of the corridor or exit. AI will tell you if it\'s clear, blocked, or partially blocked.',
+                  'Take or pick a photo of the corridor or exit, review the preview, then tap Analyze. '
+                  'Results describe this photo only — not confirmed route safety.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -203,7 +214,7 @@ class _EvacuationCheckScreenState extends State<EvacuationCheckScreen> {
                       FilledButton.icon(
                         onPressed: _loading
                             ? null
-                            : () => _pickAndCheck(source: ImageSource.camera),
+                            : () => _pickImage(source: ImageSource.camera),
                         icon: const Icon(Icons.camera_alt_rounded, size: 22),
                         label: const Text('Camera'),
                         style: FilledButton.styleFrom(
@@ -219,7 +230,7 @@ class _EvacuationCheckScreenState extends State<EvacuationCheckScreen> {
                       OutlinedButton.icon(
                         onPressed: _loading
                             ? null
-                            : () => _pickAndCheck(source: ImageSource.gallery),
+                            : () => _pickImage(source: ImageSource.gallery),
                         icon: const Icon(Icons.photo_library_rounded, size: 22),
                         label: const Text('Gallery'),
                         style: OutlinedButton.styleFrom(
@@ -231,6 +242,22 @@ class _EvacuationCheckScreenState extends State<EvacuationCheckScreen> {
                       ),
                     ],
                   ),
+                  if (_pickedImage != null && !_loading && _result == null) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _analyzeImage,
+                      icon: const Icon(Icons.search_rounded),
+                      label: const Text('Analyze photo'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -413,19 +440,19 @@ class _ResultCard extends StatelessWidget {
     final recommendation = (result['recommendation'] ?? '').toString();
 
     Color statusColor = Colors.grey;
-    String statusLabel = status;
+    String statusLabel = 'Unable to assess';
     IconData statusIcon = Icons.help_outline_rounded;
     if (status == 'clear') {
       statusColor = AppColors.primaryGreen;
-      statusLabel = 'Clear';
+      statusLabel = 'Clear in photo';
       statusIcon = Icons.check_circle_rounded;
     } else if (status == 'blocked') {
       statusColor = AppColors.primaryRed;
-      statusLabel = 'Blocked';
+      statusLabel = 'Blocked in photo';
       statusIcon = Icons.cancel_rounded;
     } else if (status == 'partially_blocked') {
       statusColor = AppColors.accentOrange;
-      statusLabel = 'Partially blocked';
+      statusLabel = 'Partially blocked in photo';
       statusIcon = Icons.warning_amber_rounded;
     }
 
@@ -460,10 +487,12 @@ class _ResultCard extends StatelessWidget {
                         ),
                         Text(
                           status == 'clear'
-                              ? 'Route is safe for evacuation'
+                              ? 'No obstruction detected in this photo'
                               : status == 'blocked'
-                                  ? 'Do not use this route'
-                                  : 'Use with caution',
+                                  ? 'Obstruction detected in this photo — do not treat as a confirmed route'
+                                  : status == 'partially_blocked'
+                                      ? 'Possible obstruction in this photo — verify before using any exit'
+                                      : 'Unable to assess this photo',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

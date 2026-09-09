@@ -41,24 +41,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ? AccessLevelProvider.getAvailableFeatures(user)
         : null; // null means all features available (for admin/teacher)
 
-    // Build screens list: Home, Learn, Games, Profile, Ask (chatbot)
-    const List<Widget> screens = [
-      HomeScreen(),
-      LearnScreen(),
-      GamesScreen(),
-      ProfileScreen(),
-      AskKavachScreen(),
-    ];
-
-    // Validate current index is within bounds
-    final safeIndex = _currentIndex.clamp(0, screens.length - 1);
-
-    void _onTabTapped(int index) {
-      // Check if user can access this tab
+    void onTabTapped(int index) {
       if (user != null && user.role == 'student' && availableFeatures != null) {
-        // Check access for specific tabs
         if (index == 1 && !availableFeatures.contains('modules')) {
-          // Learn tab - check modules access
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content:
@@ -69,7 +54,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           return;
         }
         if (index == 2 && !availableFeatures.contains('games')) {
-          // Games tab - check games access
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content:
@@ -82,9 +66,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       }
 
       setState(() {
-        _currentIndex = index.clamp(0, screens.length - 1);
+        _currentIndex = index.clamp(0, 4);
       });
     }
+
+    // Home, Learn, Games, Profile, Ask — Home can select Learn/Games tabs (B4)
+    final screens = <Widget>[
+      HomeScreen(onSelectTab: onTabTapped),
+      const LearnScreen(),
+      const GamesScreen(),
+      const ProfileScreen(),
+      const AskKavachScreen(),
+    ];
+
+    final safeIndex = _currentIndex.clamp(0, screens.length - 1);
 
     return Scaffold(
       body: IndexedStack(
@@ -120,7 +115,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
         selectedIndex: safeIndex,
-        onTap: _onTabTapped,
+        onTap: onTabTapped,
       ),
     );
   }

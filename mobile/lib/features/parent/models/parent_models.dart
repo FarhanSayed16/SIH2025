@@ -126,8 +126,8 @@ class ChildLocation {
   final double? longitude;
   final double? accuracy;
   final DateTime? timestamp;
-  final String status; // 'safe', 'in_drill', 'emergency', 'unknown'
-  final DateTime lastSeen;
+  final String status; // 'safe', 'in_drill', 'emergency', 'unknown', 'unavailable'
+  final DateTime? lastSeen;
   final Map<String, dynamic>? activeDrill;
 
   ChildLocation({
@@ -136,7 +136,7 @@ class ChildLocation {
     this.accuracy,
     this.timestamp,
     required this.status,
-    required this.lastSeen,
+    this.lastSeen,
     this.activeDrill,
   });
 
@@ -152,12 +152,13 @@ class ChildLocation {
           ? (json['accuracy'] as num).toDouble()
           : null,
       timestamp: json['timestamp'] != null
-          ? DateTime.parse(json['timestamp'].toString())
+          ? DateTime.tryParse(json['timestamp'].toString())
           : null,
       status: (json['status'] ?? 'unknown').toString(),
+      // Do not invent "just now" when the API omits lastSeen.
       lastSeen: json['lastSeen'] != null
-          ? DateTime.parse(json['lastSeen'].toString())
-          : DateTime.now(),
+          ? DateTime.tryParse(json['lastSeen'].toString())
+          : null,
       activeDrill: json['activeDrill'] is Map
           ? Map<String, dynamic>.from(
               json['activeDrill'] as Map<dynamic, dynamic>)
@@ -274,7 +275,8 @@ class QRVerificationResult {
 
   factory QRVerificationResult.fromJson(Map<String, dynamic> json) {
     return QRVerificationResult(
-      verified: json['verified'] == true,
+      // Link endpoints return `autoVerified`; verify returns `verified`.
+      verified: json['verified'] == true || json['autoVerified'] == true,
       student: json['student'] != null
           ? ParentChild.fromJson(json['student'] as Map<String, dynamic>)
           : null,

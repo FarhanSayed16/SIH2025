@@ -1,6 +1,4 @@
-/// Video Progress Service
-/// Manages video completion status persistence for NDMA modules
-/// Phase: NDMA Module Video Progress Persistence
+/// Video Progress Service — user-scoped Hive persistence (B5).
 
 import '../../../core/services/storage_service.dart';
 import '../../../core/constants/app_constants.dart';
@@ -12,201 +10,218 @@ class VideoProgressService {
   VideoProgressService({StorageService? storageService})
       : _storageService = storageService ?? StorageService();
 
-  /// Mark a video as completed
-  /// [moduleId] - Module identifier (e.g., 'flood', 'cyclone')
-  /// [videoTitle] - Video title (used as identifier)
-  /// [videoUrl] - Video URL
-  /// [watchTimeSeconds] - Optional watch time in seconds
+  /// User-scoped key. Legacy `module_$id` keys stay unassigned (never credited
+  /// to the current learner on shared devices).
+  String _progressKey(String moduleId, String? userId) {
+    if (userId != null && userId.isNotEmpty) {
+      return 'user_${userId}_module_$moduleId';
+    }
+    return 'module_$moduleId';
+  }
+
   Future<void> markVideoCompleted({
     required String moduleId,
     required String videoTitle,
     required String videoUrl,
+    String? userId,
     int? watchTimeSeconds,
   }) async {
     try {
       final box = await _storageService.openBox(AppConstants.videoProgressBox);
-      
-      // Get existing progress or create new
-      final progressKey = 'module_$moduleId';
+      final progressKey = _progressKey(moduleId, userId);
       final existingData = box.get(progressKey);
-      
+
       ModuleVideoProgress progress;
       if (existingData != null && existingData is Map) {
         try {
-          // Fix: Properly convert Hive Map<dynamic, dynamic> to Map<String, dynamic>
           final dataMap = Map<String, dynamic>.from(existingData);
           progress = ModuleVideoProgress.fromJson(dataMap);
-        } catch (parseError) {
-          print('⚠️ [VIDEO PROGRESS] Error parsing existing progress, creating new: $parseError');
+        } catch (_) {
           progress = ModuleVideoProgress(moduleId: moduleId, videos: []);
         }
       } else {
         progress = ModuleVideoProgress(moduleId: moduleId, videos: []);
       }
 
-      // Update or add video progress
       final existingVideoIndex = progress.videos.indexWhere(
         (v) => v.videoTitle == videoTitle || v.videoUrl == videoUrl,
       );
 
-      if (existingVideoIndex >= 0) {
-        // Update existing
-        progress.videos[existingVideoIndex] = VideoProgress(
-          moduleId: moduleId,
-          videoTitle: videoTitle,
-          videoUrl: videoUrl,
-          isCompleted: true,
-          completedAt: DateTime.now(),
-          watchTimeSeconds: watchTimeSeconds,
-        );
-      } else {
-        // Add new
-        progress.videos.add(VideoProgress(
-          moduleId: moduleId,
-          videoTitle: videoTitle,
-          videoUrl: videoUrl,
-          isCompleted: true,
-          completedAt: DateTime.now(),
-          watchTimeSeconds: watchTimeSeconds,
-        ));
+      // Idempotent: already completed — refresh timestamp only if needed
+      if (existingVideoIndex >= 0 &&
+          progress.videos[existingVideoIndex].isCompleted) {
+        return;
       }
 
-      // Update lastUpdated timestamp
-      progress = progress.copyWith(lastUpdated: DateTime.now());
+      final entry = VideoProgress(
+        moduleId: moduleId,
+        videoTitle: videoTitle,
+        videoUrl: videoUrl,
+        isCompleted: true,
+        completedAt: DateTime.now(),
+        watchTimeSeconds: watchTimeSeconds,
+      );
 
-      // Save to Hive
+      if (existingVideoIndex >= 0) {
+        progress.videos[existingVideoIndex] = entry;
+      } else {
+        progress.videos.add(entry);
+      }
+
+      progress = progress.copyWith(lastUpdated: DateTime.now());
       await box.put(progressKey, progress.toJson());
-      print('💾 [VIDEO PROGRESS] Saved video completion: $moduleId - $videoTitle');
     } catch (e) {
-      print('❌ [VIDEO PROGRESS] Error saving video completion: $e');
       rethrow;
     }
   }
 
-  /// Get video progress for a module
-  /// [moduleId] - Module identifier
-  /// Returns ModuleVideoProgress or null if not found
-  /// Phase: Fix type casting errors - Properly handle Hive Map<dynamic, dynamic>
-  Future<ModuleVideoProgress?> getModuleVideoProgress(String moduleId) async {
+  Future<ModuleVideoProgress?> getModuleVideoProgress(
+    String moduleId, {
+    String? userId,
+  }) async {
     try {
       final box = await _storageService.openBox(AppConstants.videoProgressBox);
-      final progressKey = 'module_$moduleId';
+      final progressKey = _progressKey(moduleId, userId);
       final data = box.get(progressKey);
 
-      if (data == null) {
-        print('📂 [VIDEO PROGRESS] No progress found for module: $moduleId');
-        return null;
-      }
-
-      // Fix: Properly convert Hive Map<dynamic, dynamic> to Map<String, dynamic>
-      if (data is! Map) {
-        print('⚠️ [VIDEO PROGRESS] Invalid data type for module $moduleId: ${data.runtimeType}');
-        return null;
-      }
+      if (data == null || data is! Map) return null;
 
       try {
-        // Convert Map<dynamic, dynamic> to Map<String, dynamic>
-        final dataMap = Map<String, dynamic>.from(data);
-        final progress = ModuleVideoProgress.fromJson(dataMap);
-        print('📂 [VIDEO PROGRESS] Loaded progress for $moduleId: ${progress.completedCount}/${progress.videos.length} videos');
-        return progress;
-      } catch (parseError) {
-        print('❌ [VIDEO PROGRESS] Error parsing progress for $moduleId: $parseError');
+        return ModuleVideoProgress.fromJson(Map<String, dynamic>.from(data));
+      } catch (_) {
         return null;
       }
-    } catch (e) {
-      print('❌ [VIDEO PROGRESS] Error loading video progress: $e');
+    } catch (_) {
       return null;
     }
   }
 
-  /// Check if a specific video is completed
-  /// [moduleId] - Module identifier
-  /// [videoTitle] - Video title
-  /// Returns true if video is completed
   Future<bool> isVideoCompleted({
     required String moduleId,
     required String videoTitle,
+    String? userId,
   }) async {
-    try {
-      final progress = await getModuleVideoProgress(moduleId);
-      if (progress == null) return false;
-      return progress.isVideoCompleted(videoTitle);
-    } catch (e) {
-      print('❌ [VIDEO PROGRESS] Error checking video completion: $e');
-      return false;
-    }
+    final progress =
+        await getModuleVideoProgress(moduleId, userId: userId);
+    if (progress == null) return false;
+    return progress.isVideoCompleted(videoTitle);
   }
 
-  /// Get all completed videos for a module
-  /// [moduleId] - Module identifier
-  /// Returns list of completed video titles
-  Future<List<String>> getCompletedVideos(String moduleId) async {
-    try {
-      final progress = await getModuleVideoProgress(moduleId);
-      if (progress == null) return [];
-      return progress.videos
-          .where((v) => v.isCompleted)
-          .map((v) => v.videoTitle)
-          .toList();
-    } catch (e) {
-      print('❌ [VIDEO PROGRESS] Error getting completed videos: $e');
-      return [];
-    }
+  Future<List<String>> getCompletedVideos(
+    String moduleId, {
+    String? userId,
+  }) async {
+    final progress =
+        await getModuleVideoProgress(moduleId, userId: userId);
+    if (progress == null) return [];
+    return progress.videos
+        .where((v) => v.isCompleted)
+        .map((v) => v.videoTitle)
+        .toList();
   }
 
-  /// Initialize video progress for a module (if not exists)
-  /// This ensures all videos are tracked even if not yet watched
-  /// [moduleId] - Module identifier
-  /// [videoTitles] - List of all video titles in the module
-  /// [videoUrls] - List of all video URLs (must match titles order)
   Future<void> initializeModuleProgress({
     required String moduleId,
     required List<String> videoTitles,
     required List<String> videoUrls,
+    String? userId,
   }) async {
+    final existing =
+        await getModuleVideoProgress(moduleId, userId: userId);
+    if (existing != null) return;
+
+    final videos = <VideoProgress>[];
+    for (var i = 0; i < videoTitles.length && i < videoUrls.length; i++) {
+      videos.add(VideoProgress(
+        moduleId: moduleId,
+        videoTitle: videoTitles[i],
+        videoUrl: videoUrls[i],
+        isCompleted: false,
+      ));
+    }
+
+    final progress = ModuleVideoProgress(moduleId: moduleId, videos: videos);
+    final box = await _storageService.openBox(AppConstants.videoProgressBox);
+    await box.put(_progressKey(moduleId, userId), progress.toJson());
+  }
+
+  Future<void> clearModuleProgress(String moduleId, {String? userId}) async {
+    final box = await _storageService.openBox(AppConstants.videoProgressBox);
+    await box.delete(_progressKey(moduleId, userId));
+  }
+
+  /// Persist playback position for incomplete NDMA videos (B9 / D06).
+  /// [position] is a fraction of duration in 0.0–1.0.
+  Future<void> saveVideoPosition({
+    required String moduleId,
+    required String videoTitle,
+    required String videoUrl,
+    required double position,
+    String? userId,
+    int? watchTimeSeconds,
+  }) async {
+    if (position.isNaN || position.isInfinite) return;
+    final clamped = position.clamp(0.0, 1.0);
+
     try {
-      final existing = await getModuleVideoProgress(moduleId);
-      if (existing != null) {
-        // Progress already exists, don't overwrite
+      final box = await _storageService.openBox(AppConstants.videoProgressBox);
+      final progressKey = _progressKey(moduleId, userId);
+      final existingData = box.get(progressKey);
+
+      ModuleVideoProgress progress;
+      if (existingData != null && existingData is Map) {
+        try {
+          progress = ModuleVideoProgress.fromJson(
+            Map<String, dynamic>.from(existingData),
+          );
+        } catch (_) {
+          progress = ModuleVideoProgress(moduleId: moduleId, videos: []);
+        }
+      } else {
+        progress = ModuleVideoProgress(moduleId: moduleId, videos: []);
+      }
+
+      final existingVideoIndex = progress.videos.indexWhere(
+        (v) => v.videoTitle == videoTitle || v.videoUrl == videoUrl,
+      );
+
+      // Do not overwrite a completed video with a mid-stream position.
+      if (existingVideoIndex >= 0 &&
+          progress.videos[existingVideoIndex].isCompleted) {
         return;
       }
 
-      // Create initial progress with all videos marked as not completed
-      final videos = <VideoProgress>[];
-      for (int i = 0; i < videoTitles.length && i < videoUrls.length; i++) {
-        videos.add(VideoProgress(
-          moduleId: moduleId,
-          videoTitle: videoTitles[i],
-          videoUrl: videoUrls[i],
-          isCompleted: false,
-        ));
-      }
-
-      final progress = ModuleVideoProgress(
+      final entry = VideoProgress(
         moduleId: moduleId,
-        videos: videos,
+        videoTitle: videoTitle,
+        videoUrl: videoUrl,
+        isCompleted: false,
+        watchTimeSeconds: watchTimeSeconds,
+        lastPosition: clamped,
       );
 
-      final box = await _storageService.openBox(AppConstants.videoProgressBox);
-      final progressKey = 'module_$moduleId';
+      if (existingVideoIndex >= 0) {
+        progress.videos[existingVideoIndex] = entry;
+      } else {
+        progress.videos.add(entry);
+      }
+
+      progress = progress.copyWith(lastUpdated: DateTime.now());
       await box.put(progressKey, progress.toJson());
-      print('💾 [VIDEO PROGRESS] Initialized progress for module: $moduleId (${videos.length} videos)');
-    } catch (e) {
-      print('❌ [VIDEO PROGRESS] Error initializing module progress: $e');
+    } catch (_) {
+      // Position save is best-effort; playback continues.
     }
   }
 
-  /// Clear all video progress for a module (for testing/debugging)
-  Future<void> clearModuleProgress(String moduleId) async {
-    try {
-      final box = await _storageService.openBox(AppConstants.videoProgressBox);
-      final progressKey = 'module_$moduleId';
-      await box.delete(progressKey);
-      print('✅ [VIDEO PROGRESS] Cleared progress for module: $moduleId');
-    } catch (e) {
-      print('❌ [VIDEO PROGRESS] Error clearing progress: $e');
-    }
+  Future<double?> getVideoPosition({
+    required String moduleId,
+    required String videoTitle,
+    String? userId,
+  }) async {
+    final progress =
+        await getModuleVideoProgress(moduleId, userId: userId);
+    final video = progress?.getVideoProgress(videoTitle);
+    if (video == null || video.isCompleted) return null;
+    return video.lastPosition;
   }
 }
-

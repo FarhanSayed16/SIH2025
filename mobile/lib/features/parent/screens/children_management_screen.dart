@@ -14,7 +14,14 @@ import 'child_detail_screen.dart';
 import 'add_child_screen.dart';
 
 class ChildrenManagementScreen extends ConsumerStatefulWidget {
-  const ChildrenManagementScreen({super.key});
+  final bool embedded;
+  final ValueChanged<int>? onSelectTab;
+
+  const ChildrenManagementScreen({
+    super.key,
+    this.embedded = false,
+    this.onSelectTab,
+  });
 
   @override
   ConsumerState<ChildrenManagementScreen> createState() =>
@@ -25,8 +32,6 @@ class _ChildrenManagementScreenState
     extends ConsumerState<ChildrenManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String? _editingRelationshipId;
-  String _newRelationship = 'other';
 
   @override
   void dispose() {
@@ -40,7 +45,9 @@ class _ChildrenManagementScreenState
       builder: (context) => AlertDialog(
         title: const Text('Unlink Child'),
         content: Text(
-            'Are you sure you want to unlink $childName? This action cannot be undone.'),
+          'Unlink $childName from your parent account?\n\n'
+          'This removes your association only. It does not delete the child\'s account.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -83,52 +90,33 @@ class _ChildrenManagementScreenState
     }
   }
 
-  Future<void> _handleUpdateRelationship(
-      String childId, String relationship) async {
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final parentService = ParentService(apiService);
-      await parentService.updateRelationship(childId, relationship);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Relationship updated successfully'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-        setState(() {
-          _editingRelationshipId = null;
-        });
-        ref.invalidate(childrenProvider);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to update relationship: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+  String _getChildStatus(ParentChild child) {
+    final raw =
+        child.stats?['status']?.toString() ?? child.safetyStatus;
+    if (raw == null || raw.trim().isEmpty || raw == 'unknown') {
+      return 'unavailable';
     }
+    return raw.trim().toLowerCase();
   }
 
-  String _getStatusColor(String? status) {
+  String _statusLabel(String status) {
     switch (status) {
       case 'safe':
-        return 'green';
+        return 'Reported safe';
       case 'in_drill':
-        return 'yellow';
+        return 'In drill';
+      case 'missing':
+        return 'Reported missing';
+      case 'at_risk':
+        return 'At risk';
+      case 'evacuating':
+        return 'Evacuating';
       case 'emergency':
-        return 'red';
+        return 'Emergency';
+      case 'unavailable':
       default:
-        return 'gray';
+        return 'Status unavailable';
     }
-  }
-
-  String _getChildStatus(ParentChild child) {
-    return child.stats?['status']?.toString() ?? child.safetyStatus ?? 'safe';
   }
 
   @override
@@ -137,9 +125,11 @@ class _ChildrenManagementScreenState
 
     return Scaffold(
       appBar: AppBarCustom(
-        title: 'Manage Children',
+        title: 'Children',
+        automaticallyImplyLeading: !widget.embedded,
         actions: [
           IconButton(
+            tooltip: 'Add child',
             icon: const Icon(Icons.add),
             onPressed: () {
               Navigator.push<void>(
@@ -157,7 +147,7 @@ class _ChildrenManagementScreenState
           final filteredChildren = _searchQuery.isEmpty
               ? children
               : children.where((child) {
-                  final query = _searchQuery.toLowerCase();
+                  final query = _searchQuery.toLowerCase().trim();
                   return child.name.toLowerCase().contains(query) ||
                       (child.email != null &&
                           child.email!.toLowerCase().contains(query)) ||
@@ -167,285 +157,195 @@ class _ChildrenManagementScreenState
                           child.section!.toLowerCase().contains(query));
                 }).toList();
 
-          if (filteredChildren.isEmpty) {
-            return EmptyState(
-              message: _searchQuery.isEmpty
-                  ? 'No children linked. Add your first child to get started.'
-                  : 'No children found matching your search.',
-              title: _searchQuery.isEmpty ? 'No Children' : 'No Results',
-              icon: Icons.people_outline,
-            );
-          }
-
           return Column(
             children: [
-              // Search Bar
               Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: TextInputCustom(
                   controller: _searchController,
-                  hint: 'Search by name, email, grade...',
+                  hint: 'Search by name, email, or grade',
                   leadingIcon: Icons.search,
                   onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
+                    setState(() => _searchQuery = value);
                   },
                 ),
               ),
-
-              // Children List
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    children.isEmpty
+                        ? 'No children linked yet'
+                        : _searchQuery.isEmpty
+                            ? '${children.length} children'
+                            : '${filteredChildren.length} of ${children.length} match',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
               Expanded(
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    ref.invalidate(childrenProvider);
-                  },
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    itemCount: filteredChildren.length,
-                    itemBuilder: (context, index) {
-                      final child = filteredChildren[index];
-                      final status = _getChildStatus(child);
-                      final _ = _editingRelationshipId == child.id;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          leading: CircleAvatar(
-                            backgroundColor: AppColors.accentBlue,
-                            child: Text(
-                              child.name[0].toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            child.name,
-                            style: AppTextStyles.h5,
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                child: children.isEmpty
+                    ? EmptyState(
+                        message:
+                            'Link a child with Scan QR or Add child. Contact the school if you need a code.',
+                        title: 'No children linked yet',
+                        icon: Icons.people_outline,
+                      )
+                    : filteredChildren.isEmpty
+                        ? ListView(
+                            padding: const EdgeInsets.all(24),
                             children: [
-                              if (child.grade != null && child.section != null)
-                                Text(
-                                  'Grade ${child.grade} - Section ${child.section}',
-                                  style: AppTextStyles.bodySmall,
-                                ),
-                              if (child.email != null)
-                                Text(
-                                  child.email!,
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
+                              const SizedBox(height: 40),
+                              Icon(
+                                Icons.search_off,
+                                size: 48,
+                                color: AppColors.textSecondary,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No children match this search',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.h5,
+                              ),
                               const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _getStatusColor(status) == 'green'
-                                          ? AppColors.success.withOpacity(0.1)
-                                          : _getStatusColor(status) == 'yellow'
-                                              ? Colors.orange.withOpacity(0.1)
-                                              : _getStatusColor(status) == 'red'
-                                                  ? AppColors.error
-                                                      .withOpacity(0.1)
-                                                  : Colors.grey
-                                                      .withOpacity(0.1),
-                                      borderRadius: AppBorders.borderRadiusSm,
-                                    ),
-                                    child: Text(
-                                      status.replaceAll('_', ' ').toUpperCase(),
-                                      style: AppTextStyles.caption.copyWith(
-                                        color:
-                                            _getStatusColor(status) == 'green'
-                                                ? AppColors.success
-                                                : _getStatusColor(status) ==
-                                                        'yellow'
-                                                    ? Colors.orange
-                                                    : _getStatusColor(status) ==
-                                                            'red'
-                                                        ? AppColors.error
-                                                        : Colors.grey,
-                                        fontWeight: FontWeight.bold,
+                              Text(
+                                'Your search stays editable above.',
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                                child: const Text('Clear search'),
+                              ),
+                            ],
+                          )
+                        : RefreshIndicator(
+                            onRefresh: () async {
+                              ref.invalidate(childrenProvider);
+                            },
+                            child: ListView.builder(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
+                              itemCount: filteredChildren.length,
+                              itemBuilder: (context, index) {
+                                final child = filteredChildren[index];
+                                final status = _getChildStatus(child);
+
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  child: ListTile(
+                                    onTap: () {
+                                      Navigator.push<void>(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                          builder: (context) =>
+                                              ChildDetailScreen(
+                                            studentId: child.id,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    contentPadding: const EdgeInsets.all(16),
+                                    leading: CircleAvatar(
+                                      backgroundColor: AppColors.accentBlue,
+                                      child: Text(
+                                        child.name.trim().isNotEmpty
+                                            ? child.name.trim()[0].toUpperCase()
+                                            : '?',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
+                                    ),
+                                    title: Text(
+                                      child.name.trim().isNotEmpty
+                                          ? child.name
+                                          : 'Unnamed child',
+                                      style: AppTextStyles.h5,
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (child.grade != null)
+                                          Text(
+                                            child.section != null
+                                                ? 'Grade ${child.grade} · Section ${child.section}'
+                                                : 'Grade ${child.grade}',
+                                            style: AppTextStyles.bodySmall,
+                                          ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _statusLabel(status),
+                                          style: AppTextStyles.caption.copyWith(
+                                            color: status == 'safe'
+                                                ? AppColors.success
+                                                : status == 'in_drill'
+                                                    ? Colors.orange
+                                                    : (status == 'unavailable'
+                                                        ? AppColors.textSecondary
+                                                        : AppColors.error),
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: PopupMenuButton<String>(
+                                      onSelected: (value) async {
+                                        if (value == 'details') {
+                                          Navigator.push<void>(
+                                            context,
+                                            MaterialPageRoute<void>(
+                                              builder: (context) =>
+                                                  ChildDetailScreen(
+                                                studentId: child.id,
+                                              ),
+                                            ),
+                                          );
+                                        } else if (value == 'unlink') {
+                                          await _handleUnlink(
+                                            child.id,
+                                            child.name.trim().isNotEmpty
+                                                ? child.name
+                                                : 'this child',
+                                          );
+                                        }
+                                      },
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem(
+                                          value: 'details',
+                                          child: Text('Open details'),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'unlink',
+                                          child: Text('Remove link'),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  if (child.stats != null) ...[
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Score: ${child.stats!['preparednessScore'] ?? 0}%',
-                                      style: AppTextStyles.caption.copyWith(
-                                        color: AppColors.accentBlue,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ],
+                                );
+                              },
+                            ),
                           ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              switch (value) {
-                                case 'view':
-                                  Navigator.push<void>(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                      builder: (context) => ChildDetailScreen(
-                                        studentId: child.id,
-                                      ),
-                                    ),
-                                  );
-                                  break;
-                                case 'edit_relationship':
-                                  setState(() {
-                                    _editingRelationshipId = child.id;
-                                    _newRelationship =
-                                        child.relationship ?? 'other';
-                                  });
-                                  break;
-                                case 'unlink':
-                                  _handleUnlink(child.id, child.name);
-                                  break;
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'view',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.visibility, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('View Details'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'edit_relationship',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.edit, size: 20),
-                                    SizedBox(width: 8),
-                                    Text('Edit Relationship'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'unlink',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.link_off,
-                                        size: 20, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('Unlink',
-                                        style: TextStyle(color: Colors.red)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
               ),
-
-              // Edit Relationship Bottom Sheet
-              if (_editingRelationshipId != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundWhite,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, -2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Edit Relationship',
-                        style: AppTextStyles.h5,
-                      ),
-                      const SizedBox(height: 16),
-                      DropdownButtonFormField<String>(
-                        value: _newRelationship,
-                        decoration: InputDecoration(
-                          labelText: 'Relationship Type',
-                          border: OutlineInputBorder(
-                            borderRadius: AppBorders.borderRadiusMd,
-                          ),
-                        ),
-                        items: const [
-                          DropdownMenuItem(
-                              value: 'father', child: Text('Father')),
-                          DropdownMenuItem(
-                              value: 'mother', child: Text('Mother')),
-                          DropdownMenuItem(
-                              value: 'guardian', child: Text('Guardian')),
-                          DropdownMenuItem(
-                              value: 'other', child: Text('Other')),
-                        ],
-                        onChanged: (value) {
-                          if (value != null) {
-                            setState(() {
-                              _newRelationship = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButtonCustom(
-                              label: 'Cancel',
-                              onPressed: () {
-                                setState(() {
-                                  _editingRelationshipId = null;
-                                });
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: PrimaryButton(
-                              label: 'Save',
-                              onPressed: () {
-                                if (_editingRelationshipId != null) {
-                                  _handleUpdateRelationship(
-                                      _editingRelationshipId!,
-                                      _newRelationship);
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
             ],
           );
         },
         loading: () => const LoadingState(),
         error: (error, stack) => ErrorState(
           message: error.toString(),
-          onRetry: () {
-            ref.invalidate(childrenProvider);
-          },
+          onRetry: () => ref.invalidate(childrenProvider),
         ),
       ),
     );

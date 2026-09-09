@@ -179,14 +179,28 @@ class _DisasterScenarioScreenState extends State<DisasterScenarioScreen> {
 
   Widget _buildBody() {
     if (_loading && _scenarioText == null) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading scenario...'),
-          ],
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text('Loading scenario…'),
+              const SizedBox(height: 8),
+              Text(
+                'This can take up to about 90 seconds. You can leave anytime.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+              ),
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: const Text('Cancel'),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -201,7 +215,17 @@ class _DisasterScenarioScreenState extends State<DisasterScenarioScreen> {
               const SizedBox(height: 16),
               Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.red)),
               const SizedBox(height: 16),
-              ElevatedButton(onPressed: _loadFirstStep, child: const Text('Retry')),
+              Wrap(
+                spacing: 12,
+                alignment: WrapAlignment.center,
+                children: [
+                  ElevatedButton(onPressed: _loadFirstStep, child: const Text('Retry')),
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    child: const Text('Back'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -213,6 +237,34 @@ class _DisasterScenarioScreenState extends State<DisasterScenarioScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_error != null && _scenarioText != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_error!, style: TextStyle(color: Colors.red.shade800)),
+                  Row(
+                    children: [
+                      TextButton(
+                        onPressed: () => setState(() => _error = null),
+                        child: const Text('Dismiss'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(context).maybePop(),
+                        child: const Text('Back'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           if (_consequenceToShow != null && _consequenceToShow!.isNotEmpty) ...[
             _sectionCard(
               title: 'What happened',

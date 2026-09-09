@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/providers/access_level_provider.dart';
+import '../../../core/providers/access_level_provider.dart';
 import '../../auth/providers/auth_provider.dart';
-// Redirect to ModuleScreenFile
-import '../../../../screens/module_screen_file.dart';
+// Redirect to ModuleScreenFile (active Learn tab destination)
+import '../../../screens/module_screen_file.dart';
 
 /// Learn Screen - Redirects to ModuleScreenFile
 class LearnScreen extends ConsumerWidget {

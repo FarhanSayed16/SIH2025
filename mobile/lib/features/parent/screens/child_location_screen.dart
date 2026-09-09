@@ -134,7 +134,7 @@ class _ChildLocationScreenState extends ConsumerState<ChildLocationScreen> {
                           infoWindow: InfoWindow(
                             title: 'Child Location',
                             snippet:
-                                'Last seen: ${currentLocation.lastSeen.toLocal().toString().split('.')[0]}',
+                                'Last seen: ${currentLocation.lastSeen != null ? currentLocation.lastSeen!.toLocal().toString().split('.')[0] : 'unavailable'}',
                           ),
                         ),
                       }
@@ -176,14 +176,22 @@ class _ChildLocationScreenState extends ConsumerState<ChildLocationScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Status: ${currentLocation.status.toUpperCase()}',
+                                currentLocation.status == 'safe'
+                                    ? 'Reported safe'
+                                    : currentLocation.status == 'unknown' ||
+                                            currentLocation.status ==
+                                                'unavailable'
+                                        ? 'Status unavailable'
+                                        : 'Status: ${currentLocation.status.replaceAll('_', ' ')}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
                                 ),
                               ),
                               Text(
-                                'Last seen: ${currentLocation.lastSeen.toLocal().toString().split('.')[0]}',
+                                currentLocation.lastSeen != null
+                                    ? 'Last seen: ${currentLocation.lastSeen!.toLocal().toString().split('.')[0]}'
+                                    : 'Last seen: unavailable',
                                 style: const TextStyle(fontSize: 12),
                               ),
                             ],

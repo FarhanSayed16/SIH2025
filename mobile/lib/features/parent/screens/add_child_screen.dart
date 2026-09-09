@@ -9,7 +9,7 @@ import '../../../core/widgets/widgets.dart';
 import '../../../core/design/design_system.dart';
 import '../providers/parent_provider.dart';
 import '../models/parent_models.dart';
-import 'parent_dashboard_screen.dart';
+import 'parent_shell_screen.dart';
 import 'child_detail_screen.dart';
 
 class AddChildScreen extends ConsumerStatefulWidget {
@@ -74,7 +74,7 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen>
             Navigator.pushReplacement<void, void>(
               context,
               MaterialPageRoute<void>(
-                builder: (context) => const ParentDashboardScreen(),
+                builder: (context) => const ParentShellScreen(),
               ),
             );
           }
@@ -129,7 +129,7 @@ class _AddChildScreenState extends ConsumerState<AddChildScreen>
             Navigator.pushReplacement<void, void>(
               context,
               MaterialPageRoute<void>(
-                builder: (context) => const ParentDashboardScreen(),
+                builder: (context) => const ParentShellScreen(),
               ),
             );
           }

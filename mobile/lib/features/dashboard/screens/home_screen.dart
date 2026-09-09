@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+/// Student Home — B4: one honest score, compact actions, tip/connectivity honesty.
+
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:camera/camera.dart';
@@ -7,7 +9,7 @@ import '../../../core/design/design_system.dart';
 import '../../../core/providers/access_level_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../emergency/screens/red_alert_screen.dart';
+import '../../emergency/screens/manual_emergency_screen.dart';
 import '../../score/providers/preparedness_score_provider.dart';
 import '../../score/screens/score_breakdown_screen.dart';
 import '../../score/screens/score_history_screen.dart';
@@ -15,14 +17,8 @@ import '../../adaptive_scoring/screens/per_student_scores_screen.dart';
 import '../../adaptive_scoring/screens/shared_xp_distribution_screen.dart';
 import '../../auth/models/user_model.dart';
 import '../../maps/screens/blueprint_map_screen.dart';
-// Redirect to ModuleScreenFile for drills/modules
-import '../../../screens/module_screen_file.dart';
-// Redirect to MainMenuScreen for games
-import '../../../screens/main_menu_screen.dart';
-// Redirect to LanguageSelectionScreen for quiz
 import '../../../screens/language_selection_screen.dart';
-// Redirect to ScannerScreen for HazardScreenAI
-import '../../../Hazardlens.dart';
+import '../../../hazard_lens.dart';
 import 'evacuation_check_screen.dart';
 import 'damage_scan_screen.dart';
 import '../../drills/screens/drill_list_screen.dart';
@@ -31,10 +27,11 @@ import '../../../core/services/api_service.dart';
 import '../widgets/connectivity_indicator.dart';
 import '../widgets/sync_indicator.dart';
 
-/// Home Screen with Preparedness Score and Quick Actions
-/// Phase 101.4: Fully redesigned with new design system
 class HomeScreen extends ConsumerStatefulWidget {
-  const HomeScreen({super.key});
+  /// Dashboard tab switch — Learn=1, Games=2, Profile=3.
+  final ValueChanged<int>? onSelectTab;
+
+  const HomeScreen({super.key, this.onSelectTab});
 
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
@@ -43,14 +40,18 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _todaysTip;
   String? _todaysTipDate;
-  String _tipLang = 'en'; // G1: language for today's tip (en, hi, mr)
+  String _tipContentLang = 'en';
+  String _tipSelectedLang = 'en';
+  bool _tipLoading = false;
+  bool _tipUnavailable = false;
+  int _tipRequestId = 0;
+
   final ApiService _api = ApiService();
 
   @override
   void initState() {
     super.initState();
     _loadTodaysTip(null);
-    // Load score when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(preparednessScoreProvider.notifier)
@@ -59,32 +60,79 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _loadTodaysTip(String? lang) async {
-    if (lang != null && mounted) setState(() => _tipLang = lang);
+    final requestId = ++_tipRequestId;
+    final requestedLang = lang ?? _tipSelectedLang;
+
+    if (mounted) {
+      setState(() {
+        if (lang != null) _tipSelectedLang = lang;
+        _tipLoading = true;
+        _tipUnavailable = false;
+      });
+    }
+
     try {
-      final path = lang != null ? '${ApiEndpoints.aiTipToday}?lang=$lang' : ApiEndpoints.aiTipToday;
+      final path = lang != null
+          ? '${ApiEndpoints.aiTipToday}?lang=$lang'
+          : ApiEndpoints.aiTipToday;
       final res = await _api.get(path);
+      if (requestId != _tipRequestId || !mounted) return;
+
       final data = res.data;
       if (data is Map && data['data'] != null) {
         final d = data['data'] as Map<String, dynamic>;
-        if (mounted) {
-          setState(() {
-            _todaysTip = d['tip']?.toString();
-            _todaysTipDate = d['date']?.toString();
-          });
-        }
+        final tip = d['tip']?.toString();
+        final date = d['date']?.toString();
+        setState(() {
+          if (tip != null && tip.isNotEmpty) {
+            _todaysTip = tip;
+            _todaysTipDate = date;
+            _tipContentLang = requestedLang;
+            _tipUnavailable = false;
+          } else if (_todaysTip == null) {
+            _tipUnavailable = true;
+          }
+          _tipLoading = false;
+        });
+      } else if (mounted) {
+        setState(() {
+          _tipLoading = false;
+          if (_todaysTip == null) _tipUnavailable = true;
+          // Revert chip to content language if request failed to deliver new text
+          _tipSelectedLang = _tipContentLang;
+        });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (requestId != _tipRequestId || !mounted) return;
+      setState(() {
+        _tipLoading = false;
+        if (_todaysTip == null) {
+          _tipUnavailable = true;
+        } else {
+          // Keep old tip; restore selection to its language
+          _tipSelectedLang = _tipContentLang;
+        }
+      });
+    }
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Reload score when screen becomes visible again
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(preparednessScoreProvider.notifier)
-          .loadScore(forceRefresh: true);
-    });
+  bool _tipDateIsToday(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return false;
+    final parsed = DateTime.tryParse(dateStr);
+    if (parsed == null) return false;
+    final now = DateTime.now();
+    return parsed.year == now.year &&
+        parsed.month == now.month &&
+        parsed.day == now.day;
+  }
+
+  String _formatTipDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    final parsed = DateTime.tryParse(dateStr);
+    if (parsed == null) return dateStr;
+    return '${parsed.year}-'
+        '${parsed.month.toString().padLeft(2, '0')}-'
+        '${parsed.day.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -92,305 +140,119 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final l10n = AppLocalizations.of(context);
-
-    // Get real preparedness score from provider
     final scoreState = ref.watch(preparednessScoreProvider);
-    final preparednessScore =
-        scoreState.score != null ? scoreState.score!.score : 0;
-    final isLoading = scoreState.isLoading;
 
     return ScreenLayout(
       padding: AppSpacing.screenEdge,
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Enhanced Welcome Section with Circular Score
-            _buildWelcomeSection(
-                    context, l10n, user, preparednessScore, isLoading)
-                .animate()
-                .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-                .slideY(
-                    begin: -0.1,
-                    end: 0,
-                    duration: 500.ms,
-                    curve: Curves.easeOut),
-            SizedBox(height: AppSpacing.md),
-            // Status Indicators Row
-            _buildStatusRow()
-                .animate()
-                .fadeIn(duration: 400.ms, delay: 50.ms, curve: Curves.easeOut)
-                .slideY(
-                    begin: 0.05,
-                    end: 0,
-                    duration: 500.ms,
-                    delay: 50.ms,
-                    curve: Curves.easeOut),
-            SizedBox(height: AppSpacing.lg),
-
-            // Preparedness Score Card using new components
-            _buildScoreCard(
-                    context, l10n, scoreState, preparednessScore, isLoading)
-                .animate()
-                .fadeIn(duration: 400.ms, delay: 100.ms, curve: Curves.easeOut)
-                .slideY(
-                    begin: 0.1,
-                    end: 0,
-                    duration: 500.ms,
-                    delay: 100.ms,
-                    curve: Curves.easeOut),
-            SizedBox(height: AppSpacing.xl),
-
-            // B2: Today's safety tip
-            if (_todaysTip != null && _todaysTip!.isNotEmpty)
-              _buildTodaysTipCard(context)
+      excludeBottomSafeArea: true,
+      child: RefreshIndicator(
+        onRefresh: () async {
+          await ref
+              .read(preparednessScoreProvider.notifier)
+              .loadScore(forceRefresh: true);
+          await _loadTodaysTip(_tipSelectedLang);
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildWelcomeSection(context, user)
                   .animate()
-                  .fadeIn(duration: 400.ms, delay: 150.ms, curve: Curves.easeOut)
-                  .slideY(begin: 0.08, end: 0, duration: 450.ms, delay: 150.ms, curve: Curves.easeOut),
-            if (_todaysTip != null && _todaysTip!.isNotEmpty) SizedBox(height: AppSpacing.lg),
-
-            // Teacher-only adaptive scoring section
-            if (user?.role == 'teacher' || user?.role == 'admin') ...[
-              _buildTeacherSection(context, user)
+                  .fadeIn(duration: 350.ms)
+                  .slideY(begin: -0.05, end: 0, duration: 400.ms),
+              SizedBox(height: AppSpacing.sm),
+              _buildStatusRow(),
+              SizedBox(height: AppSpacing.lg),
+              _buildScoreCard(context, l10n, scoreState)
                   .animate()
-                  .fadeIn(
-                      duration: 400.ms, delay: 200.ms, curve: Curves.easeOut)
-                  .slideY(
-                      begin: 0.1,
-                      end: 0,
-                      duration: 500.ms,
-                      delay: 200.ms,
-                      curve: Curves.easeOut),
-              SizedBox(height: AppSpacing.xl),
-            ],
-
-            // Quick Actions Section
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryGreen.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    Icons.flash_on_rounded,
-                    size: 22,
-                    color: AppColors.primaryGreen,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.quickActions,
-                        style: AppTextStyles.h3.copyWith(
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Shortcuts to drills, learning, and safety tools',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                  .fadeIn(duration: 350.ms, delay: 40.ms),
+              SizedBox(height: AppSpacing.lg),
+              _buildTipSection(context)
+                  .animate()
+                  .fadeIn(duration: 350.ms, delay: 60.ms),
+              SizedBox(height: AppSpacing.lg),
+              if (user?.role == 'teacher' || user?.role == 'admin') ...[
+                _buildTeacherSection(context, user),
+                SizedBox(height: AppSpacing.lg),
               ],
-            )
-                .animate()
-                .fadeIn(duration: 400.ms, delay: 300.ms, curve: Curves.easeOut)
-                .slideX(
-                    begin: -0.1,
-                    end: 0,
-                    duration: 500.ms,
-                    delay: 300.ms,
-                    curve: Curves.easeOut),
-            SizedBox(height: AppSpacing.lg),
-            _buildQuickActions(context, l10n, user)
-                .animate()
-                .fadeIn(duration: 400.ms, delay: 400.ms, curve: Curves.easeOut)
-                .slideY(
-                    begin: 0.1,
-                    end: 0,
-                    duration: 500.ms,
-                    delay: 400.ms,
-                    curve: Curves.easeOut),
-          ],
+              Text(
+                l10n.quickActions,
+                style: AppTextStyles.h3.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Drills, learning, games, and safety tools',
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              SizedBox(height: AppSpacing.md),
+              _buildQuickActions(context, l10n, user)
+                  .animate()
+                  .fadeIn(duration: 350.ms, delay: 80.ms),
+              SizedBox(height: AppSpacing.xl),
+              _buildEmergencyArea(context, l10n, user),
+              SizedBox(height: AppSpacing.lg),
+            ],
+          ),
         ),
       ),
-      floatingActionButton: _buildEmergencyFAB(context, l10n, user),
     );
   }
 
-  /// Build enhanced welcome section with greeting and circular score indicator
-  Widget _buildWelcomeSection(
-    BuildContext context,
-    AppLocalizations l10n,
-    UserModel? user,
-    int preparednessScore,
-    bool isLoading,
-  ) {
-    // Get greeting based on time of day
+  Widget _buildWelcomeSection(BuildContext context, UserModel? user) {
     final hour = DateTime.now().hour;
-    String greeting;
-    String emoji;
-    if (hour < 12) {
-      greeting = 'Good Morning';
-      emoji = '\u{1F305}';
-    } else if (hour < 17) {
-      greeting = 'Good Afternoon';
-      emoji = '\u{2600}\u{FE0F}';
-    } else {
-      greeting = 'Good Evening';
-      emoji = '\u{1F319}';
-    }
+    final greeting = hour < 12
+        ? 'Good morning'
+        : hour < 17
+            ? 'Good afternoon'
+            : 'Good evening';
+    final displayName = (user?.name != null && user!.name.trim().isNotEmpty)
+        ? user.name.trim()
+        : 'there';
 
-    // Determine score color
-    Color scoreColor = AppColors.primaryGreen;
-    if (preparednessScore >= 80) {
-      scoreColor = AppColors.success;
-    } else if (preparednessScore >= 60) {
-      scoreColor = AppColors.warning;
-    } else {
-      scoreColor = AppColors.error;
-    }
-
-    return Container(
-      padding: EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundWhite,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Greeting Text Section
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$greeting, $displayName',
+                style: AppTextStyles.h2.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 22,
+                ),
+              ),
+              if (user != null) ...[
+                const SizedBox(height: 4),
                 Text(
-                  '$greeting,',
-                  style: AppTextStyles.bodyMedium.copyWith(
+                  user.role,
+                  style: AppTextStyles.bodySmall.copyWith(
                     color: AppColors.textSecondary,
-                    fontSize: 14,
                   ),
-                ),
-                SizedBox(height: AppSpacing.xs),
-                Text(
-                  user?.name ?? 'User',
-                  style: AppTextStyles.h2.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
-                  ),
-                ),
-                SizedBox(height: AppSpacing.sm),
-                Row(
-                  children: [
-                    BadgeWidget(
-                      text: (user?.role ?? 'UNKNOWN').toUpperCase(),
-                      type: BadgeType.primary,
-                    ),
-                    SizedBox(width: AppSpacing.sm),
-                    Text(
-                      emoji,
-                      style: const TextStyle(fontSize: 20),
-                    ),
-                  ],
                 ),
               ],
-            ),
+            ],
           ),
-          SizedBox(width: AppSpacing.lg),
-          // Circular Progress Indicator for Score
-          GestureDetector(
-            onTap: () {
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const ScoreBreakdownScreen(),
-                ),
-              );
-            },
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: scoreColor.withOpacity(0.2),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Background circle
-                  SizedBox(
-                    width: 100,
-                    height: 100,
-                    child: CircularProgressIndicator(
-                      value: isLoading ? 0 : preparednessScore / 100,
-                      strokeWidth: 8,
-                      backgroundColor: AppColors.backgroundMedium,
-                      valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
-                    ),
-                  ),
-                  // Score text
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isLoading ? '--' : '$preparednessScore',
-                        style: AppTextStyles.h3.copyWith(
-                          color: scoreColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 24,
-                        ),
-                      ),
-                      Text(
-                        '%',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        IconButton(
+          tooltip: 'Profile',
+          onPressed: () => widget.onSelectTab?.call(3),
+          icon: const Icon(Icons.person_outline),
+        ),
+      ],
     );
   }
 
-  /// Build status indicators row (Connection & Sync status)
   Widget _buildStatusRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.start,
-      children: const [
+    return const Wrap(
+      spacing: 12,
+      runSpacing: 8,
+      children: [
         ConnectivityIndicator(),
-        SizedBox(width: 12),
         SyncIndicator(),
       ],
     );
@@ -399,159 +261,243 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildScoreCard(
     BuildContext context,
     AppLocalizations l10n,
-    dynamic scoreState,
-    int preparednessScore,
-    bool isLoading,
+    PreparednessScoreState scoreState,
   ) {
-    if (isLoading) {
-      return const LoadingState(message: 'Loading score...');
-    }
+    final theme = Theme.of(context);
 
-    if (scoreState.error != null) {
-      return ErrorState(
-        title: 'Error Loading Score',
-        message: scoreState.error.toString(),
-        onRetry: () {
-          ref
-              .read(preparednessScoreProvider.notifier)
-              .loadScore(forceRefresh: true);
-        },
+    if (scoreState.isLoading && !scoreState.hasScore) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Loading preparedness…',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ],
+        ),
       );
     }
 
-    // Determine score color
-    Color scoreColor = AppColors.primaryGreen;
-    if (preparednessScore >= 80) {
-      scoreColor = AppColors.success;
-    } else if (preparednessScore >= 60) {
-      scoreColor = AppColors.warning;
-    } else {
-      scoreColor = AppColors.error;
+    if (!scoreState.hasScore) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.borderLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Preparedness',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              scoreState.error != null
+                  ? 'Score unavailable'
+                  : 'No score available yet',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton(
+                  onPressed: () => widget.onSelectTab?.call(1),
+                  child: const Text('Browse learning'),
+                ),
+                if (scoreState.error != null)
+                  TextButton(
+                    onPressed: () {
+                      ref
+                          .read(preparednessScoreProvider.notifier)
+                          .loadScore(forceRefresh: true);
+                    },
+                    child: const Text('Retry'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
     }
 
+    final score = scoreState.score!;
+    final value = score.score.clamp(0, 100);
+    // Zero is not a danger signal; only mild emphasis for mid-range.
+    final Color accent = value == 0
+        ? theme.colorScheme.primary
+        : value >= 80
+            ? AppColors.success
+            : value >= 40
+                ? AppColors.warning
+                : theme.colorScheme.primary;
+
+    final sourceLabel = scoreState.source == ScoreSource.server
+        ? (score.lastUpdated != null
+            ? 'Updated ${_formatTipDate(score.lastUpdated!.toIso8601String())}'
+            : 'From your learning record')
+        : 'Estimated on this device';
+
+    final explanation = value == 0
+        ? 'A starting point — browse learning or try a drill to build preparedness.'
+        : 'Learning preparedness only — not your current physical safety.';
+
     return Container(
-      padding: EdgeInsets.all(AppSpacing.xl),
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.backgroundWhite,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.shadow.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
-          ),
-        ],
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with title and icon
           Row(
             children: [
-              Container(
-                padding: EdgeInsets.all(AppSpacing.sm),
-                decoration: BoxDecoration(
-                  color: scoreColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.star_rounded,
-                  color: scoreColor,
-                  size: 24,
-                ),
-              ),
-              SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
-                  l10n.preparednessScore,
-                  style: AppTextStyles.h3.copyWith(
-                    fontWeight: FontWeight.bold,
+                  'Preparedness',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => const ScoreBreakdownScreen(),
+                    ),
+                  );
+                },
+                child: const Text('View breakdown'),
+              ),
             ],
           ),
-          SizedBox(height: AppSpacing.lg),
-          // Progress bar with label
+          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'Overall Progress',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
+                '$value',
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w700,
+                  height: 1,
                 ),
               ),
-              Text(
-                '$preparednessScore%',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: scoreColor,
-                  fontWeight: FontWeight.bold,
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6, left: 4),
+                child: Text(
+                  '/100',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
+              if (scoreState.isLoading) ...[
+                const SizedBox(width: 12),
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ],
             ],
           ),
-          SizedBox(height: AppSpacing.sm),
-          // Enhanced progress bar
+          const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
-              value: preparednessScore / 100,
+              value: value / 100,
+              minHeight: 8,
               backgroundColor: AppColors.backgroundMedium,
-              valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
-              minHeight: 12,
+              valueColor: AlwaysStoppedAnimation<Color>(accent),
             ),
           ),
-          SizedBox(height: AppSpacing.lg),
-          // Action buttons row with better styling
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          const SizedBox(height: 8),
+          Text(
+            sourceLabel,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            explanation,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          if (scoreState.error != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Could not refresh. Showing saved score.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.warning,
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
             children: [
-              Expanded(
-                child: _buildActionButton(
-                  icon: Icons.refresh_rounded,
-                  label: 'Refresh',
+              TextButton.icon(
+                onPressed: () => widget.onSelectTab?.call(1),
+                icon: const Icon(Icons.school_outlined, size: 18),
+                label: Text(
+                  value == 0 || scoreState.source == ScoreSource.none
+                      ? 'Browse learning'
+                      : 'Continue learning',
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.push<void>(
+                    context,
+                    MaterialPageRoute<void>(
+                      builder: (context) => const ScoreHistoryScreen(),
+                    ),
+                  );
+                },
+                child: const Text('History'),
+              ),
+              if (scoreState.error != null)
+                TextButton(
                   onPressed: () {
                     ref
                         .read(preparednessScoreProvider.notifier)
-                        .recalculateScore();
+                        .loadScore(forceRefresh: true);
                   },
-                  color: AppColors.accentBlue,
+                  child: const Text('Retry'),
                 ),
-              ),
-              SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _buildActionButton(
-                  icon: Icons.history_rounded,
-                  label: 'History',
-                  onPressed: () {
-                    Navigator.push<void>(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (context) => const ScoreHistoryScreen(),
-                      ),
-                    );
-                  },
-                  color: AppColors.accentBlue,
-                ),
-              ),
-              SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: _buildActionButton(
-                  icon: Icons.analytics_rounded,
-                  label: 'Details',
-                  onPressed: () {
-                    Navigator.push<void>(
-                      context,
-                      MaterialPageRoute<void>(
-                        builder: (context) => const ScoreBreakdownScreen(),
-                      ),
-                    );
-                  },
-                  color: scoreColor,
-                ),
-              ),
             ],
           ),
         ],
@@ -559,134 +505,116 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  /// B2: Today's safety tip card (G1: language selector for Hindi/Marathi)
-  Widget _buildTodaysTipCard(BuildContext context) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppBorders.radiusLg),
-        side: BorderSide(color: AppColors.accentOrange.withOpacity(0.3)),
+  Widget _buildTipSection(BuildContext context) {
+    final theme = Theme.of(context);
+    final isToday = _tipDateIsToday(_todaysTipDate);
+    final title = isToday ? "Today's safety tip" : 'Safety tip';
+
+    if (_todaysTip == null && !_tipUnavailable && !_tipLoading) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: AppColors.warningBackground.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.accentOrange.withValues(alpha: 0.3),
+        ),
       ),
-      color: AppColors.warningBackground.withOpacity(0.6),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentOrange.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.lightbulb_outline_rounded, color: AppColors.accentOrange, size: 22),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Today's safety tip",
-                        style: AppTextStyles.labelLarge.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _todaysTip ?? '',
-                        style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary, height: 1.35),
-                      ),
-                      if (_todaysTipDate != null && _todaysTipDate!.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            _todaysTipDate!,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textTertiary,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                    ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline, color: AppColors.accentOrange),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
+              ),
+              if (_tipLoading)
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+            ],
+          ),
+          if (_todaysTip != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _todaysTip!,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.35),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: [
-                _tipChip('English', 'en'),
-                _tipChip('\u0939\u093F\u0902\u0926\u0940', 'hi'),
-                _tipChip('\u092E\u0930\u093E\u0920\u0940', 'mr'),
-              ],
+            if (_todaysTipDate != null && _todaysTipDate!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                _formatTipDate(_todaysTipDate),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: AppColors.textTertiary,
+                ),
+              ),
+            ],
+            if (_tipLoading && _tipSelectedLang != _tipContentLang)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  'Showing previous language while loading…',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+          ] else if (_tipUnavailable) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Safety tip unavailable',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            TextButton(
+              onPressed: () => _loadTodaysTip(_tipSelectedLang),
+              child: const Text('Retry'),
             ),
           ],
-        ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              _tipChip('English', 'en'),
+              _tipChip('?????', 'hi'),
+              _tipChip('?????', 'mr'),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _tipChip(String label, String lang) {
-    final selected = _tipLang == lang;
+    final selected = _tipSelectedLang == lang;
     return FilterChip(
-      label: Text(label, style: TextStyle(fontSize: 12, color: selected ? Colors.white : AppColors.textSecondary)),
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: selected ? Colors.white : AppColors.textSecondary,
+        ),
+      ),
       selected: selected,
-      onSelected: (_) => _loadTodaysTip(lang),
+      onSelected: _tipLoading ? null : (_) => _loadTodaysTip(lang),
       selectedColor: AppColors.accentOrange,
       checkmarkColor: Colors.white,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    );
-  }
-
-  /// Build action button for score card
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-            vertical: AppSpacing.md, horizontal: AppSpacing.sm),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: color,
-              size: 20,
-            ),
-            SizedBox(height: AppSpacing.xs),
-            Text(
-              label,
-              style: AppTextStyles.bodySmall.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: 11,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -696,10 +624,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Class Management',
-          style: AppTextStyles.h3,
-        ),
+        Text('Class Management', style: AppTextStyles.h3),
         SizedBox(height: AppSpacing.md),
         if (classId != null) ...[
           ActionCard(
@@ -749,8 +674,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildQuickActions(
-      BuildContext context, AppLocalizations l10n, UserModel? user) {
-    // Check access levels
+    BuildContext context,
+    AppLocalizations l10n,
+    UserModel? user,
+  ) {
     final canAccessDrills = user == null ||
         user.role != 'student' ||
         AccessLevelProvider.canAccessFeature(user, 'drills') ||
@@ -766,14 +693,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         AccessLevelProvider.canAccessFeature(user, 'quizzes');
     final hasInstitution = user?.institutionId != null;
 
-    final List<Widget> actionCards = [];
+    final primary = <Widget>[];
+    final secondary = <Widget>[];
 
-    // Start Drill - Show drills list (scheduled/active/completed)
     if (canAccessDrills) {
-      actionCards.add(
+      primary.add(
         FeatureCard(
-          title: l10n.startDrill,
-          description: 'View scheduled, active, and past drills',
+          title: 'View drills',
+          description: 'Scheduled, active, and past drills',
           icon: Icons.fire_extinguisher_rounded,
           iconColor: AppColors.warning,
           clickable: true,
@@ -789,54 +716,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // View Modules - Redirect to ModuleScreenFile
     if (canAccessModules) {
-      actionCards.add(
+      primary.add(
         FeatureCard(
-          title: l10n.viewModules,
-          description: 'Browse learning modules',
+          title: 'Browse learning',
+          description: 'Safety lessons and training videos',
           icon: Icons.school_rounded,
           iconColor: AppColors.info,
           clickable: true,
-          onTap: () {
-            Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(
-                builder: (context) => const ModuleScreenFile(),
-              ),
-            );
-          },
+          onTap: () => widget.onSelectTab?.call(1),
         ),
       );
     }
 
-    // Play Game - Redirect to MainMenuScreen
     if (canAccessGames) {
-      actionCards.add(
+      primary.add(
         FeatureCard(
-          title: l10n.playGame,
-          description: 'Play safety games',
+          title: 'Play games',
+          description: 'Practise with safety games',
           icon: Icons.sports_esports_rounded,
           iconColor: AppColors.accentBlue,
           clickable: true,
-          onTap: () {
-            Navigator.push<void>(
-              context,
-              MaterialPageRoute<void>(
-                builder: (context) => const MainMenuScreen(),
-              ),
-            );
-          },
+          onTap: () => widget.onSelectTab?.call(2),
         ),
       );
     }
 
-    // Take Quiz - Redirect to LanguageSelectionScreen(game: 'quiz')
     if (canAccessQuizzes) {
-      actionCards.add(
+      primary.add(
         FeatureCard(
           title: l10n.takeQuiz,
-          description: 'Test your knowledge',
+          description: 'Check what you remember',
           icon: Icons.quiz_rounded,
           iconColor: AppColors.infoDark,
           clickable: true,
@@ -853,22 +763,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // Blueprint / Floor Plan Viewer
     if (hasInstitution) {
-      actionCards.add(
+      secondary.add(
         FeatureCard(
-          title: 'School Map',
-          description: 'View exits, equipment, rooms',
+          title: 'School map',
+          description: 'Exits, equipment, and rooms',
           icon: Icons.map_rounded,
           iconColor: AppColors.info,
           clickable: true,
           onTap: () {
-            final schoolId = user!.institutionId!;
             Navigator.push<void>(
               context,
               MaterialPageRoute<void>(
                 builder: (context) => BlueprintMapScreen(
-                  schoolId: schoolId,
+                  schoolId: user!.institutionId!,
                   floor: 0,
                   title: 'School Map',
                 ),
@@ -879,25 +787,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
 
-    // HazardScreenAI - Redirect to ScannerScreen
-    actionCards.add(
+    secondary.addAll([
       FeatureCard(
-        title: 'Hazard Screen AI',
-        description: 'AI-powered hazard detection',
+        title: 'Check a photo for hazards',
+        description: 'Photo review is advisory — not a safety confirmation',
         icon: Icons.dangerous_rounded,
         iconColor: AppColors.error,
         clickable: true,
         onTap: () async {
-          // Initialize camera and navigate to ScannerScreen
           try {
             final cameras = await availableCameras();
             if (cameras.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('No camera available')),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('No camera available')),
+                );
+              }
               return;
             }
-            // Use back camera by default
             final camera = cameras.firstWhere(
               (c) => c.lensDirection == CameraLensDirection.back,
               orElse: () => cameras.first,
@@ -913,19 +820,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           } catch (e) {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Camera error: $e')),
+                SnackBar(content: Text('Camera unavailable')),
               );
             }
           }
         },
       ),
-    );
-
-    // Category A1: Check exit (evacuation route)
-    actionCards.add(
       FeatureCard(
-        title: 'Check exit',
-        description: 'Is the evacuation route clear?',
+        title: 'Check an exit photo',
+        description: 'Photo review cannot confirm a safe route',
         icon: Icons.exit_to_app_rounded,
         iconColor: AppColors.primaryGreen,
         clickable: true,
@@ -938,13 +841,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
         },
       ),
-    );
-
-    // Category A3: Scan damage (post-drill/incident)
-    actionCards.add(
       FeatureCard(
         title: 'Scan damage',
-        description: 'Check for damage after a drill or incident',
+        description: 'After a drill or incident',
         icon: Icons.build_circle_rounded,
         iconColor: AppColors.accentOrange,
         clickable: true,
@@ -957,64 +856,106 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
         },
       ),
-    );
+    ]);
 
-    // Ask Kavach is now the 5th tab in the bottom nav (Ask).
-
-    if (actionCards.isEmpty) {
-      return EmptyState(
+    if (primary.isEmpty && secondary.isEmpty) {
+      return const EmptyState(
         title: 'No Actions Available',
         message: 'No quick actions available for your access level',
         icon: Icons.lock_outline,
       );
     }
 
-    return ResponsiveGrid(
-      children: actionCards
-          .asMap()
-          .entries
-          .map((entry) => entry.value
-              .animate()
-              .fadeIn(
-                duration: 400.ms,
-                delay: (500 + entry.key * 100).ms,
-                curve: Curves.easeOut,
-              )
-              .slideY(
-                begin: 0.1,
-                end: 0,
-                duration: 500.ms,
-                delay: (500 + entry.key * 100).ms,
-                curve: Curves.easeOut,
-              ))
-          .toList(),
-      spacing: AppSpacing.lg,
-      childAspectRatio: 0.88,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (primary.isNotEmpty)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 520;
+              if (wide) {
+                return Wrap(
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
+                  children: primary
+                      .map(
+                        (w) => SizedBox(
+                          width: (constraints.maxWidth - AppSpacing.md) / 2,
+                          child: w,
+                        ),
+                      )
+                      .toList(),
+                );
+              }
+              return Column(
+                children: [
+                  for (var i = 0; i < primary.length; i++) ...[
+                    if (i > 0) SizedBox(height: AppSpacing.sm),
+                    primary[i],
+                  ],
+                ],
+              );
+            },
+          ),
+        if (secondary.isNotEmpty) ...[
+          SizedBox(height: AppSpacing.lg),
+          Text(
+            'More safety tools',
+            style: AppTextStyles.labelLarge.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Photo checks and authorized maps. Results are advisory.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+            ),
+          ),
+          SizedBox(height: AppSpacing.sm),
+          ...secondary.map(
+            (w) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: w,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
-  Widget? _buildEmergencyFAB(
-      BuildContext context, AppLocalizations l10n, UserModel? user) {
+  Widget _buildEmergencyArea(
+    BuildContext context,
+    AppLocalizations l10n,
+    UserModel? user,
+  ) {
     final canAccessCrisis = user == null ||
         user.role != 'student' ||
         AccessLevelProvider.canAccessFeature(user, 'crisis_mode');
 
-    if (!canAccessCrisis) return null;
+    if (!canAccessCrisis) return const SizedBox.shrink();
 
-    return FABButton(
-      icon: Icons.warning,
-      label: l10n.emergency,
-      backgroundColor: AppColors.primaryRed,
-      onPressed: () {
-        Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(
-            builder: (context) => const RedAlertScreen(
-              alertType: 'emergency',
-              message: 'Emergency Alert - Test',
-            ),
+    return SizedBox(
+      width: double.infinity,
+      child: FilledButton.icon(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primaryRed,
+          foregroundColor: Colors.white,
+          minimumSize: const Size.fromHeight(52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
-        );
-      },
+        ),
+        onPressed: () {
+          Navigator.of(context).push<void>(
+            MaterialPageRoute<void>(
+              builder: (context) => const ManualEmergencyScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.warning_amber_rounded),
+        label: Text(l10n.emergency),
+      ),
     );
   }
 }

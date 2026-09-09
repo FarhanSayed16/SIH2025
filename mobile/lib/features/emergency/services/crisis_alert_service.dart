@@ -55,24 +55,29 @@ class CrisisAlertService {
         if (response.statusCode == 200 && response.data['success'] == true) {
           return {
             'success': true,
+            'delivery': 'accepted',
             'data': response.data['data'],
           };
         } else {
           throw Exception(response.data['message'] ?? 'Failed to update status');
         }
       } catch (e) {
-        // If API fails, queue for offline sync
-        await _queueStatusUpdate(alertId, userId, 'safe', location);
+        // Queued locally — not confirmed delivery. Never report as success.
+        final queued = await _tryQueueStatusUpdate(alertId, userId, 'safe', location);
         return {
-          'success': true,
-          'message': 'Status queued for sync',
-          'offline': true,
+          'success': false,
+          'delivery': queued ? 'queued' : 'failed',
+          'offline': queued,
+          'message': queued
+              ? 'Status saved on this device. Waiting to send.'
+              : 'Could not save or send status.',
         };
       }
     } catch (e) {
       print('Error marking safe: $e');
       return {
         'success': false,
+        'delivery': 'failed',
         'error': e.toString(),
       };
     }
@@ -87,25 +92,21 @@ class CrisisAlertService {
     String? details,
   }) async {
     try {
-      // Location is required for help requests
-      if (position == null) {
-        return {
-          'success': false,
-          'error': 'Location required for help request',
+      Map<String, dynamic>? location;
+      if (position != null) {
+        location = {
+          'lat': position.latitude,
+          'lng': position.longitude,
         };
       }
 
-      final location = {
-        'lat': position.latitude,
-        'lng': position.longitude,
-      };
-
-      // Emit via Socket.io (if connected)
+      // Emit via Socket.io (if connected) — result is informational only.
       final socketNotifier = ref.read(socketProvider.notifier);
       socketNotifier.emit(SocketEvents.userHelp, {
         'alertId': alertId,
         'location': location,
         'details': details,
+        if (position == null) 'locationUnavailable': true,
       });
 
       // Phase 4.4: Update via new status endpoint with 'help' status
@@ -113,7 +114,7 @@ class CrisisAlertService {
         final response = await _apiService.post(
           ApiEndpoints.alertStatus(alertId),
           data: {
-            'status': 'help', // Phase 4.4: Use 'help' status instead of 'at_risk'
+            'status': 'help',
             'location': location,
           },
         );
@@ -121,24 +122,28 @@ class CrisisAlertService {
         if (response.statusCode == 200 && response.data['success'] == true) {
           return {
             'success': true,
+            'delivery': 'accepted',
             'data': response.data['data'],
           };
         } else {
           throw Exception(response.data['message'] ?? 'Failed to update status');
         }
       } catch (e) {
-        // Queue for offline sync
-        await _queueStatusUpdate(alertId, userId, 'help', location);
+        final queued = await _tryQueueStatusUpdate(alertId, userId, 'help', location);
         return {
-          'success': true,
-          'message': 'Help request queued for sync',
-          'offline': true,
+          'success': false,
+          'delivery': queued ? 'queued' : 'failed',
+          'offline': queued,
+          'message': queued
+              ? 'Help request saved on this device. Waiting to send.'
+              : 'Could not save or send help request.',
         };
       }
     } catch (e) {
       print('Error requesting help: $e');
       return {
         'success': false,
+        'delivery': 'failed',
         'error': e.toString(),
       };
     }
@@ -177,6 +182,22 @@ class CrisisAlertService {
     }
   }
 
+  /// Queue status update for offline sync. Returns false if storage fails.
+  Future<bool> _tryQueueStatusUpdate(
+    String alertId,
+    String userId,
+    String status,
+    Map<String, dynamic>? location,
+  ) async {
+    try {
+      await _queueStatusUpdate(alertId, userId, status, location);
+      return true;
+    } catch (e) {
+      print('Error queuing status update: $e');
+      return false;
+    }
+  }
+
   /// Queue status update for offline sync
   Future<void> _queueStatusUpdate(
     String alertId,
@@ -184,19 +205,15 @@ class CrisisAlertService {
     String status,
     Map<String, dynamic>? location,
   ) async {
-    try {
-      final pending = await _getPendingStatusUpdates();
-      pending.add({
-        'alertId': alertId,
-        'userId': userId,
-        'status': status,
-        'location': location,
-        'timestamp': DateTime.now().toIso8601String(),
-      });
-      await _storageService.storeInBox(_pendingStatusBox, _pendingStatusKey, pending);
-    } catch (e) {
-      print('Error queuing status update: $e');
-    }
+    final pending = await _getPendingStatusUpdates();
+    pending.add({
+      'alertId': alertId,
+      'userId': userId,
+      'status': status,
+      'location': location,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    await _storageService.storeInBox(_pendingStatusBox, _pendingStatusKey, pending);
   }
 
   /// Get pending status updates
@@ -214,15 +231,16 @@ class CrisisAlertService {
     }
   }
 
-  /// Sync pending status updates
+  /// Sync pending status updates — keep failed items in the queue.
   Future<void> syncPendingUpdates() async {
     try {
       final pending = await _getPendingStatusUpdates();
       if (pending.isEmpty) return;
 
+      final remaining = <Map<String, dynamic>>[];
+
       for (final update in pending) {
         try {
-          // Phase 4.4: Use new status endpoint
           await _apiService.post(
             ApiEndpoints.alertStatus(update['alertId'] as String),
             data: {
@@ -230,15 +248,23 @@ class CrisisAlertService {
               'location': update['location'] as Map<String, dynamic>?,
             },
           );
+          // Successfully delivered — drop from queue.
         } catch (e) {
-          // Keep in queue if sync fails
           print('Failed to sync status update: $e');
+          remaining.add(update);
         }
       }
 
-      // Clear queue if all synced
       final box = await _storageService.openBox(_pendingStatusBox);
-      await box.delete(_pendingStatusKey);
+      if (remaining.isEmpty) {
+        await box.delete(_pendingStatusKey);
+      } else {
+        await _storageService.storeInBox(
+          _pendingStatusBox,
+          _pendingStatusKey,
+          remaining,
+        );
+      }
     } catch (e) {
       print('Error syncing pending updates: $e');
     }

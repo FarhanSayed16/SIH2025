@@ -2,7 +2,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../emergency/screens/crisis_mode_screen.dart';
-import '../../emergency/screens/red_alert_screen.dart';
 import '../../drills/screens/drill_detail_screen.dart';
 import '../screens/broadcast_detail_screen.dart';
 
@@ -152,7 +151,7 @@ class FcmMessageHandler {
     final severity = (data['severity'] as String?) ?? 'high';
 
     if (context.mounted) {
-      // Show notification and navigate to alert screen if critical
+      // Navigate to crisis mode for device alerts (no RedAlert auto-dial path)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Device Alert: ${_formatDeviceType(deviceType)}'),
@@ -163,10 +162,14 @@ class FcmMessageHandler {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute<dynamic>(
-                  builder: (context) => RedAlertScreen(
+                  builder: (context) => CrisisModeScreen(
+                    alertId: (data['alertId'] ?? data['id'] ?? 'device-alert')
+                        .toString(),
                     alertType: 'device_alert',
                     message: message,
                     severity: severity,
+                    source: 'IoT',
+                    isDrill: false,
                   ),
                 ),
               );
@@ -175,14 +178,17 @@ class FcmMessageHandler {
         ),
       );
 
-      // Navigate directly if critical
       if (severity == 'critical') {
         Navigator.of(context).push(
           MaterialPageRoute<dynamic>(
-            builder: (context) => RedAlertScreen(
+            builder: (context) => CrisisModeScreen(
+              alertId: (data['alertId'] ?? data['id'] ?? 'device-alert')
+                  .toString(),
               alertType: 'device_alert',
               message: message,
               severity: severity,
+              source: 'IoT',
+              isDrill: false,
             ),
           ),
         );

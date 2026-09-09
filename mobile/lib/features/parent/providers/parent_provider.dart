@@ -53,12 +53,12 @@ final notificationsProvider = FutureProvider<List<ParentNotification>>((ref) asy
   return await service.getNotifications();
 });
 
-final unreadNotificationsCountProvider = Provider<int>((ref) {
+final unreadNotificationsCountProvider = Provider<int?>((ref) {
   final notifications = ref.watch(notificationsProvider);
   return notifications.when(
     data: (notifications) => notifications.where((n) => !n.read).length,
-    loading: () => 0,
-    error: (_, __) => 0,
+    loading: () => null,
+    error: (_, __) => null,
   );
 });
 

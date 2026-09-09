@@ -488,7 +488,12 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen>
                         leading: const Icon(Icons.access_time),
                         title: const Text('Last Seen'),
                         subtitle: Text(
-                          location.lastSeen.toLocal().toString().split('.')[0],
+                          location.lastSeen != null
+                              ? location.lastSeen!
+                                  .toLocal()
+                                  .toString()
+                                  .split('.')[0]
+                              : 'Time unavailable',
                         ),
                       ),
                       PrimaryButton(

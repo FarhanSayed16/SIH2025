@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import '../../../core/widgets/accessibility_wrapper.dart';
 import '../../../l10n/app_localizations.dart';
@@ -20,7 +21,6 @@ import '../services/crisis_alert_service.dart';
 import '../../socket/providers/socket_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../drills/services/drill_service.dart'; // Phase 4.2
-import '../../ar/screens/ar_evacuation_screen.dart'; // Phase 5.5: Enhanced AR Evacuation
 
 /// Crisis Mode Screen - Phase 4.1 Enhanced
 class CrisisModeScreen extends ConsumerStatefulWidget {
@@ -199,39 +199,21 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
     });
   }
 
-  /// Handle Dead Man's Switch timeout - mark as potentially trapped
+  /// Handle Dead Man's Switch timeout — never invent a safe report.
   Future<void> _handleDeadManSwitchTimeout() async {
     if (_statusSent) return;
 
-    try {
-      final authState = ref.read(authProvider);
-      final userId = authState.user?.id;
-
-      if (userId == null) return;
-
-      final crisisService = ref.read(crisisAlertServiceProvider);
-      await crisisService.markSafe(
-        alertId: widget.alertId,
-        userId: userId,
-        ref: ref,
-        position: _currentPosition,
-      );
-
-      // Also send via API to mark as potentially trapped
-      // Note: Backend should interpret no response as potentially_trapped
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-                'No response detected. You have been marked as potentially trapped.'),
-            backgroundColor: Colors.orange,
-            duration: const Duration(seconds: 5),
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No response detected. Your status was not changed. '
+            'Use Report safe or Request help if you can.',
           ),
-        );
-      }
-    } catch (e) {
-      print('Error handling dead man switch timeout: $e');
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 6),
+        ),
+      );
     }
   }
 
@@ -271,9 +253,6 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
     if (_statusSent) return;
 
     try {
-      _statusSent = true;
-      _deadManSwitchTimer?.cancel();
-
       final authState = ref.read(authProvider);
       final userId = authState.user?.id;
 
@@ -295,16 +274,18 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
       );
 
       if (mounted) {
-        if (result['success'] == true) {
+        final delivery = result['delivery']?.toString();
+        if (result['success'] == true && delivery == 'accepted') {
+          _statusSent = true;
+          _deadManSwitchTimer?.cancel();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✓ You have been marked as SAFE'),
+              content: Text('Reported safe — delivery confirmed'),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
           );
 
-          // For drills, allow navigation back
           if (widget.isDrill) {
             Future.delayed(const Duration(seconds: 2), () {
               if (mounted) {
@@ -312,15 +293,28 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
               }
             });
           }
+        } else if (delivery == 'queued' || result['offline'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message']?.toString() ??
+                    'Safe report saved on this device. Waiting to send.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
+            ),
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Error: ${result['error'] ?? 'Failed to update status'}'),
+                result['message']?.toString() ??
+                    result['error']?.toString() ??
+                    'Failed to update status',
+              ),
               backgroundColor: Colors.red,
             ),
           );
-          _statusSent = false; // Allow retry
         }
       }
     } catch (e) {
@@ -346,21 +340,9 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
         return;
       }
 
-      // Location is required for help requests
+      // Prefer location, but do not hard-block help when GPS is unavailable.
       if (_currentPosition == null) {
         await _getCurrentLocation();
-        if (_currentPosition == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                    'Location required for help request. Please enable GPS.'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          return;
-        }
       }
 
       final crisisService = ref.read(crisisAlertServiceProvider);
@@ -369,26 +351,43 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
         userId: userId,
         ref: ref,
         position: _currentPosition,
-        details: 'User requested help',
+        details: _currentPosition == null
+            ? 'User requested help (location unavailable)'
+            : 'User requested help',
       );
 
       if (mounted) {
-        if (result['success'] == true) {
+        final delivery = result['delivery']?.toString();
+        if (result['success'] == true && delivery == 'accepted') {
           _statusSent = true;
           _deadManSwitchTimer?.cancel();
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('🚨 Help request sent. Help is on the way!'),
+              content: Text('Help request delivered to your institution.'),
               backgroundColor: Colors.red,
               duration: Duration(seconds: 5),
+            ),
+          );
+        } else if (delivery == 'queued' || result['offline'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['message']?.toString() ??
+                    'Help request saved on this device. Waiting to send.',
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                  'Error: ${result['error'] ?? 'Failed to send help request'}'),
+                result['message']?.toString() ??
+                    result['error']?.toString() ??
+                    'Could not send help request. Try calling if available.',
+              ),
               backgroundColor: Colors.red,
             ),
           );
@@ -741,7 +740,8 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
                         AlertCard(
                           title: _formatDeadManSwitchTime(),
                           message:
-                              "If no response in 5 min, you'll be marked as potentially trapped",
+                              'If you do not respond within 5 minutes, staff may follow up. '
+                              'This app will not automatically mark you as safe.',
                           type: AlertType.warning,
                           icon: Icons.timer,
                           padding: AppSpacing.card,
@@ -788,12 +788,31 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
                               ),
                               SizedBox(height: AppSpacing.md),
 
-                              // Phase 4.7: AR Navigation Button (Real Crisis only)
+                              // AR remains unavailable until independently verified
                               OutlinedButtonCustom(
-                                label: 'START AR NAVIGATION',
-                                icon: Icons.camera_alt,
-                                onPressed: () => _handleARNavigation(ref),
-                                borderColor: Colors.cyan,
+                                label: 'AR evacuation unavailable',
+                                icon: Icons.videocam_off,
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'AR evacuation routing is not available. '
+                                        'Follow posted plans and staff instructions.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                                borderColor: Colors.white54,
+                                textColor: Colors.white70,
+                                fullWidth: true,
+                                size: ButtonSize.large,
+                              ),
+                              SizedBox(height: AppSpacing.md),
+                              OutlinedButtonCustom(
+                                label: 'Call emergency numbers',
+                                icon: Icons.phone,
+                                onPressed: () => _showNationalCallSheet(context),
+                                borderColor: Colors.white,
                                 textColor: Colors.white,
                                 fullWidth: true,
                                 size: ButtonSize.large,
@@ -827,44 +846,51 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
     return parts.join(' • ');
   }
 
-  /// Phase 4.7: Handle AR Navigation
-  void _handleARNavigation(WidgetRef ref) {
-    try {
-      final authState = ref.read(authProvider);
-      final user = authState.user;
-
-      if (user == null || user.institutionId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Unable to start AR navigation: School information not available'),
-            backgroundColor: Colors.orange,
+  void _showNationalCallSheet(BuildContext context) {
+    final contacts = [
+      {'label': 'Police / Emergency (112)', 'number': '112'},
+      {'label': 'Fire (101)', 'number': '101'},
+      {'label': 'Ambulance (108)', 'number': '108'},
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Call a national number',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Calls start only when you tap a number. '
+                  'Campus contacts appear only when configured for your school.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 12),
+                ...contacts.map(
+                  (c) => ListTile(
+                    leading: const Icon(Icons.phone),
+                    title: Text(c['label']!),
+                    subtitle: Text(c['number']!),
+                    onTap: () async {
+                      final uri = Uri(scheme: 'tel', path: c['number']!);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
-        return;
-      }
-
-      // Phase 5.5: Use enhanced AR Evacuation Screen with compass fallback
-      Navigator.push(
-        context,
-        MaterialPageRoute<void>(
-          builder: (context) => AREvacuationScreen(
-            schoolId: user.institutionId!,
-            alertType: widget.alertType,
-            alertId: widget.alertId,
-          ),
-        ),
-      );
-    } catch (e) {
-      print('Error starting AR navigation: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to start AR navigation: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+      },
+    );
   }
 }

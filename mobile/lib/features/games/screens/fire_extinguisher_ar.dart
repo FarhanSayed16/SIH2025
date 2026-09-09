@@ -93,6 +93,7 @@ class _PASS_SimulationScreenState extends State<PASS_SimulationScreen>
   // --- AR / Camera ---
   CameraController? _cameraController;
   bool _isCameraInitialized = false;
+  bool _cameraUnavailable = false;
 
   // --- Spatial Tracking ---
   Offset _virtualCameraHeading = Offset.zero;
@@ -163,7 +164,10 @@ class _PASS_SimulationScreenState extends State<PASS_SimulationScreen>
   Future<void> _initCamera() async {
     try {
       if (_cameras.isEmpty) _cameras = await availableCameras();
-      if (_cameras.isEmpty) return;
+      if (_cameras.isEmpty) {
+        if (mounted) setState(() => _cameraUnavailable = true);
+        return;
+      }
 
       final camera = _cameras.firstWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
@@ -178,9 +182,20 @@ class _PASS_SimulationScreenState extends State<PASS_SimulationScreen>
       );
 
       await _cameraController!.initialize();
-      if (mounted) setState(() => _isCameraInitialized = true);
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = true;
+          _cameraUnavailable = false;
+        });
+      }
     } catch (e) {
       debugPrint('Camera Error: $e');
+      if (mounted) {
+        setState(() {
+          _isCameraInitialized = false;
+          _cameraUnavailable = true;
+        });
+      }
     }
   }
 
@@ -601,7 +616,45 @@ class _PASS_SimulationScreenState extends State<PASS_SimulationScreen>
               ? SizedBox.expand(
                   child: CameraPreview(_cameraController!),
                 )
-              : Container(color: Colors.black),
+              : Container(
+                  color: Colors.black,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.all(24),
+                  child: _cameraUnavailable
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.videocam_off,
+                                color: Colors.white70, size: 48),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Camera unavailable',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'This training needs a working camera and permission. '
+                              'You can go back and try another game.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 20),
+                            FilledButton(
+                              onPressed: () => Navigator.of(context).maybePop(),
+                              child: const Text('Back'),
+                            ),
+                            TextButton(
+                              onPressed: _initCamera,
+                              child: const Text('Retry camera'),
+                            ),
+                          ],
+                        )
+                      : const CircularProgressIndicator(color: Colors.white),
+                ),
         ),
 
         // 2. GAME OVERLAY - Fire/Foam particles
@@ -1299,7 +1352,7 @@ class RealisticFirePainter extends CustomPainter {
 
     TextPainter tp = TextPainter(
       text: const TextSpan(
-        text: 'ðŸ”¥ FIRE TARGET ZONE',
+        text: 'FIRE TARGET ZONE',
         style: TextStyle(
           color: Colors.orange,
           fontWeight: FontWeight.bold,
