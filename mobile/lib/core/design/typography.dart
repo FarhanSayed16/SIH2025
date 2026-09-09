@@ -19,40 +19,40 @@ class AppTextStyles {
   /// Heading 1 - Largest heading (32sp, Bold)
   /// Use for: Main page titles, Hero text
   static const TextStyle h1 = TextStyle(
-    fontSize: 32,
-    fontWeight: FontWeight.bold,
+    fontSize: 28,
+    fontWeight: FontWeight.w600,
     letterSpacing: -0.5,
-    height: 1.2,
+    height: 1.14, // ~32px
     color: AppColors.textPrimary,
   );
 
   /// Heading 2 - Large heading (24sp, Bold)
   /// Use for: Section titles, Card titles
   static const TextStyle h2 = TextStyle(
-    fontSize: 24,
-    fontWeight: FontWeight.bold,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
     letterSpacing: -0.3,
-    height: 1.3,
+    height: 1.3, // ~26px
     color: AppColors.textPrimary,
   );
 
   /// Heading 3 - Medium heading (20sp, Semi-Bold)
   /// Use for: Subsection titles, List headers
   static const TextStyle h3 = TextStyle(
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: FontWeight.w600,
     letterSpacing: -0.2,
-    height: 1.4,
+    height: 1.33, // ~24px
     color: AppColors.textPrimary,
   );
 
   /// Heading 4 - Small heading (18sp, Semi-Bold)
   /// Use for: Card subtitles, Form labels (large)
   static const TextStyle h4 = TextStyle(
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: FontWeight.w600,
     letterSpacing: 0,
-    height: 1.4,
+    height: 1.5, // ~24px
     color: AppColors.textPrimary,
   );
 
@@ -76,7 +76,7 @@ class AppTextStyles {
     fontSize: 16,
     fontWeight: FontWeight.normal,
     letterSpacing: 0.15,
-    height: 1.5,
+    height: 1.5, // ~24px
     color: AppColors.textPrimary,
   );
 
@@ -86,7 +86,7 @@ class AppTextStyles {
     fontSize: 14,
     fontWeight: FontWeight.normal,
     letterSpacing: 0.25,
-    height: 1.5,
+    height: 1.57, // ~22px
     color: AppColors.textPrimary,
   );
 
@@ -96,7 +96,7 @@ class AppTextStyles {
     fontSize: 12,
     fontWeight: FontWeight.normal,
     letterSpacing: 0.4,
-    height: 1.4,
+    height: 1.5, // ~18px
     color: AppColors.textSecondary,
   );
 

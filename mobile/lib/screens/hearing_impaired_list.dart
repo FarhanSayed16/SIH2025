@@ -70,7 +70,7 @@ class _HearingImpairedListState extends State<HearingImpairedList> {
                         },
                       ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppBorders.borderRadiusMd,
                 ),
               ),
             ),
@@ -94,9 +94,9 @@ class _HearingImpairedListState extends State<HearingImpairedList> {
                       final meta = _formatMeta(video.size);
                       return Material(
                         color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppBorders.borderRadiusMd,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppBorders.borderRadiusMd,
                           onTap: () {
                             Navigator.push<void>(
                               context,
@@ -113,7 +113,7 @@ class _HearingImpairedListState extends State<HearingImpairedList> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppBorders.borderRadiusMd,
                               border: Border.all(color: AppColors.borderLight),
                             ),
                             child: Row(

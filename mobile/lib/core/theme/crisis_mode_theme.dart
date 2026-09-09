@@ -70,6 +70,7 @@ class CrisisModeTheme {
           ),
           elevation: 4,
           textStyle: const TextStyle(
+            inherit: false,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),

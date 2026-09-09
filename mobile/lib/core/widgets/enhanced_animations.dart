@@ -15,8 +15,8 @@ class FadeInAnimation extends StatefulWidget {
   const FadeInAnimation({
     super.key,
     required this.child,
-    this.duration = const Duration(milliseconds: 300),
-    this.curve = Curves.easeIn,
+    this.duration = const Duration(milliseconds: 200),
+    this.curve = Curves.easeOutCubic,
     this.beginOpacity = 0.0,
     this.endOpacity = 1.0,
   });
@@ -74,9 +74,9 @@ class SlideInAnimation extends StatefulWidget {
   const SlideInAnimation({
     super.key,
     required this.child,
-    this.duration = const Duration(milliseconds: 300),
-    this.curve = Curves.easeOut,
-    this.beginOffset = const Offset(0.0, 0.3),
+    this.duration = const Duration(milliseconds: 200),
+    this.curve = Curves.easeOutCubic,
+    this.beginOffset = const Offset(0.0, 0.05),
     this.endOffset = Offset.zero,
   });
 
@@ -133,9 +133,9 @@ class ScaleInAnimation extends StatefulWidget {
   const ScaleInAnimation({
     super.key,
     required this.child,
-    this.duration = const Duration(milliseconds: 300),
-    this.curve = Curves.easeOut,
-    this.beginScale = 0.8,
+    this.duration = const Duration(milliseconds: 200),
+    this.curve = Curves.easeOutCubic,
+    this.beginScale = 0.95,
     this.endScale = 1.0,
   });
 
@@ -319,38 +319,57 @@ class _SuccessAnimationState extends State<SuccessAnimation>
 
 /// Phase 3.5.3: Error Animation
 /// Animated error indicator
-class ErrorAnimation extends StatefulWidget {
+class ErrorAnimation extends StatelessWidget {
   final String? message;
-
-  const ErrorAnimation({
-    super.key,
-    this.message,
-  });
+  const ErrorAnimation({super.key, this.message});
 
   @override
-  State<ErrorAnimation> createState() => _ErrorAnimationState();
+  Widget build(BuildContext context) {
+    return FadeInAnimation(
+      duration: const Duration(milliseconds: 160),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          if (message != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              message!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.red),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
-class _ErrorAnimationState extends State<ErrorAnimation>
-    with SingleTickerProviderStateMixin {
+/// Phase 1: Tap Scale Animation for interactive elements
+class TapScaleAnimation extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const TapScaleAnimation({super.key, required this.child, this.onTap});
+
+  @override
+  State<TapScaleAnimation> createState() => _TapScaleAnimationState();
+}
+
+class _TapScaleAnimationState extends State<TapScaleAnimation> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  late Animation<double> _shakeAnimation;
+  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 120),
+      reverseDuration: const Duration(milliseconds: 80),
       vsync: this,
-    )..repeat(reverse: true);
-
-    _shakeAnimation = Tween<double>(
-      begin: -5.0,
-      end: 5.0,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    );
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.98).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic, reverseCurve: Curves.easeOutCubic)
+    );
   }
 
   @override
@@ -359,34 +378,29 @@ class _ErrorAnimationState extends State<ErrorAnimation>
     super.dispose();
   }
 
+  void _handleTapDown(TapDownDetails details) {
+    _controller.forward();
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    _controller.reverse();
+    widget.onTap?.call();
+  }
+
+  void _handleTapCancel() {
+    _controller.reverse();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _shakeAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(_shakeAnimation.value, 0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.error_outline,
-                size: 64,
-                color: Colors.red,
-              ),
-              if (widget.message != null) ...[
-                const SizedBox(height: 16),
-                Text(
-                  widget.message!,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.red,
-                      ),
-                ),
-              ],
-            ],
-          ),
-        );
-      },
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: ScaleTransition(
+        scale: _scaleAnimation,
+        child: widget.child,
+      ),
     );
   }
 }

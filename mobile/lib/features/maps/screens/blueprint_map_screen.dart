@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:kavach/core/config/env.dart';
 import '../services/map_data_service.dart';
 import '../models/map_models.dart';
+import '../../../core/design/design_system.dart';
 
 class BlueprintMapScreen extends StatefulWidget {
   final String schoolId;
@@ -292,7 +293,7 @@ class _BlueprintViewState extends State<_BlueprintView> {
                   child: CustomPaint(
                     painter: _GridPainter(
                       step: 100, // blueprint units
-                      color: Colors.grey.withOpacity(0.15),
+                      color: AppColors.textSecondary.withOpacity(0.15),
                     ),
                   ),
                 ),
@@ -317,7 +318,7 @@ class _BlueprintViewState extends State<_BlueprintView> {
                     child: GestureDetector(
                       onTap: () => _showEquipmentDetails(context, e),
                       child: _Marker(
-                        color: Colors.redAccent,
+                        color: AppColors.error,
                         label: e.name,
                         tooltip: '${e.type} • ${e.status ?? 'active'}',
                       ),
@@ -332,7 +333,7 @@ class _BlueprintViewState extends State<_BlueprintView> {
                     child: GestureDetector(
                       onTap: () => _showExitDetails(context, ex),
                       child: _Marker(
-                        color: Colors.green,
+                        color: AppColors.success,
                         label: ex.name,
                         tooltip: 'Exit • ${ex.type}',
                       ),
@@ -347,7 +348,7 @@ class _BlueprintViewState extends State<_BlueprintView> {
                     child: GestureDetector(
                       onTap: () => _showRoomDetails(context, r),
                       child: _Marker(
-                        color: Colors.blue,
+                        color: AppColors.accentBlue,
                         label: r.name,
                         tooltip: r.roomType ?? 'Room',
                       ),
@@ -362,7 +363,7 @@ class _BlueprintViewState extends State<_BlueprintView> {
                     child: GestureDetector(
                       onTap: () => _showHazardDetails(context, h),
                       child: _Marker(
-                        color: Colors.orange,
+                        color: AppColors.warning,
                         label: h.type ?? 'Hazard',
                         tooltip: h.description ?? 'Hazard',
                       ),
@@ -471,13 +472,13 @@ class _Legend extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        item(Colors.redAccent, 'Equipment'),
+        item(AppColors.error, 'Equipment'),
         const SizedBox(width: 8),
-        item(Colors.green, 'Exit'),
+        item(AppColors.success, 'Exit'),
         const SizedBox(width: 8),
-        item(Colors.blue, 'Room'),
+        item(AppColors.accentBlue, 'Room'),
         const SizedBox(width: 8),
-        item(Colors.orange, 'Hazard'),
+        item(AppColors.warning, 'Hazard'),
       ],
     );
   }
@@ -491,7 +492,7 @@ class _RoutePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (points.length < 2) return;
     final paint = Paint()
-      ..color = Colors.orangeAccent
+      ..color = AppColors.warning
       ..strokeWidth = 3
       ..style = PaintingStyle.stroke;
     final path = Path()..moveTo(points.first.dx, points.first.dy);
@@ -501,7 +502,7 @@ class _RoutePainter extends CustomPainter {
     canvas.drawPath(path, paint);
 
     final dotPaint = Paint()
-      ..color = Colors.orangeAccent
+      ..color = AppColors.warning
       ..style = PaintingStyle.fill;
     for (final p in points) {
       canvas.drawCircle(p, 4, dotPaint);
@@ -559,7 +560,7 @@ class _EquipmentDetailSheet extends StatelessWidget {
                 width: 16,
                 height: 16,
                 decoration: const BoxDecoration(
-                  color: Colors.redAccent,
+                  color: AppColors.error,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -612,7 +613,7 @@ class _ExitDetailSheet extends StatelessWidget {
                 width: 16,
                 height: 16,
                 decoration: const BoxDecoration(
-                  color: Colors.green,
+                  color: AppColors.success,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -664,7 +665,7 @@ class _RoomDetailSheet extends StatelessWidget {
                 width: 16,
                 height: 16,
                 decoration: const BoxDecoration(
-                  color: Colors.blue,
+                  color: AppColors.accentBlue,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -716,7 +717,7 @@ class _HazardDetailSheet extends StatelessWidget {
                 width: 16,
                 height: 16,
                 decoration: const BoxDecoration(
-                  color: Colors.orange,
+                  color: AppColors.warning,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -766,7 +767,7 @@ class _DetailRow extends StatelessWidget {
             width: 80,
             child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textSecondary),
             ),
           ),
           Expanded(

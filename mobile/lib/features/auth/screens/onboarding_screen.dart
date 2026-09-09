@@ -20,32 +20,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   final List<OnboardingPage> _pages = [
     OnboardingPage(
-      icon: Icons.shield,
-      title: 'Welcome to EduSafe',
-      description:
-          'Your personal disaster preparedness companion. Learn, practice, and stay safe.',
+      icon: Icons.school_rounded,
+      title: 'Learn',
+      description: 'Access interactive learning modules to build your safety knowledge.',
       color: AppColors.primaryGreen,
     ),
     OnboardingPage(
-      icon: Icons.school_outlined,
-      title: 'Learn & Practice',
-      description:
-          'Access interactive learning modules and practice drills to prepare for emergencies.',
+      icon: Icons.sports_esports_rounded,
+      title: 'Practice',
+      description: 'Engage with gamified challenges and scenarios to test your skills.',
       color: AppColors.accentBlue,
     ),
     OnboardingPage(
-      icon: Icons.games_outlined,
-      title: 'Gamified Learning',
-      description:
-          'Make learning fun with engaging games and challenges. Earn badges and track your progress.',
+      icon: Icons.health_and_safety_rounded,
+      title: 'Be Prepared',
+      description: 'Stay ready for emergencies with structured drills and safety tools.',
       color: AppColors.accentOrange,
-    ),
-    OnboardingPage(
-      icon: Icons.warning_amber_rounded,
-      title: 'Stay Safe',
-      description:
-          'Get real-time alerts and guidance during emergencies. Your safety is our priority.',
-      color: AppColors.primaryRed,
     ),
   ];
 
@@ -198,7 +188,7 @@ class _OnboardingPageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: AppSpacing.screenEdge,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

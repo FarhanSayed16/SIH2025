@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/theme_provider.dart';
@@ -158,6 +158,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
@@ -165,348 +166,319 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final themeMode = ref.watch(themeModeProvider);
     final localeState = ref.watch(localeProvider);
     final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       appBar: const AppBarCustom(
         title: 'Profile',
         automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
-        padding: AppSpacing.screenEdge,
         child: Column(
           children: [
-            // Profile Header
-            InfoCard(
-              padding: const EdgeInsets.all(24.0),
-              content: Column(
+            // Header Profile Information
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxl, horizontal: AppSpacing.lg),
+              child: Column(
                 children: [
                   AvatarWidget(
                     name: user?.name ?? 'User',
-                    size: 100,
-                    backgroundColor: AppColors.primaryGreen,
+                    size: 96,
+                    backgroundColor: colorScheme.primaryContainer,
                   ),
-                  SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.md),
                   Text(
                     user?.name ?? 'User',
-                    style: AppTextStyles.h3,
-                  ),
-                  SizedBox(height: AppSpacing.xs),
-                  Text(
-                    user?.email ?? 'No email',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
                     ),
                   ),
-                  SizedBox(height: AppSpacing.sm),
-                  BadgeWidget(
-                    text: user?.role.toUpperCase() ?? 'UNKNOWN',
-                    type: BadgeType.primary,
-                    size: BadgeSize.medium,
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(
+                    user?.email ?? 'No email',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      user?.role.toUpperCase() ?? 'UNKNOWN',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: colorScheme.onSecondaryContainer,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Parent Linking Information Section (for students only)
-            if (user?.role == AppConstants.roleStudent) ...[
-              _buildParentLinkingSection(),
-              const SizedBox(height: 24),
-            ],
-
-            // Badges Section
-            _buildBadgesSection(),
-
-            const SizedBox(height: 24),
-
-            // Certificates Section
-            _buildCertificatesSection(),
-
-            // Leaderboard Section - Phase 3.4.6.4: Only for full access
-            if (user == null ||
-                user.role != 'student' ||
-                AccessLevelProvider.canAccessFeature(user, 'leaderboard')) ...[
-              const SizedBox(height: 24),
-              _buildLeaderboardSection(),
-            ],
-
-            const SizedBox(height: 24),
-
-            // Settings Section
-            Text(
-              l10n.settings,
-              style: AppTextStyles.h3,
-              textAlign: TextAlign.left,
-            ),
-            SizedBox(height: AppSpacing.md),
-
-            // Appearance (light / dark) — separate from peace/crisis product mode
+            
             Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.md),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppBorders.borderRadiusMd,
-                ),
-                child: ListTile(
-                  leading: Icon(
-                    themeMode == AppThemeMode.dark
-                        ? Icons.dark_mode_outlined
-                        : Icons.light_mode_outlined,
-                    color: AppColors.primaryGreen,
-                  ),
-                  title: Text('Appearance', style: AppTextStyles.h5),
-                  subtitle: Text(
-                    themeMode == AppThemeMode.dark
-                        ? 'Dark — ordinary appearance, not an emergency state'
-                        : 'Light',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  trailing: Switch(
-                    value: themeMode == AppThemeMode.dark,
-                    onChanged: (value) {
-                      if (value) {
-                        ref.read(themeModeProvider.notifier).setDark();
-                      } else {
-                        ref.read(themeModeProvider.notifier).setLight();
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ),
-
-            // Theme Toggle (Crisis Mode) - Phase 3.4.6.4: Only for full access
-            if (user == null ||
-                user.role != 'student' ||
-                AccessLevelProvider.canAccessFeature(user, 'crisis_mode'))
-              Padding(
-                padding: EdgeInsets.only(bottom: AppSpacing.md),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppBorders.borderRadiusMd,
-                  ),
-                  child: ListTile(
-                    leading:
-                        Icon(Icons.color_lens, color: AppColors.primaryGreen),
-                    title: Text(l10n.appMode, style: AppTextStyles.h5),
-                    subtitle: Text(
-                      '${appMode == AppMode.peace ? l10n.peaceMode : l10n.crisisMode} — ${l10n.appearanceOnlyNote}',
-                      style: AppTextStyles.bodySmall,
-                    ),
-                    trailing: Switch(
-                      value: appMode == AppMode.peace,
-                      onChanged: (value) {
-                        if (value) {
-                          ref.read(appModeProvider.notifier).setPeaceMode();
-                        } else {
-                          ref.read(appModeProvider.notifier).setCrisisMode();
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-
-            // Language Selector (en → hi → mr → pa)
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.md),
-              child: ActionCard(
-                title: l10n.language,
-                subtitle: _localeLabel(localeState.locale.languageCode),
-                leadingIcon: Icons.language,
-                onTap: () {
-                  ref.read(localeProvider.notifier).cycleLocale();
-                },
-              ),
-            ),
-
-            // Alert notifications — contextual permission
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.md),
-              child: ActionCard(
-                title: 'Alert notifications',
-                subtitle: 'Enable push alerts for drills and emergencies',
-                leadingIcon: Icons.notifications_outlined,
-                onTap: () async {
-                  final granted = await ref
-                      .read(fcmProvider.notifier)
-                      .requestAlertPermission();
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        granted
-                            ? 'Alert notifications enabled'
-                            : 'Notification permission was not granted. Learning features still work.',
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Permission states (honest; does not re-prompt until user taps a feature)
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.md),
-              child: Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppBorders.borderRadiusMd,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              padding: AppSpacing.screenEdge,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Achievements & Progression
+                  _SettingsGroup(
+                    title: 'Learning & Achievements',
                     children: [
-                      Text('Permissions', style: AppTextStyles.h5),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Camera, microphone, location and notifications are requested only when you use a feature that needs them.',
-                        style: AppTextStyles.bodySmall,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Student: Join Class - Phase D
-            if (user?.role == 'student') ...[
-              Padding(
-                padding: EdgeInsets.only(bottom: AppSpacing.md),
-                child: Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppBorders.borderRadiusMd,
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.class_outlined,
-                            color: AppColors.primaryGreen),
-                        title: Text('Join a Class', style: AppTextStyles.h5),
-                        subtitle: Text(
-                          user?.classId != null
-                              ? 'Manage your class membership'
-                              : 'Join using code or QR code',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                        trailing:
-                            Icon(Icons.chevron_right, color: Colors.grey[400]),
+                      _SettingsTile(
+                        icon: Icons.workspace_premium_outlined,
+                        title: 'Badges',
+                        subtitle: 'View your earned badges',
                         onTap: () {
                           Navigator.push<void>(
                             context,
                             MaterialPageRoute<void>(
-                              builder: (context) => const JoinClassScreen(),
+                              builder: (context) => const BadgeCollectionScreen(),
                             ),
                           );
                         },
                       ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: Icon(Icons.qr_code_scanner,
-                            color: AppColors.primaryGreen),
-                        title: Text('Scan QR Code', style: AppTextStyles.h5),
-                        subtitle: Text(
-                          'Scan teacher\'s QR code to join',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                        trailing:
-                            Icon(Icons.chevron_right, color: Colors.grey[400]),
-                        onTap: () async {
-                          final qrCode = await Navigator.push<String>(
+                      _SettingsTile(
+                        icon: Icons.military_tech_outlined,
+                        title: 'Certificates',
+                        subtitle: 'Download course certificates',
+                        onTap: () {
+                          Navigator.push<void>(
                             context,
-                            MaterialPageRoute<String>(
-                              builder: (context) => const QRScannerScreen(
-                                title: 'Scan Class QR Code',
-                                isClassroomMode: true,
-                              ),
+                            MaterialPageRoute<void>(
+                              builder: (context) => const CertificateListScreen(),
                             ),
                           );
+                        },
+                      ),
+                      if (user == null || user.role != 'student' || AccessLevelProvider.canAccessFeature(user, 'leaderboard'))
+                        _SettingsTile(
+                          icon: Icons.emoji_events_outlined,
+                          title: 'Leaderboard',
+                          subtitle: 'See how you rank against others',
+                          onTap: () {
+                            Navigator.push<void>(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (context) => const LeaderboardScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
+                  ),
 
-                          if (qrCode != null && mounted) {
-                            await _handleQRJoin(context, qrCode);
-                          }
+                  // Role-specific Actions
+                  if (user?.role == 'student')
+                    _SettingsGroup(
+                      title: 'Classroom & Parents',
+                      children: [
+                        _SettingsTile(
+                          icon: Icons.class_outlined,
+                          title: 'Join a Class',
+                          subtitle: user!.classId != null ? 'Manage class membership' : 'Join using code or QR',
+                          onTap: () {
+                            Navigator.push<void>(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (context) => const JoinClassScreen(),
+                              ),
+                            );
+                          },
+                        ),
+                        _SettingsTile(
+                          icon: Icons.qr_code_scanner,
+                          title: 'Scan QR Code',
+                          subtitle: 'Scan teacher\'s QR code to join',
+                          onTap: () async {
+                            final qrCode = await Navigator.push<String>(
+                              context,
+                              MaterialPageRoute<String>(
+                                builder: (context) => const QRScannerScreen(
+                                  title: 'Scan Class QR Code',
+                                  isClassroomMode: true,
+                                ),
+                              ),
+                            );
+                            if (qrCode != null && mounted) {
+                              await _handleQRJoin(context, qrCode);
+                            }
+                          },
+                        ),
+                        _SettingsTile(
+                          icon: Icons.family_restroom_outlined,
+                          title: 'Link Parent',
+                          subtitle: 'Share access code with parent',
+                          onTap: () {
+                            _showParentLinkingDialog(context, user!.qrCode);
+                          },
+                        ),
+                      ],
+                    ),
+
+                  // IoT Devices
+                  _SettingsGroup(
+                    title: 'Devices',
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.sensors_outlined,
+                        title: 'IoT Sensors',
+                        subtitle: 'View device health status',
+                        onTap: () {
+                          Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(
+                              builder: (context) => const IoTDeviceListScreen(),
+                            ),
+                          );
                         },
                       ),
                     ],
                   ),
-                ),
-              ),
-            ],
 
-            // Phase 3.4.2: IoT Devices - Phase 3.4.6.5: Add navigation link
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.md),
-              child: ActionCard(
-                title: 'IoT Devices',
-                subtitle: 'View sensor devices and health status',
-                leadingIcon: Icons.sensors,
-                onTap: () {
-                  Navigator.push<void>(
-                    context,
-                    MaterialPageRoute<void>(
-                      builder: (context) => const IoTDeviceListScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // About Section
-            SizedBox(height: AppSpacing.xl),
-            Text(
-              l10n.about,
-              style: AppTextStyles.h3,
-              textAlign: TextAlign.left,
-            ),
-            SizedBox(height: AppSpacing.md),
-
-            Card(
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.info),
-                    title: Text(l10n.appVersion),
-                    subtitle: Text(
-                        '${AppConstants.appVersion} (${AppConstants.appVersion}+1)'),
-                    onTap: _handleVersionTap,
+                  // Preferences
+                  _SettingsGroup(
+                    title: l10n.settings,
+                    children: [
+                      _SettingsTile(
+                        icon: themeMode == AppThemeMode.dark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+                        title: 'Appearance',
+                        subtitle: themeMode == AppThemeMode.dark ? 'Dark Mode' : 'Light Mode',
+                        trailing: Switch(
+                          value: themeMode == AppThemeMode.dark,
+                          onChanged: (value) {
+                            if (value) {
+                              ref.read(themeModeProvider.notifier).setDark();
+                            } else {
+                              ref.read(themeModeProvider.notifier).setLight();
+                            }
+                          },
+                        ),
+                        onTap: () {
+                          if (themeMode == AppThemeMode.dark) {
+                            ref.read(themeModeProvider.notifier).setLight();
+                          } else {
+                            ref.read(themeModeProvider.notifier).setDark();
+                          }
+                        },
+                      ),
+                      if (user == null || user.role != 'student' || AccessLevelProvider.canAccessFeature(user, 'crisis_mode'))
+                        _SettingsTile(
+                          icon: Icons.color_lens_outlined,
+                          title: l10n.appMode,
+                          subtitle: appMode == AppMode.peace ? l10n.peaceMode : l10n.crisisMode,
+                          trailing: Switch(
+                            value: appMode == AppMode.peace,
+                            onChanged: (value) {
+                              if (value) {
+                                ref.read(appModeProvider.notifier).setPeaceMode();
+                              } else {
+                                ref.read(appModeProvider.notifier).setCrisisMode();
+                              }
+                            },
+                          ),
+                          onTap: () {
+                            if (appMode == AppMode.peace) {
+                              ref.read(appModeProvider.notifier).setCrisisMode();
+                            } else {
+                              ref.read(appModeProvider.notifier).setPeaceMode();
+                            }
+                          },
+                        ),
+                      _SettingsTile(
+                        icon: Icons.language_outlined,
+                        title: l10n.language,
+                        subtitle: _localeLabel(localeState.locale.languageCode),
+                        onTap: () {
+                          ref.read(localeProvider.notifier).cycleLocale();
+                        },
+                      ),
+                    ],
                   ),
-                  const Divider(),
-                  ListTile(
-                    leading: const Icon(Icons.description),
-                    title: Text(l10n.appName),
-                    subtitle: Text(l10n.appName),
+
+                  // System & Security
+                  _SettingsGroup(
+                    title: 'System & Security',
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.notifications_outlined,
+                        title: 'Alert notifications',
+                        subtitle: 'Manage push alerts',
+                        onTap: () async {
+                          final granted = await ref.read(fcmProvider.notifier).requestAlertPermission();
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                granted ? 'Alert notifications enabled' : 'Notification permission was not granted.',
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      _SettingsTile(
+                        icon: Icons.privacy_tip_outlined,
+                        title: 'Permissions Info',
+                        subtitle: 'Camera, Mic, Location usage',
+                        onTap: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Permissions are requested only when needed by specific features.'),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
+
+                  // About & Version
+                  _SettingsGroup(
+                    title: l10n.about,
+                    children: [
+                      _SettingsTile(
+                        icon: Icons.info_outline,
+                        title: l10n.appVersion,
+                        subtitle: '${AppConstants.appVersion} (${AppConstants.appVersion}+1)',
+                        onTap: _handleVersionTap,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // Logout Action
+                  OutlinedButtonCustom(
+                    label: l10n.logout,
+                    icon: Icons.logout,
+                    fullWidth: true,
+                    onPressed: () async {
+                      final confirmed = await DialogWidget.showConfirm(
+                        context,
+                        title: 'Logout',
+                        message: '${l10n.logout}?',
+                        confirmLabel: l10n.logout,
+                        cancelLabel: l10n.cancel,
+                      );
+
+                      if (confirmed == true) {
+                        await ref.read(authProvider.notifier).logout();
+                        if (context.mounted) {
+                          Navigator.of(context).pushReplacementNamed('/login');
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: AppSpacing.xxl),
                 ],
               ),
-            ),
-
-            // Logout Button
-            SizedBox(height: AppSpacing.xxl),
-            PrimaryButton(
-              label: l10n.logout,
-              icon: Icons.logout,
-              onPressed: () async {
-                final confirmed = await DialogWidget.showConfirm(
-                  context,
-                  title: 'Logout',
-                  message: '${l10n.logout}?',
-                  confirmLabel: l10n.logout,
-                  cancelLabel: l10n.cancel,
-                );
-
-                if (confirmed == true) {
-                  await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacementNamed('/login');
-                  }
-                }
-              },
-              backgroundColor: AppColors.error,
-              fullWidth: true,
             ),
           ],
         ),
@@ -514,599 +486,212 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildParentLinkingSection() {
-    final user = ref.watch(authProvider).user;
-    if (user == null || user.role != AppConstants.roleStudent) {
-      return const SizedBox.shrink();
+  void _showParentLinkingDialog(BuildContext context, String? qrCode) {
+    if (qrCode == null || qrCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('QR Code not available. Please try again later.')),
+      );
+      return;
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.qr_code, color: AppColors.accentBlue, size: 24),
-            const SizedBox(width: 8),
-            Text(
-              'Parent Linking Information',
-              style: AppTextStyles.h3,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        InfoCard(
-          title: 'Share with Parents',
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorders.radiusLg)),
+          title: const Text('Parent Linking'),
           content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Share this information with your parent so they can link your account and monitor your progress.',
-                style: AppTextStyles.bodySmall,
+              const Text(
+                'Share this code with your parent to link accounts.',
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(height: AppSpacing.lg),
-
-              // QR Code Display
-              if (user.qrCode != null && user.qrCode!.isNotEmpty) ...[
-                Text(
-                  'QR Code',
-                  style: AppTextStyles.h5,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: AppBorders.borderRadiusMd,
-                      border: Border.all(color: Colors.grey[300]!),
-                    ),
-                    child: QrImageView(
-                      data: user.qrCode!,
-                      version: QrVersions.auto,
-                      size: 200.0,
-                      backgroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.backgroundWhite,
-                    borderRadius: AppBorders.borderRadiusMd,
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          user.qrCode!,
-                          style: AppTextStyles.bodySmall.copyWith(
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.copy),
-                        onPressed: () {
-                          Clipboard.setData(ClipboardData(text: user.qrCode!));
-                          SnackbarWidget.show(
-                            context,
-                            message: 'QR Code copied to clipboard',
-                            type: SnackbarType.success,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                if (user.qrBadgeId != null && user.qrBadgeId!.isNotEmpty) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(
-                    'Badge ID: ${user.qrBadgeId}',
-                    style: AppTextStyles.caption.copyWith(
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-              ],
-
-              // Student ID
-              _buildInfoRow(
-                label: 'Student ID',
-                value: user.id,
-                onCopy: () {
-                  Clipboard.setData(ClipboardData(text: user.id));
-                  SnackbarWidget.show(
-                    context,
-                    message: 'Student ID copied to clipboard',
-                    type: SnackbarType.success,
-                  );
-                },
-              ),
-
-              const SizedBox(height: AppSpacing.md),
-
-              // Institution ID
-              if (user.institutionId != null) ...[
-                _buildInfoRow(
-                  label: 'Institution ID',
-                  value: user.institutionId.toString(),
-                  onCopy: () {
-                    Clipboard.setData(
-                      ClipboardData(text: user.institutionId.toString()),
-                    );
-                    SnackbarWidget.show(
-                      context,
-                      message: 'Institution ID copied to clipboard',
-                      type: SnackbarType.success,
-                    );
-                  },
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-
-              // Instructions
+              const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.all(AppSpacing.md),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.1),
-                  borderRadius: AppBorders.borderRadiusMd,
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: QrImageView(
+                  data: qrCode,
+                  version: QrVersions.auto,
+                  size: 200.0,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: AppColors.accentBlue,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'How to share with parents:',
-                          style: AppTextStyles.h5.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accentBlue,
-                          ),
-                        ),
-                      ],
+                    Expanded(
+                      child: Text(
+                        qrCode,
+                        style: const TextStyle(fontFamily: 'monospace'),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      '\u2022 Share your QR code or Student ID with your parent\n'
-                      '\u2022 Parent can use this to link your account\n'
-                      '\u2022 Parent needs to login and go to "Add Child" page\n'
-                      '\u2022 Parent can scan the QR code or enter your Student ID',
-                      style: AppTextStyles.bodySmall,
+                    IconButton(
+                      icon: const Icon(Icons.copy, size: 20),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: qrCode));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Copied to clipboard')),
+                        );
+                      },
                     ),
                   ],
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
+}
 
-  Widget _buildInfoRow({
-    required String label,
-    required String value,
-    required VoidCallback onCopy,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.backgroundWhite,
-        borderRadius: AppBorders.borderRadiusMd,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: AppTextStyles.caption,
+class _SettingsGroup extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+
+  const _SettingsGroup({
+    required this.title,
+    required this.children,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 8, bottom: 8, top: 24),
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
                 ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  value,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    fontFamily: 'monospace',
+          ),
+        ),
+        Card(
+          margin: EdgeInsets.zero,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppBorders.radiusLg),
+            side: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (int i = 0; i < children.length; i++) ...[
+                children[i],
+                if (i < children.length - 1)
+                  Divider(
+                    height: 1,
+                    thickness: 1,
+                    indent: 56,
+                    color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.2),
                   ),
-                ),
               ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.copy),
-            onPressed: onCopy,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBadgesSection() {
-    final myBadgesState = ref.watch(myBadgesProvider);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Badges',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<dynamic>(
-                    builder: (context) => const BadgeCollectionScreen(),
-                  ),
-                );
-              },
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: myBadgesState.isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                : myBadgesState.badges.isEmpty
-                    ? Column(
-                        children: [
-                          Icon(Icons.star_outline,
-                              size: 48, color: Colors.grey[400]),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No badges earned yet',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<dynamic>(
-                                  builder: (context) =>
-                                      const BadgeCollectionScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.explore),
-                            label: const Text('Explore Badges'),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${myBadgesState.badges.length} Badge${myBadgesState.badges.length != 1 ? 's' : ''} Earned',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 80,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: myBadgesState.badges.length,
-                              itemBuilder: (context, index) {
-                                final badge = myBadgesState.badges[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute<dynamic>(
-                                          builder: (context) =>
-                                              BadgeDetailScreen(
-                                            badgeId: badge.id,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      width: 80,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          width: 2,
-                                        ),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .primary
-                                                .withOpacity(0.1),
-                                            Colors.transparent,
-                                          ],
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          badge.icon,
-                                          style: const TextStyle(fontSize: 40),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
+            ],
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildCertificatesSection() {
-    final myCertificatesState = ref.watch(myCertificatesProvider);
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Widget? trailing;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Certificates',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push<void>(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => const CertificateListScreen(),
-                  ),
-                );
-              },
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: myCertificatesState.isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                : myCertificatesState.certificates.isEmpty
-                    ? Column(
-                        children: [
-                          Icon(Icons.card_membership,
-                              size: 48, color: Colors.grey[400]),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No certificates earned yet',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                          const SizedBox(height: 16),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push<void>(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (context) =>
-                                      const CertificateListScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.explore),
-                            label: const Text('View Certificates'),
-                          ),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${myCertificatesState.certificates.length} Certificate${myCertificatesState.certificates.length != 1 ? 's' : ''} Earned',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            height: 100,
-                            child: ListView.builder(
-                              scrollDirection: Axis.horizontal,
-                              itemCount:
-                                  myCertificatesState.certificates.length,
-                              itemBuilder: (context, index) {
-                                final certificate =
-                                    myCertificatesState.certificates[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 12),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push<void>(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                          builder: (context) =>
-                                              CertificateDetailScreen(
-                                            certificateId: certificate.id,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      width: 120,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
-                                          width: 2,
-                                        ),
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            Theme.of(context)
-                                                .colorScheme
-                                                .primaryContainer,
-                                            Colors.transparent,
-                                          ],
-                                        ),
-                                      ),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.verified,
-                                            size: 32,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .primary,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 8.0),
-                                            child: Text(
-                                              certificate.displayTitle,
-                                              textAlign: TextAlign.center,
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodySmall
-                                                  ?.copyWith(
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                              maxLines: 2,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-          ),
-        ),
-      ],
-    );
-  }
+  const _SettingsTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.trailing,
+  });
 
-  Widget _buildLeaderboardSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Leaderboard',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.push<void>(
-                  context,
-                  MaterialPageRoute<void>(
-                    builder: (context) => const LeaderboardScreen(),
-                  ),
-                );
-              },
-              child: const Text('View All'),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: InkWell(
-            onTap: () {
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const LeaderboardScreen(),
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            },
-            borderRadius:
-                BorderRadius.circular(AppConstants.defaultBorderRadius),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.emoji_events,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'View Rankings',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'See how you rank against others',
-                          style:
-                              Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey[600],
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey[400],
-                  ),
-                ],
+                child: Icon(
+                  icon,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
               ),
-            ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (trailing != null)
+                trailing!
+              else
+                Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+                ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }

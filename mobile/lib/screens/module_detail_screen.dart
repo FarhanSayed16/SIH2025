@@ -146,9 +146,9 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
               padding: const EdgeInsets.only(bottom: 12),
               child: Material(
                 color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppBorders.borderRadiusMd,
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppBorders.borderRadiusMd,
                   onTap: () {
                     Navigator.push<void>(
                       context,
@@ -182,7 +182,7 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppBorders.borderRadiusMd,
                       border: Border.all(
                         color: theme.colorScheme.outlineVariant,
                       ),
@@ -234,7 +234,7 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.warningBackground.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: AppBorders.borderRadiusLg,
               border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.35)),
             ),
             child: Column(
@@ -293,7 +293,7 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.backgroundMedium,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: AppBorders.borderRadiusLg,
               border: Border.all(color: AppColors.borderLight),
             ),
             child: Column(
@@ -332,7 +332,7 @@ class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.borderLight),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppBorders.borderRadiusSm,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

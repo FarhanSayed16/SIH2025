@@ -284,10 +284,46 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
                 },
               ),
             ),
+            if (_messages.length <= 1) _buildSuggestedPrompts(theme, isDark),
             _buildResponseLangChips(theme, isDark),
             _buildInputBar(theme, isDark),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestedPrompts(ThemeData theme, bool isDark) {
+    final prompts = [
+      'What to do during an earthquake?',
+      'How to use a fire extinguisher?',
+      'Basic first aid for burns',
+    ];
+
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: prompts.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          return ActionChip(
+            label: Text(prompts[i]),
+            labelStyle: TextStyle(
+              fontSize: 13,
+              color: isDark ? Colors.white : AppColors.primaryGreen,
+              fontWeight: FontWeight.w500,
+            ),
+            backgroundColor: isDark
+                ? AppColors.primaryGreen.withValues(alpha: 0.15)
+                : AppColors.primaryGreenSubtle,
+            side: BorderSide(
+              color: AppColors.primaryGreen.withValues(alpha: 0.3),
+            ),
+            onPressed: () => _sendMessageWithText(prompts[i]),
+          );
+        },
       ),
     );
   }

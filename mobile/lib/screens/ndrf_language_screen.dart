@@ -69,7 +69,7 @@ class _NdrfLanguageScreenState extends State<NdrfLanguageScreen> {
                         },
                       ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppBorders.borderRadiusMd,
                 ),
               ),
             ),
@@ -92,9 +92,9 @@ class _NdrfLanguageScreenState extends State<NdrfLanguageScreen> {
                       final lang = filtered[index];
                       return Material(
                         color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppBorders.borderRadiusMd,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: AppBorders.borderRadiusMd,
                           onTap: () {
                             Navigator.push<void>(
                               context,
@@ -110,7 +110,7 @@ class _NdrfLanguageScreenState extends State<NdrfLanguageScreen> {
                               vertical: 14,
                             ),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppBorders.borderRadiusMd,
                               border: Border.all(color: AppColors.borderLight),
                             ),
                             child: Row(

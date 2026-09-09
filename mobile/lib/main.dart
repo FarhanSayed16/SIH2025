@@ -5,6 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 
 // Core Imports
@@ -102,7 +103,7 @@ void main() async {
   );
 
   // Create Android notification channel with maximum importance for heads-up notifications
-  if (Platform.isAndroid) {
+  if (!kIsWeb && Platform.isAndroid) {
     const androidChannel = AndroidNotificationChannel(
       'high_importance_channel',
       'EduSafe Alerts',
@@ -143,6 +144,11 @@ class KavachApp extends ConsumerStatefulWidget {
 class _KavachAppState extends ConsumerState<KavachApp> {
   SocketEventHandler? _socketEventHandler;
   FcmMessageHandler? _fcmMessageHandler;
+
+  // Guards to prevent infinite rebuild loops from addPostFrameCallback in build()
+  bool _socketConnectScheduled = false;
+  bool _socketDisconnectScheduled = false;
+  bool _fcmRegistered = false;
 
   @override
   void initState() {
@@ -294,40 +300,62 @@ class _KavachAppState extends ConsumerState<KavachApp> {
     final authState = ref.watch(authProvider);
     final socketState = ref.watch(socketProvider);
 
-    // Connect socket when authenticated
+    // Connect socket when authenticated (guarded to prevent infinite rebuild loop)
     if (authState.isAuthenticated &&
         !socketState.isConnected &&
-        !socketState.isConnecting) {
+        !socketState.isConnecting &&
+        !_socketConnectScheduled) {
+      _socketConnectScheduled = true;
+      _socketDisconnectScheduled = false; // Reset opposite guard
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
         await ref.read(socketProvider.notifier).connect();
 
         // Wait a bit for connection to establish, then join room
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
+        if (!mounted) return;
+
         // Join room if user has institutionId
         final institutionId = authState.user?.institutionId;
         if (institutionId != null && institutionId.isNotEmpty) {
-          print('🔄 Joining Socket.io room: school:$institutionId');
+          debugPrint('🔄 Joining Socket.io room: school:$institutionId');
           ref.read(socketProvider.notifier).joinRoom(institutionId);
         } else {
-          print('⚠️ No institutionId available for room join');
+          debugPrint('⚠️ No institutionId available for room join');
         }
+        _socketConnectScheduled = false;
       });
     }
 
-    // Disconnect socket when logged out
-    if (!authState.isAuthenticated && socketState.isConnected) {
+    // Reset connect guard when socket is connected
+    if (socketState.isConnected) {
+      _socketConnectScheduled = false;
+    }
+
+    // Disconnect socket when logged out (guarded)
+    if (!authState.isAuthenticated &&
+        socketState.isConnected &&
+        !_socketDisconnectScheduled) {
+      _socketDisconnectScheduled = true;
+      _socketConnectScheduled = false; // Reset opposite guard
+      _fcmRegistered = false; // Allow re-registration on next login
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         ref.read(socketProvider.notifier).disconnect();
+        _socketDisconnectScheduled = false;
       });
     }
 
-    // Register FCM token when authenticated
-    if (authState.isAuthenticated && authState.user != null) {
+    // Register FCM token when authenticated (only once per auth session)
+    if (authState.isAuthenticated && authState.user != null && !_fcmRegistered) {
+      _fcmRegistered = true;
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
         // Wait a bit to ensure auth token is fully set in API service
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
+        if (!mounted) return;
         final fcmState = ref.read(fcmProvider);
         final user = authState.user!;
         final userId = user.id;

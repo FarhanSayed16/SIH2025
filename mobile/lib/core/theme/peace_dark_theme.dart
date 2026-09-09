@@ -52,7 +52,7 @@ class PeaceDarkTheme {
         color: _surfaceElevated,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppBorders.radiusMd),
+          borderRadius: BorderRadius.circular(AppBorders.radiusLg),
           side: const BorderSide(color: _outline),
         ),
       ),
@@ -69,6 +69,7 @@ class PeaceDarkTheme {
             borderRadius: BorderRadius.circular(AppBorders.radiusMd),
           ),
           textStyle: const TextStyle(
+            inherit: false,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -79,6 +80,7 @@ class PeaceDarkTheme {
           foregroundColor: AppColors.primaryGreenLight,
           minimumSize: const Size(48, 48),
           textStyle: const TextStyle(
+            inherit: false,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),

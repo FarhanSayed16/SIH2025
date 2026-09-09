@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // For rootBundle
 import '../data/ndrf_data.dart';
 import 'youtube_player_screen.dart';
+import '../core/design/design_system.dart';
 
 class NdrfModuleDetailScreen extends StatefulWidget {
   final String language;
@@ -156,7 +157,7 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   elevation: 2,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: AppBorders.borderRadiusMd),
                   child: Column(
                     children: [
                       InkWell(

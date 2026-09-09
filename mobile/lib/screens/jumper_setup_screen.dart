@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../managers/game_manager.dart';
 import '../features/games/screens/flood_escape_game.dart'; // Import the new game
+import '../core/design/design_system.dart';
 
 class JumperSetupScreen extends StatefulWidget {
   const JumperSetupScreen({super.key});
@@ -155,7 +156,7 @@ class _JumperSetupScreenState extends State<JumperSetupScreen> {
           color: isSelected ? Colors.blue.shade100 : Colors.white,
           border: Border.all(
               color: isSelected ? Colors.blueAccent : Colors.grey, width: 2),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppBorders.borderRadiusLg,
         ),
         child: Column(
           children: [

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../services/teacher_alert_service.dart';
+import '../../../core/design/design_system.dart';
 
 class TeacherAlertScreen extends ConsumerStatefulWidget {
   const TeacherAlertScreen({super.key});
@@ -355,7 +356,7 @@ class _TeacherAlertScreenState extends ConsumerState<TeacherAlertScreen> {
                 decoration: BoxDecoration(
                   color: Colors.orange.shade50,
                   border: Border.all(color: Colors.orange),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppBorders.borderRadiusSm,
                 ),
                 child: Row(
                   children: [

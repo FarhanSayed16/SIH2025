@@ -650,10 +650,7 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
                         widget.isDrill
                             ? '⚠️ PRACTICE DRILL — This is not a real emergency ⚠️'
                             : '🚨 EMERGENCY — EVACUATE NOW! 🚨',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                        style: AppTextStyles.h2.copyWith(fontWeight: FontWeight.bold, color: Colors.white,
                           letterSpacing: 1.5,
                           shadows: [
                             Shadow(
@@ -862,15 +859,15 @@ class _CrisisModeScreenState extends ConsumerState<CrisisModeScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Call a national number',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Calls start only when you tap a number. '
                   'Campus contacts appear only when configured for your school.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 ...contacts.map(

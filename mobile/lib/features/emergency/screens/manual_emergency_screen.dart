@@ -69,7 +69,7 @@ class ManualEmergencyScreen extends ConsumerWidget {
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppBorders.borderRadiusLg,
                 side: BorderSide(color: AppColors.borderLight),
               ),
               child: ListTile(
@@ -86,7 +86,7 @@ class ManualEmergencyScreen extends ConsumerWidget {
             Card(
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppBorders.borderRadiusLg,
                 side: BorderSide(color: AppColors.borderLight),
               ),
               child: Padding(
@@ -133,7 +133,7 @@ class ManualEmergencyScreen extends ConsumerWidget {
               elevation: 0,
               color: AppColors.warningBackground,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppBorders.borderRadiusLg,
                 side: BorderSide(color: AppColors.warning.withOpacity(0.35)),
               ),
               child: Padding(

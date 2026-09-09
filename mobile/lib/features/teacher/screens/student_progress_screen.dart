@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/teacher_service.dart';
+import '../../../core/design/design_system.dart';
 
 class StudentProgressScreen extends ConsumerStatefulWidget {
   final String classId;
@@ -289,7 +290,7 @@ class _StudentProgressScreenState extends ConsumerState<StudentProgressScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceVariant,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppBorders.borderRadiusSm,
       ),
       child: Row(
         children: [

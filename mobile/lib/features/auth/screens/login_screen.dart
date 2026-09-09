@@ -359,18 +359,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: colorScheme.surface,
       body: Container(
         width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.primaryGreenSubtle.withValues(alpha: 0.65),
-              colorScheme.surface,
-              colorScheme.surface,
-            ],
-            stops: const [0, 0.28, 1],
-          ),
-        ),
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
@@ -386,19 +374,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     children: [
                       _buildLanguageControl(context),
                       const SizedBox(height: AppSpacing.sm),
-                      const Center(
-                        child: KavachLogo(size: KavachLogoSize.login),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const KavachLogo(size: KavachLogoSize.compact),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(
+                            l10n.appName,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: colorScheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: AppSpacing.md),
+                      const SizedBox(height: AppSpacing.xl),
                       Text(
-                        l10n.appName,
+                        'Welcome Back',
                         textAlign: TextAlign.center,
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          color: colorScheme.primary,
-                          fontWeight: FontWeight.w700,
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          color: colorScheme.onSurface,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: AppSpacing.sm),
+                      const SizedBox(height: AppSpacing.xs),
                       Text(
                         l10n.loginTagline,
                         textAlign: TextAlign.center,

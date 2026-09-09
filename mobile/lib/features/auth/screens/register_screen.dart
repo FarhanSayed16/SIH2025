@@ -1,4 +1,4 @@
-﻿/// RBAC Refinement: Register Screen - Modern Redesign with Role Selection
+/// RBAC Refinement: Register Screen - Modern Redesign with Role Selection
 /// High-end startup-quality UI with step-by-step registration flow
 
 import 'dart:convert';
@@ -478,18 +478,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final authState = ref.watch(authProvider);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.primaryGreen.withOpacity(0.1),
-              AppColors.backgroundLight,
-              AppColors.primaryGreenSubtle.withOpacity(0.05),
-            ],
-          ),
-        ),
+        width: double.infinity,
         child: SafeArea(
           child: Column(
             children: [
@@ -929,16 +920,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             SizedBox(height: AppSpacing.lg),
             Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primaryGreen.withOpacity(0.1),
-                    AppColors.primaryGreenSubtle.withOpacity(0.05),
-                  ],
-                ),
+                color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(AppBorders.radiusLg),
                 border: Border.all(
-                  color: AppColors.primaryGreen.withOpacity(0.3),
-                  width: 1.5,
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+                  width: 1,
                 ),
               ),
               child: OutlinedButtonCustom(

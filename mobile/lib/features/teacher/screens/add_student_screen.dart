@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../services/teacher_service.dart';
 import '../providers/teacher_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/design/design_system.dart';
 
 /// Add Student Screen
 /// Allows teachers to manually add students to their classes (KG-4th grade)
@@ -246,7 +247,7 @@ class _AddStudentScreenState extends ConsumerState<AddStudentScreen> {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppBorders.borderRadiusSm,
                     ),
                   ),
                   child: _isLoading

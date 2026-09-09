@@ -1,6 +1,7 @@
-﻿import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 
 /// FCM Service - Handles Firebase Cloud Messaging
@@ -107,7 +108,7 @@ class FcmService {
     );
 
     // Create notification channel for Android
-    if (Platform.isAndroid) {
+    if (!kIsWeb && Platform.isAndroid) {
       const androidChannel = AndroidNotificationChannel(
         'high_importance_channel',
         'EduSafe Alerts',

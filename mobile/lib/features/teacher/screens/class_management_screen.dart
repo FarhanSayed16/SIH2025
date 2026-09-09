@@ -12,6 +12,7 @@ import 'drill_participation_tracking_screen.dart';
 import 'drill_dashboard_screen.dart';
 import '../../drills/services/drill_service.dart';
 import 'class_parents_screen.dart';
+import '../../../core/design/design_system.dart';
 
 /// Class Management Screen
 /// Phase 2.5: K-12 Multi-Access
@@ -382,11 +383,11 @@ class _ClassManagementScreenState extends ConsumerState<ClassManagementScreen> {
       elevation: 2,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppBorders.borderRadiusMd,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppBorders.borderRadiusMd,
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,

@@ -3,6 +3,7 @@ import '../core/models/alert_model.dart';
 import '../core/constants/app_constants.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/design/design_system.dart';
 
 class AlertDetailScreen extends StatelessWidget {
   final AlertModel alert;
@@ -31,7 +32,7 @@ class AlertDetailScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppBorders.borderRadiusSm,
                     border: Border.all(color: color),
                   ),
                   child: Text(

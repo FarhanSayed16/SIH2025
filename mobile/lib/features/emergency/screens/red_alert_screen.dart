@@ -346,13 +346,13 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
               children: [
                 const Text(
                   'Call a national number',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Campus contacts appear here only when configured. '
                   'Calls start only when you tap a number.',
-                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 12),
                 ...contacts.map((c) => ListTile(
@@ -372,12 +372,12 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
                 if (_lastLocation != null)
                   Text(
                     'Location: $_lastLocation',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                   ),
                 if (_lastSentAt != null)
                   Text(
                     'Last sent: ${_lastSentAt!.toLocal()}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
                   ),
               ],
             ),

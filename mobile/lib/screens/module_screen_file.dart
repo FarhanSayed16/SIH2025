@@ -196,17 +196,17 @@ class _SourceRow extends StatelessWidget {
     final theme = Theme.of(context);
     return Material(
       color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppBorders.borderRadiusLg,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppBorders.borderRadiusLg,
         child: Container(
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.md,
             vertical: AppSpacing.md,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppBorders.borderRadiusLg,
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Row(
@@ -216,7 +216,7 @@ class _SourceRow extends StatelessWidget {
                 height: 48,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppBorders.borderRadiusMd,
                 ),
                 child: Icon(icon, color: accent, size: 24),
               ),

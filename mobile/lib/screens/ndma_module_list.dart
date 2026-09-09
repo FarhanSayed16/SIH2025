@@ -195,13 +195,13 @@ class _NdmaModulesListState extends ConsumerState<NdmaModulesList> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppBorders.borderRadiusLg,
         border: Border.all(color: AppColors.borderLight),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: AppBorders.borderRadiusLg,
           onTap: isComingSoon
               ? null
               : () async {
@@ -229,7 +229,7 @@ class _NdmaModulesListState extends ConsumerState<NdmaModulesList> {
                       height: 48,
                       decoration: BoxDecoration(
                         color: module.color.withValues(alpha: 0.25),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppBorders.borderRadiusMd,
                       ),
                       child: Icon(module.iconData, color: AppColors.primaryGreen, size: 26),
                     ),

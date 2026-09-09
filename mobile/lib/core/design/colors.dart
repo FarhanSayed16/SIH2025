@@ -17,23 +17,23 @@ class AppColors {
   // ============================================================================
 
   /// Primary Green - Main brand color for Peace Mode
-  static const Color primaryGreen = Color(0xFF216E39);
+  static const Color primaryGreen = Color(0xFF087443);
   
   /// Primary Green Dark - For emphasis and hover states
-  static const Color primaryGreenDark = Color(0xFF1A572D);
+  static const Color primaryGreenDark = Color(0xFF005B35);
   
   /// Primary Green Light - For subtle accents (not control outlines)
   static const Color primaryGreenLight = Color(0xFF4C9A63);
   
   /// Primary Green Subtle / primary container
-  static const Color primaryGreenSubtle = Color(0xFFE8F3EB);
+  static const Color primaryGreenSubtle = Color(0xFFE7F3EB);
 
   // ============================================================================
   // PRIMARY COLORS - Crisis Mode
   // ============================================================================
 
   /// Primary Red - Main brand color for Crisis Mode / emergency emphasis
-  static const Color primaryRed = Color(0xFFB3261E);
+  static const Color primaryRed = Color(0xFFB42318);
   
   /// Primary Red Dark - For emphasis
   static const Color primaryRedDark = Color(0xFF8C1D17);
@@ -86,13 +86,13 @@ class AppColors {
   static const Color backgroundWhite = Color(0xFFFFFFFF);
   
   /// Background Light / canvas
-  static const Color backgroundLight = Color(0xFFF6F8F7);
+  static const Color backgroundLight = Color(0xFFF6F8F5);
   
   /// Background Medium - For slightly elevated surfaces
-  static const Color backgroundMedium = Color(0xFFEEF2EF);
+  static const Color backgroundMedium = Color(0xFF19261E);
   
   /// Background Dark - For dark mode backgrounds
-  static const Color backgroundDark = Color(0xFF1A1A1A);
+  static const Color backgroundDark = Color(0xFF101A14);
   
   /// Background Black - For crisis mode backgrounds
   static const Color backgroundBlack = Color(0xFF000000);
@@ -105,10 +105,10 @@ class AppColors {
   // ============================================================================
 
   /// Text Primary - Main text color
-  static const Color textPrimary = Color(0xFF17221B);
+  static const Color textPrimary = Color(0xFF18251E);
   
   /// Text Secondary - Supporting descriptions and timestamps
-  static const Color textSecondary = Color(0xFF526057);
+  static const Color textSecondary = Color(0xFF536259);
   
   /// Text Tertiary - Tertiary text color
   static const Color textTertiary = Color(0xFF6B7A70);
@@ -120,7 +120,7 @@ class AppColors {
   static const Color textWhite = Color(0xFFFFFFFF);
   
   /// Text Light - Light text for dark backgrounds
-  static const Color textLight = Color(0xFFE8ECE9);
+  static const Color textLight = Color(0xFFEDF5EF);
   
   /// Text on Primary - Text color on primary colored backgrounds
   static const Color textOnPrimary = Color(0xFFFFFFFF);
@@ -145,7 +145,7 @@ class AppColors {
   static const Color successBackground = Color(0xFFE8F3EB);
 
   /// Warning - Readable warning foreground on light surfaces
-  static const Color warning = Color(0xFF805400);
+  static const Color warning = Color(0xFF885200);
   
   /// Warning Dark
   static const Color warningDark = Color(0xFF5C3C00);
@@ -154,10 +154,10 @@ class AppColors {
   static const Color warningLight = Color(0xFFFFB74D);
   
   /// Warning Background - Light background for warning messages
-  static const Color warningBackground = Color(0xFFFFF4D6);
+  static const Color warningBackground = Color(0xFFFFF3D6);
 
   /// Error - Red for error / emergency emphasis
-  static const Color error = Color(0xFFB3261E);
+  static const Color error = Color(0xFFB42318);
   
   /// Error Dark
   static const Color errorDark = Color(0xFF8C1D17);
@@ -169,7 +169,7 @@ class AppColors {
   static const Color errorBackground = Color(0xFFFCE9E7);
 
   /// Info - Blue for informational states
-  static const Color info = Color(0xFF1D5F91);
+  static const Color info = Color(0xFF175CD3);
   
   /// Info Dark
   static const Color infoDark = Color(0xFF164A71);
@@ -178,14 +178,14 @@ class AppColors {
   static const Color infoLight = Color(0xFF64B5F6);
   
   /// Info Background - Light background for info messages
-  static const Color infoBackground = Color(0xFFE3F2FD);
+  static const Color infoBackground = Color(0xFFEAF2FF);
 
   // ============================================================================
   // BORDER COLORS
   // ============================================================================
 
   /// Border Light - Decorative card boundaries
-  static const Color borderLight = Color(0xFFD8E2DB);
+  static const Color borderLight = Color(0xFFDCE5DD);
   
   /// Border Medium / control outline
   static const Color borderMedium = Color(0xFF66756B);

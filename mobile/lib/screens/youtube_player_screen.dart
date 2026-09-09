@@ -5,6 +5,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../screens/vr_player_screen.dart';
 // Import the new AR Viewer
 import '../screens/ar_360_viewer.dart';
+import '../core/design/design_system.dart';
 
 class YoutubePlayerScreen extends StatefulWidget {
   final String videoUrl;
@@ -167,7 +168,7 @@ class _YoutubePlayerScreenState extends State<YoutubePlayerScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.purple.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: AppBorders.borderRadiusLg,
                 border: Border.all(
                   color: Colors.purpleAccent.withOpacity(0.5),
                 ),

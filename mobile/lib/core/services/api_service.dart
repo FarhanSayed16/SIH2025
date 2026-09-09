@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint, kIsWeb;
 import '../config/env.dart';
 import '../constants/app_constants.dart';
 import '../../features/auth/services/auth_service.dart';
@@ -28,7 +28,7 @@ class ApiService {
 
     // Allow self-signed certificates for DevTunnels (development only)
     // Allow self-signed certs only in debug (e.g. local HTTPS). Never in release.
-    if (kDebugMode) {
+    if (kDebugMode && !kIsWeb) {
       (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
         final client = HttpClient();
         client.badCertificateCallback = (cert, host, port) => true;

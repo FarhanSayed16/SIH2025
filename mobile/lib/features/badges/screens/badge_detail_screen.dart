@@ -7,6 +7,7 @@ import '../providers/badge_provider.dart';
 import '../models/badge_model.dart' as badge_models;
 import '../services/badge_service.dart';
 import '../../../core/providers/api_service_provider.dart';
+import '../../../core/design/design_system.dart';
 
 class BadgeDetailScreen extends ConsumerStatefulWidget {
   final String badgeId;
@@ -147,7 +148,7 @@ class _BadgeDetailScreenState extends ConsumerState<BadgeDetailScreen> {
             // Badge Name
             Text(
               _badge!.name,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              style: AppTextStyles.h2.copyWith(
                     fontWeight: FontWeight.bold,
                     color: (_isEarned ?? false) ? null : Colors.grey[600],
                   ),
@@ -251,7 +252,7 @@ class _BadgeDetailScreenState extends ConsumerState<BadgeDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.amber[50],
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppBorders.borderRadiusMd,
                   border: Border.all(color: Colors.amber[300]!),
                 ),
                 child: Row(
@@ -304,4 +305,3 @@ class _BadgeDetailScreenState extends ConsumerState<BadgeDetailScreen> {
     );
   }
 }
-

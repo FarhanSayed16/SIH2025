@@ -1,6 +1,7 @@
 ﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../core/design/design_system.dart';
 
 class QuizScreen extends StatefulWidget {
   final String quizPath;
@@ -178,7 +179,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   margin: const EdgeInsets.only(bottom: 16),
                   elevation: 2,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: AppBorders.borderRadiusMd),
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
@@ -214,7 +215,7 @@ class _QuizScreenState extends State<QuizScreen> {
                             margin: const EdgeInsets.only(bottom: 8),
                             decoration: BoxDecoration(
                               color: tileColor ?? Colors.white,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: AppBorders.borderRadiusSm,
                               border: Border.all(
                                   color: borderColor ?? Colors.grey.shade300),
                             ),
@@ -250,7 +251,7 @@ class _QuizScreenState extends State<QuizScreen> {
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
                                 color: Colors.amber.shade50,
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: AppBorders.borderRadiusSm,
                                 border:
                                     Border.all(color: Colors.amber.shade200)),
                             child: Row(
@@ -289,7 +290,7 @@ class _QuizScreenState extends State<QuizScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 backgroundColor: Colors.blueAccent,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
+                    borderRadius: AppBorders.borderRadiusSm),
               ),
               onPressed: isSubmitted || userAnswers.length != questions.length
                   ? null

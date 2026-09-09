@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/widgets/widgets.dart';
 import '../services/parent_service.dart';
 import '../../../core/services/api_service.dart';
+import '../../../core/design/design_system.dart';
 
 class QRCodeScreen extends ConsumerStatefulWidget {
   final String studentId;
@@ -180,7 +181,7 @@ class _QRCodeScreenState extends ConsumerState<QRCodeScreen> {
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: AppBorders.borderRadiusLg,
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.1),
@@ -199,7 +200,7 @@ class _QRCodeScreenState extends ConsumerState<QRCodeScreen> {
                                   height: 250,
                                   decoration: BoxDecoration(
                                     border: Border.all(color: Colors.grey),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: AppBorders.borderRadiusSm,
                                   ),
                                   child: Center(
                                     child: Column(

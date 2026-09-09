@@ -11,6 +11,7 @@ import '../models/map_models.dart';
 import 'blueprint_map_screen.dart';
 import 'safety_equipment_list_screen.dart';
 import 'dart:convert';
+import '../../../core/design/design_system.dart';
 
 class EquipmentQRScannerScreen extends StatefulWidget {
   final String schoolId;
@@ -168,7 +169,7 @@ class _EquipmentQRScannerScreenState extends State<EquipmentQRScannerScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppBorders.borderRadiusMd,
               ),
               child: const Column(
                 mainAxisSize: MainAxisSize.min,

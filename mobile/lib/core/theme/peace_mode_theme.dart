@@ -53,10 +53,10 @@ class PeaceModeTheme {
       ),
       cardTheme: CardThemeData(
         color: AppColors.backgroundWhite,
-        elevation: 1,
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppBorders.radiusMd),
-          side: const BorderSide(color: AppColors.borderLight),
+          borderRadius: BorderRadius.circular(AppBorders.radiusLg),
+          side: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -72,6 +72,7 @@ class PeaceModeTheme {
             borderRadius: BorderRadius.circular(AppBorders.radiusMd),
           ),
           textStyle: const TextStyle(
+            inherit: false,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -82,6 +83,7 @@ class PeaceModeTheme {
           foregroundColor: AppColors.primaryGreen,
           minimumSize: const Size(48, 48),
           textStyle: const TextStyle(
+            inherit: false,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),

@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../managers/game_manager.dart';
 import '../features/games/screens/school_runner_game.dart';
+import '../core/design/design_system.dart';
 
 class RunnerSetupScreen extends StatefulWidget {
   const RunnerSetupScreen({super.key});
@@ -154,7 +155,7 @@ class _RunnerSetupScreenState extends State<RunnerSetupScreen> {
           color: isSelected ? Colors.orange.shade100 : Colors.white,
           border: Border.all(
               color: isSelected ? Colors.deepOrange : Colors.grey, width: 2),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppBorders.borderRadiusLg,
         ),
         child: Column(
           children: [

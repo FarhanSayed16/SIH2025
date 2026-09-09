@@ -9,6 +9,7 @@ import '../services/teacher_service.dart';
 import 'parent_qr_scanner_screen.dart';
 import 'student_parents_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/design/design_system.dart';
 
 class ClassParentsScreen extends ConsumerStatefulWidget {
   final String classId;
@@ -82,7 +83,7 @@ class _ClassParentsScreenState extends ConsumerState<ClassParentsScreen> {
                           )
                         : null,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppBorders.borderRadiusMd,
                     ),
                   ),
                   onChanged: (value) {
@@ -227,7 +228,7 @@ class _ClassParentsScreenState extends ConsumerState<ClassParentsScreen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.blue.shade100,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: AppBorders.borderRadiusSm,
                                         ),
                                         child: const Text(
                                           'Primary',

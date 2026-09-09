@@ -190,6 +190,12 @@ class _DrillCard extends StatelessWidget {
                     size: BadgeSize.small,
                     color: Colors.amber,
                   ),
+                  const SizedBox(width: 8),
+                  BadgeWidget(
+                    text: '${drill.duration}m',
+                    type: BadgeType.info,
+                    size: BadgeSize.small,
+                  ),
                 ],
               ),
               SizedBox(height: AppSpacing.md),

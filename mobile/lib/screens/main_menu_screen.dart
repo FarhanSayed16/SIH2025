@@ -1,4 +1,4 @@
-﻿/// Games hub — B6 encoding, responsive cards, comics, external sims.
+/// Games hub — B6 encoding, responsive cards, comics, external sims.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -348,7 +348,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
     return [
       SizedBox(
-        height: 168,
+        height: 190,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: cards.length,
@@ -412,7 +412,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
 
     return [
       SizedBox(
-        height: 140,
+        height: 160,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
           itemCount: cards.length,
@@ -429,9 +429,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   Widget _buildResumeBanner(GameSession session) {
     return Material(
       color: AppColors.primaryGreenSubtle,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: AppBorders.borderRadiusMd,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppBorders.borderRadiusMd,
         onTap: () async {
           Widget resumeScreen;
           if (session.gameType == 'quiz') {
@@ -629,14 +629,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     final theme = Theme.of(context);
     return Material(
       color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppBorders.borderRadiusLg,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppBorders.borderRadiusLg,
         onTap: _gameLaunching ? null : data.onPlay,
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppBorders.borderRadiusLg,
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Column(
@@ -721,9 +721,9 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     final theme = Theme.of(context);
     return Material(
       color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: AppBorders.borderRadiusLg,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppBorders.borderRadiusLg,
         onTap: _gameLaunching
             ? null
             : () => _runOnce(() async {
@@ -743,7 +743,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: AppBorders.borderRadiusLg,
             border: Border.all(color: AppColors.borderLight),
           ),
           child: Column(
@@ -786,7 +786,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: AppBorders.borderRadiusMd,
           border: Border.all(color: AppColors.borderLight),
         ),
         child: Row(

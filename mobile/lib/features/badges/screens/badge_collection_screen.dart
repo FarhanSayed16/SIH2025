@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/badge_provider.dart';
 import '../models/badge_model.dart' as badge_models;
 import 'badge_detail_screen.dart';
+import '../../../core/design/design_system.dart';
 
 class BadgeCollectionScreen extends ConsumerStatefulWidget {
   const BadgeCollectionScreen({super.key});
@@ -188,18 +189,18 @@ class _BadgeCollectionScreenState extends ConsumerState<BadgeCollectionScreen>
           ),
         );
       },
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: AppBorders.borderRadiusLg,
       child: Card(
         elevation: isEarned ? 4 : 1,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: AppBorders.borderRadiusLg,
           side: isEarned
               ? BorderSide(color: Theme.of(context).colorScheme.primary, width: 2)
               : BorderSide.none,
         ),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppBorders.borderRadiusLg,
             gradient: isEarned
                 ? LinearGradient(
                     begin: Alignment.topLeft,
@@ -246,7 +247,7 @@ class _BadgeCollectionScreenState extends ConsumerState<BadgeCollectionScreen>
                   color: isEarned
                       ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
                       : Colors.grey[300],
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppBorders.borderRadiusMd,
                 ),
                 child: Text(
                   badge.category.toUpperCase(),
