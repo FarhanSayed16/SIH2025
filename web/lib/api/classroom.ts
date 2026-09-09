@@ -36,9 +36,35 @@ export interface ClassroomJoinRequest {
 }
 
 export interface ClassroomQR {
-  qrCode: string;
+  /** Data-URL image from server (preferred for display). */
+  qrImage?: string;
+  /** Raw QR payload string. */
+  qrString?: string;
+  /** Legacy alias — some older clients expected this name. */
+  qrCode?: string;
   expiresAt: string;
-  classId: string;
+  classId?: string;
+  class?: {
+    _id?: string;
+    grade?: string;
+    section?: string;
+    classCode?: string;
+  };
+}
+
+/** Normalize generate-QR payloads so UI can always read qrImage/qrString. */
+export function normalizeClassroomQR(data: any): ClassroomQR | null {
+  if (!data || typeof data !== 'object') return null;
+  const qrImage = data.qrImage || data.qrCodeImage || undefined;
+  const qrString = data.qrString || data.qrCode || undefined;
+  return {
+    qrImage,
+    qrString,
+    qrCode: qrString,
+    expiresAt: data.expiresAt,
+    classId: data.classId || data.class?._id,
+    class: data.class,
+  };
 }
 
 export const classroomApi = {
@@ -51,7 +77,10 @@ export const classroomApi = {
       console.log(`[ClassroomAPI] Generating QR for class: ${classId}`);
       const response = await apiClient.post<ClassroomQR>(`/classroom/${classId}/qr/generate`, {});
       console.log(`[ClassroomAPI] QR generation response:`, response);
-      return response;
+      return {
+        ...response,
+        data: response.data ? normalizeClassroomQR(response.data) ?? response.data : undefined,
+      };
     } catch (error: any) {
       console.error(`[ClassroomAPI] QR generation error:`, error);
       

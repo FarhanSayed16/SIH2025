@@ -29,10 +29,13 @@ export interface DeviceHealth {
   deviceType: string;
   status: string;
   health: 'healthy' | 'warning' | 'offline';
-  lastSeen: string;
-  minutesSinceLastSeen: number;
-  batteryLevel?: number;
-  signalStrength?: number;
+  lastSeen?: string | null;
+  lastContact?: string | null;
+  sampleTimestamp?: string | null;
+  receivedAt?: string | null;
+  minutesSinceLastSeen?: number | null;
+  batteryLevel?: number | null;
+  signalStrength?: number | null;
   location?: {
     type: 'Point';
     coordinates: [number, number];

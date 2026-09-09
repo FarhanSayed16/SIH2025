@@ -34,6 +34,12 @@ export interface SocketEventData {
   [key: string]: any;
 }
 
+export interface SocketConnectionStatus {
+  connected: boolean;
+  connecting: boolean;
+  schoolId: string | null;
+}
+
 class SocketService {
   private socket: Socket | null = null;
   private listeners: Map<SocketEvent, Set<(data: SocketEventData) => void>> = new Map();
@@ -43,6 +49,28 @@ class SocketService {
   private maxRetries: number = 3;
   private retryTimeout: NodeJS.Timeout | null = null;
   private isConnecting: boolean = false;
+  private statusListeners: Set<(status: SocketConnectionStatus) => void> = new Set();
+
+  private notifyStatus() {
+    const status = this.getStatus();
+    this.statusListeners.forEach((listener) => listener(status));
+  }
+
+  getStatus(): SocketConnectionStatus {
+    return {
+      connected: this.socket?.connected || false,
+      connecting: this.isConnecting,
+      schoolId: this.schoolId,
+    };
+  }
+
+  subscribeStatus(listener: (status: SocketConnectionStatus) => void): () => void {
+    this.statusListeners.add(listener);
+    listener(this.getStatus());
+    return () => {
+      this.statusListeners.delete(listener);
+    };
+  }
 
   connect(schoolId: string, token: string) {
     // Connection Guards: Validate inputs
@@ -62,21 +90,22 @@ class SocketService {
       return;
     }
 
-    // If currently connecting, skip
-    if (this.isConnecting) {
+    // If currently connecting with same credentials, skip
+    if (this.isConnecting && this.schoolId === schoolId && this.token === token) {
       console.log('SocketService: Connection already in progress');
       return;
     }
 
-    // Disconnect existing connection if credentials changed
-    if (this.socket?.connected) {
-      this.disconnect();
+    // Replace transport if credentials changed; keep app-level event subscriptions
+    if (this.socket) {
+      this.disconnect({ clearListeners: false });
     }
 
     this.schoolId = schoolId;
     this.token = token;
     this.isConnecting = true;
     this.retryCount = 0;
+    this.notifyStatus();
 
     this.attemptConnection();
   }
@@ -101,6 +130,7 @@ class SocketService {
         console.log('Socket connected');
         this.isConnecting = false;
         this.retryCount = 0;
+        this.notifyStatus();
         
         // Explicitly join room after connection
         if (this.schoolId) {
@@ -116,6 +146,7 @@ class SocketService {
       this.socket.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         this.isConnecting = false;
+        this.notifyStatus();
         
         // Only retry if it was an unexpected disconnect and we haven't exceeded max retries
         if (reason === 'io server disconnect' || reason === 'transport close') {
@@ -128,6 +159,7 @@ class SocketService {
       this.socket.on('connect_error', (error) => {
         console.error('Socket connection error:', error.message);
         this.isConnecting = false;
+        this.notifyStatus();
         
         // Retry on connection error
         if (this.retryCount < this.maxRetries && this.schoolId && this.token) {
@@ -240,7 +272,9 @@ class SocketService {
     }
   }
 
-  disconnect() {
+  disconnect(options: { clearListeners?: boolean } = { clearListeners: true }) {
+    const clearListeners = options.clearListeners !== false;
+
     // Safe disconnect - can be called even if not connected
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
@@ -262,13 +296,20 @@ class SocketService {
     
     this.isConnecting = false;
     this.retryCount = 0;
-    this.listeners.clear();
+    if (clearListeners) {
+      this.listeners.clear();
+    }
     this.schoolId = null;
     this.token = null;
+    this.notifyStatus();
   }
 
   isConnected(): boolean {
     return this.socket?.connected || false;
+  }
+
+  isConnectingNow(): boolean {
+    return this.isConnecting;
   }
 }
 

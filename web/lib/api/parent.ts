@@ -84,9 +84,12 @@ export interface ChildLocation {
   latitude: number | null;
   longitude: number | null;
   accuracy?: number | null;
-  timestamp?: Date | null;
-  status: 'safe' | 'in_drill' | 'emergency' | 'unknown';
-  lastSeen: Date;
+  timestamp?: Date | string | null;
+  status: string;
+  statusProvenance?: string;
+  statusReportedAt?: Date | string | null;
+  lastSeen?: Date | string | null;
+  lastActivity?: Date | string | null;
   activeDrill?: {
     drillId: string;
     drillType: string;
@@ -347,22 +350,24 @@ export const parentApi = {
    */
   async getDashboardSummary(): Promise<ApiResponse<{
     totalChildren: number;
-    safe: number;
-    inDrill: number;
-    emergency: number;
+    safeChildren: number;
+    inDrillChildren: number;
+    emergencyChildren: number;
+    /** @deprecated Use safeChildren */
+    safe?: number;
+    /** @deprecated Use inDrillChildren */
+    inDrill?: number;
+    /** @deprecated Use emergencyChildren */
+    emergency?: number;
     averagePreparednessScore: number;
     totalModulesCompleted: number;
-    recentActivity: any[];
+    activeAlerts?: number;
+    pendingDrills?: number;
+    activeDrills?: number;
+    unreadNotifications?: number;
+    recentActivity?: any[];
   }>> {
-    return apiClient.get<{
-      totalChildren: number;
-      safe: number;
-      inDrill: number;
-      emergency: number;
-      averagePreparednessScore: number;
-      totalModulesCompleted: number;
-      recentActivity: any[];
-    }>('/parent/dashboard/summary');
+    return apiClient.get('/parent/dashboard/summary');
   },
 
   /**

@@ -51,6 +51,8 @@ export type ScenarioNextResult = {
   isGameOver: boolean;
   safetyScoreSentence: string | null;
   tip: string | null;
+  /** Present when Gemini quota/cooldown returned the shared fallback (not a real advance) */
+  quotaLimited?: boolean;
 };
 export type ReportCardResult = {
   grade: string;
