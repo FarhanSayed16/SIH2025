@@ -185,11 +185,13 @@ class SocketService {
     _socket?.off(event);
   }
 
-  /// Emit an event
-  void emit(String event, Map<String, dynamic> data) {
+  /// Emit an event. Returns true only when the socket was connected and emit ran.
+  bool emit(String event, Map<String, dynamic> data) {
     if (_socket != null && _isConnected) {
       _socket!.emit(event, data);
+      return true;
     }
+    return false;
   }
 
   /// Disconnect

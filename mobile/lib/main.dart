@@ -22,6 +22,7 @@ import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/forgot_password_screen.dart';
 import 'features/auth/screens/reset_password_screen.dart';
+import 'features/auth/widgets/pending_join_intent_listener.dart';
 
 // Feature Imports - Dashboard
 import 'features/dashboard/screens/dashboard_screen.dart';
@@ -122,24 +123,8 @@ void main() async {
         '✅ Android notification channel created: high_importance_channel');
   }
 
-  // Request notification permissions
-  try {
-    final settings = await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional) {
-      debugPrint('✅ Notification permissions granted');
-    } else {
-      debugPrint('⚠️ Notification permissions denied');
-    }
-  } catch (e) {
-    debugPrint('⚠️ Error requesting notification permissions: $e');
-  }
+  // Notification channel ready. Do not prompt for permission on cold start;
+  // Profile (Enable alert notifications) requests it after sign-in.
 
   runApp(
     const ProviderScope(
@@ -367,7 +352,12 @@ class _KavachAppState extends ConsumerState<KavachApp> {
       debugShowCheckedModeBanner: false,
 
       // Theme Configuration
+      // Peace/crisis comes from product mode. Real dark palette is B9 —
+      // Peace darkTheme is ordinary dark appearance (B9); crisis stays on theme via appMode.
       theme: AppTheme.getTheme(appMode == AppMode.peace ? 'peace' : 'crisis'),
+      darkTheme: appMode == AppMode.crisis
+          ? AppTheme.crisisMode
+          : AppTheme.peaceDark,
       themeMode:
           themeMode == AppThemeMode.light ? ThemeMode.light : ThemeMode.dark,
 
@@ -388,15 +378,17 @@ class _KavachAppState extends ConsumerState<KavachApp> {
 
       // Phase 101.9.1: Smooth page transitions
       builder: (context, child) {
-        return MediaQuery(
-          // Phase 101.9.2: Text scaling support for accessibility
-          data: MediaQuery.of(context).copyWith(
-            textScaler: MediaQuery.of(context).textScaler.clamp(
-                  minScaleFactor: 0.8,
-                  maxScaleFactor: 1.5,
-                ),
+        return PendingJoinIntentListener(
+          child: MediaQuery(
+            // Phase 101.9.2: Text scaling support for accessibility
+            data: MediaQuery.of(context).copyWith(
+              textScaler: MediaQuery.of(context).textScaler.clamp(
+                    minScaleFactor: 0.8,
+                    maxScaleFactor: 1.5,
+                  ),
+            ),
+            child: child!,
           ),
-          child: child!,
         );
       },
 

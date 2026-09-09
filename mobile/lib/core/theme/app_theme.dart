@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'peace_mode_theme.dart';
+import 'peace_dark_theme.dart';
 import 'crisis_mode_theme.dart';
 
 /// Base app theme configuration
 class AppTheme {
   /// Get Peace Mode theme (default, friendly, gamified)
   static ThemeData get peaceMode => PeaceModeTheme.theme;
+
+  /// Peace Mode dark appearance (ordinary dark UI — not crisis)
+  static ThemeData get peaceDark => PeaceDarkTheme.theme;
 
   /// Get Crisis Mode theme (high contrast, emergency)
   static ThemeData get crisisMode => CrisisModeTheme.theme;

@@ -39,9 +39,10 @@ const getChildQuickStats = async (studentId) => {
     return {
       preparednessScore: progress.preparednessScore || 0,
       modulesCompleted: completedModules.length,
-      lastActivity: student.lastLogin || student.updatedAt || new Date(),
+      lastActivity: student.lastLogin || student.updatedAt || null,
       loginStreak: progress.loginStreak || 0,
-      status: student.safetyStatus || 'safe'
+      // Missing safetyStatus is unknown — never invent "safe".
+      status: student.safetyStatus || 'unknown'
     };
   } catch (error) {
     logger.error('Get child quick stats error:', error);
@@ -303,8 +304,10 @@ export const getChildLocation = async (parentId, studentId) => {
       longitude: student.currentLocation?.coordinates?.[0] || null,
       accuracy: student.currentLocation?.accuracy || null,
       timestamp: student.currentLocation?.timestamp || null,
-      status: activeDrill ? 'in_drill' : (student.currentLocation ? 'safe' : 'unknown'),
-      lastSeen: student.lastLogin || student.updatedAt,
+      status: activeDrill
+        ? 'in_drill'
+        : (student.safetyStatus || 'unknown'),
+      lastSeen: student.lastSeen || student.lastLogin || null,
       activeDrill: activeDrill ? {
         drillId: activeDrill.drillId?._id,
         drillType: activeDrill.drillId?.type,
@@ -535,6 +538,7 @@ export const linkStudentByQR = async (parentId, qrCode, relationship = 'other') 
       return {
         success: true,
         autoVerified: true,
+        verified: true,
         message: 'Child is already linked to your account',
         relationship: existing,
         student
@@ -570,6 +574,7 @@ export const linkStudentByQR = async (parentId, qrCode, relationship = 'other') 
       return {
         success: true,
         autoVerified: true,
+        verified: true,
         message: 'Child linked successfully',
         relationship: relationshipDoc,
         student
@@ -587,6 +592,7 @@ export const linkStudentByQR = async (parentId, qrCode, relationship = 'other') 
       return {
         success: true,
         autoVerified: false,
+        verified: false,
         message: 'Link request already pending approval',
         request: existingRequest,
         student: {
@@ -611,6 +617,7 @@ export const linkStudentByQR = async (parentId, qrCode, relationship = 'other') 
     return {
       success: true,
       autoVerified: false,
+      verified: false,
       message: 'Link request submitted. Awaiting approval.',
       request: linkRequest,
       student: {
@@ -654,6 +661,7 @@ export const linkStudentById = async (parentId, studentId, relationship = 'other
       return {
         success: true,
         autoVerified: true,
+        verified: true,
         message: 'Child is already linked to your account',
         relationship: existing,
         student
@@ -685,6 +693,7 @@ export const linkStudentById = async (parentId, studentId, relationship = 'other
       return {
         success: true,
         autoVerified: true,
+        verified: true,
         message: 'Child linked successfully',
         relationship: relationshipDoc,
         student
@@ -702,6 +711,7 @@ export const linkStudentById = async (parentId, studentId, relationship = 'other
       return {
         success: true,
         autoVerified: false,
+        verified: false,
         message: 'Link request already pending',
         request: existingRequest,
         student: {
@@ -724,6 +734,7 @@ export const linkStudentById = async (parentId, studentId, relationship = 'other
     return {
       success: true,
       autoVerified: false,
+      verified: false,
       message: 'Link request submitted. Awaiting approval.',
       request: linkRequest,
       student: {
@@ -1004,8 +1015,8 @@ export const getChildRealTimeStatus = async (parentId, studentId) => {
       .lean();
 
     return {
-      status: student.safetyStatus || 'safe',
-      lastSeen: student.lastSeen || new Date(),
+      status: student.safetyStatus || 'unknown',
+      lastSeen: student.lastSeen || null,
       location: student.currentLocation || null,
       activeDrill: activeDrill || null
     };
@@ -1053,9 +1064,13 @@ export const getDashboardSummary = async (parentId) => {
     
     const summary = {
       totalChildren: children.length,
-      safeChildren: children.filter(c => (c.stats?.status || c.safetyStatus || 'safe') === 'safe').length,
-      inDrillChildren: children.filter(c => (c.stats?.status || c.safetyStatus || 'safe') === 'in_drill').length,
-      emergencyChildren: children.filter(c => (c.stats?.status || c.safetyStatus || 'safe') === 'emergency').length,
+      // Count only explicit safe reports — never invent safe from missing status.
+      safeChildren: children.filter(c => (c.stats?.status || c.safetyStatus) === 'safe').length,
+      inDrillChildren: children.filter(c => (c.stats?.status || c.safetyStatus) === 'in_drill').length,
+      emergencyChildren: children.filter(c => {
+        const s = c.stats?.status || c.safetyStatus;
+        return s === 'emergency' || s === 'at_risk' || s === 'missing' || s === 'evacuating';
+      }).length,
       activeAlerts,
       pendingDrills,
       activeDrills,

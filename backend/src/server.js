@@ -21,7 +21,8 @@ const httpServer = createServer(app);
 // Allow localhost and dev tunnels for development
 const allowedOrigins = process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) || [
   'http://localhost:3001',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'https://g6xrghvh-3000.inc1.devtunnels.ms',
 ];
 
 const io = new Server(httpServer, {
@@ -74,7 +75,8 @@ app.use(helmet({
 // CORS configuration - allow localhost and dev tunnels
 const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((s) => s.trim()).filter(Boolean) || [
   'http://localhost:3001',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  'https://g6xrghvh-3000.inc1.devtunnels.ms',
 ];
 
 app.use(cors({

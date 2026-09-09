@@ -89,10 +89,10 @@ class _ScannerScreenState extends State<ScannerScreen>
         _result = data;
       });
 
-      final int score = (data['score'] as int?) ?? 0;
-      if (score >= 8) {
+      final int? score = data['score'] as int?;
+      if (score != null && score >= 8) {
         HapticFeedback.heavyImpact();
-      } else if (score >= 4) {
+      } else if (score != null && score >= 4) {
         HapticFeedback.mediumImpact();
       }
     } catch (e) {
@@ -126,27 +126,59 @@ class _ScannerScreenState extends State<ScannerScreen>
       final scoreRaw = analysis['score'];
       final score = scoreRaw is int
           ? scoreRaw
-          : int.tryParse(scoreRaw.toString()) ?? 1;
+          : int.tryParse(scoreRaw.toString());
+      if (score == null) {
+        return {
+          'score': null,
+          'summary': 'Unable to assess this photo',
+          'action': 'The analysis result was incomplete. Try another photo.',
+          'color': 'grey',
+          'unknown': true,
+        };
+      }
       return {
         'score': score,
         'summary': analysis['summary'].toString(),
         'action': (analysis['action'] ?? analysis['description'] ?? 'Stay aware.')
             .toString(),
         'color': (analysis['color'] ?? _colorForScore(score)).toString(),
+        'unknown': false,
+      };
+    }
+
+    if (!analysis.containsKey('hazardDetected')) {
+      return {
+        'score': null,
+        'summary': 'Unable to assess this photo',
+        'action': 'The analysis result was incomplete or ambiguous.',
+        'color': 'grey',
+        'unknown': true,
       };
     }
 
     final detected = analysis['hazardDetected'] == true;
     final severity = (analysis['severity'] as String?)?.toLowerCase() ?? '';
-    int score;
+    int? score;
     if (!detected) {
-      score = 1;
+      score = 2;
     } else if (severity == 'high' || severity == 'critical') {
       score = 9;
     } else if (severity == 'medium') {
       score = 6;
-    } else {
+    } else if (severity == 'low') {
       score = 3;
+    } else {
+      score = null;
+    }
+
+    if (score == null) {
+      return {
+        'score': null,
+        'summary': 'Unable to assess this photo',
+        'action': 'Hazard severity was not provided. Try another photo.',
+        'color': 'grey',
+        'unknown': true,
+      };
     }
 
     final recs = analysis['recommendations'];
@@ -157,8 +189,10 @@ class _ScannerScreenState extends State<ScannerScreen>
       action = analysis['description'].toString();
     }
 
-    final summaryRaw =
-        (analysis['hazardType'] ?? analysis['description'] ?? 'Safe').toString();
+    final summaryRaw = (analysis['hazardType'] ??
+            analysis['description'] ??
+            (detected ? 'Hazard observed in photo' : 'No hazard detected in this photo'))
+        .toString();
     final summary =
         summaryRaw.length > 40 ? '${summaryRaw.substring(0, 40)}…' : summaryRaw;
 
@@ -167,6 +201,7 @@ class _ScannerScreenState extends State<ScannerScreen>
       'summary': summary,
       'action': action,
       'color': _colorForScore(score),
+      'unknown': false,
     };
   }
 
@@ -176,16 +211,17 @@ class _ScannerScreenState extends State<ScannerScreen>
     return 'green';
   }
 
-  Future<void> _captureAndAnalyze() async {
+  Future<void> _capturePreview() async {
     try {
       await _initializeControllerFuture;
       final image = await _controller.takePicture();
       setState(() {
         _capturedImage = File(image.path);
+        _result = null;
+        _error = null;
       });
-      _analyzeImage(File(image.path));
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
     }
   }
 
@@ -195,8 +231,9 @@ class _ScannerScreenState extends State<ScannerScreen>
     if (image != null) {
       setState(() {
         _capturedImage = File(image.path);
+        _result = null;
+        _error = null;
       });
-      _analyzeImage(File(image.path));
     }
   }
 
@@ -256,10 +293,10 @@ class _ScannerScreenState extends State<ScannerScreen>
                           child: Container(
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.red.withOpacity(0.8),
+                              color: Colors.red.withValues(alpha: 0.8),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.red.withOpacity(0.5),
+                                  color: Colors.red.withValues(alpha: 0.5),
                                   blurRadius: 20,
                                   spreadRadius: 2,
                                 )
@@ -343,53 +380,93 @@ class _ScannerScreenState extends State<ScannerScreen>
                     ),
                   ),
 
-                  // 5. Bottom Controls (Shutter)
+                  // 5. Bottom Controls (Shutter / Analyze)
                   if (_result == null)
                     Positioned(
                       bottom: 40,
                       left: 0,
                       right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.photo_library,
-                                color: Colors.white70),
-                            iconSize: 32,
-                            onPressed: _isScanning ? null : _pickFromGallery,
-                          ),
-                          GestureDetector(
-                            onTap: _isScanning ? null : _captureAndAnalyze,
-                            child: Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 4),
-                                color: Colors.transparent,
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 65,
-                                  height: 65,
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: _isScanning
-                                      ? const CircularProgressIndicator(
-                                          color: Colors.cyanAccent)
-                                      : null,
+                          if (_capturedImage != null && !_isScanning) ...[
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 24),
+                              child: FilledButton.icon(
+                                onPressed: () =>
+                                    _analyzeImage(_capturedImage!),
+                                icon: const Icon(Icons.search),
+                                label: const Text('Analyze photo'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.cyanAccent,
+                                  foregroundColor: Colors.black,
+                                  minimumSize: const Size(double.infinity, 48),
                                 ),
                               ),
                             ),
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.info_outline,
-                                color: Colors.white70),
-                            iconSize: 32,
-                            onPressed: () {}, // Info placeholder
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: _reset,
+                              child: const Text('Retake / clear',
+                                  style: TextStyle(color: Colors.white70)),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.photo_library,
+                                    color: Colors.white70),
+                                iconSize: 32,
+                                onPressed:
+                                    _isScanning ? null : _pickFromGallery,
+                              ),
+                              GestureDetector(
+                                onTap:
+                                    _isScanning ? null : _capturePreview,
+                                child: Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                        color: Colors.white, width: 4),
+                                    color: Colors.transparent,
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      width: 65,
+                                      height: 65,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: _isScanning
+                                          ? const CircularProgressIndicator(
+                                              color: Colors.cyanAccent)
+                                          : null,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.info_outline,
+                                    color: Colors.white70),
+                                iconSize: 32,
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Capture or pick a photo, then tap Analyze. '
+                                        'Results describe this photo only.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -459,15 +536,15 @@ class _ScannerScreenState extends State<ScannerScreen>
                 Container(
                     width: 10,
                     height: 1,
-                    color: Colors.cyanAccent.withOpacity(0.5)),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5)),
                 Container(
                     width: 1,
                     height: 10,
-                    color: Colors.cyanAccent.withOpacity(0.5)),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5)),
                 Container(
                     width: 10,
                     height: 1,
-                    color: Colors.cyanAccent.withOpacity(0.5)),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5)),
               ],
             ),
           ),
@@ -478,12 +555,12 @@ class _ScannerScreenState extends State<ScannerScreen>
                 Container(
                     width: 1,
                     height: 10,
-                    color: Colors.cyanAccent.withOpacity(0.5)),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5)),
                 const SizedBox(height: 20), // Spacing for horizontal line
                 Container(
                     width: 1,
                     height: 10,
-                    color: Colors.cyanAccent.withOpacity(0.5)),
+                    color: Colors.cyanAccent.withValues(alpha: 0.5)),
               ],
             ),
           ),
@@ -533,24 +610,30 @@ class _ScannerScreenState extends State<ScannerScreen>
   }
 
   Widget _buildResultCard() {
-    final int score = (_result!['score'] as int?) ?? 0;
-    Color themeColor = Colors.green;
-    String status = 'SAFE / LOW RISK';
-    if (score >= 8) {
-      themeColor = Colors.red;
-      status = 'CRITICAL DANGER';
-    } else if (score >= 4) {
-      themeColor = Colors.orange;
-      status = 'MODERATE RISK';
+    final unknown = _result!['unknown'] == true;
+    final int? score = _result!['score'] as int?;
+    Color themeColor = Colors.blueGrey;
+    String status = 'UNABLE TO ASSESS';
+    if (!unknown && score != null) {
+      if (score >= 8) {
+        themeColor = Colors.red;
+        status = 'HIGH RISK IN PHOTO';
+      } else if (score >= 4) {
+        themeColor = Colors.orange;
+        status = 'MODERATE RISK IN PHOTO';
+      } else {
+        themeColor = Colors.green;
+        status = 'LOW RISK IN PHOTO';
+      }
     }
 
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: themeColor.withOpacity(0.9),
+        color: themeColor.withValues(alpha: 0.9),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         boxShadow: [
-          BoxShadow(color: themeColor.withOpacity(0.5), blurRadius: 20)
+          BoxShadow(color: themeColor.withValues(alpha: 0.5), blurRadius: 20)
         ],
       ),
       child: Column(
@@ -563,21 +646,22 @@ class _ScannerScreenState extends State<ScannerScreen>
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('HAZARD LEVEL',
+                  const Text('PHOTO OBSERVATION',
                       style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           color: Colors.black54)),
                   Row(
                     children: [
-                      Text('$score',
+                      Text(score == null ? '—' : '$score',
                           style: const TextStyle(
                               fontSize: 40,
                               fontWeight: FontWeight.w900,
                               color: Colors.white)),
-                      const Text('/10',
-                          style:
-                              TextStyle(fontSize: 20, color: Colors.white70)),
+                      if (score != null)
+                        const Text('/10',
+                            style:
+                                TextStyle(fontSize: 20, color: Colors.white70)),
                     ],
                   ),
                 ],
@@ -592,7 +676,7 @@ class _ScannerScreenState extends State<ScannerScreen>
                           color: Colors.black54)),
                   Text(status,
                       style: const TextStyle(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Colors.white)),
                 ],
@@ -612,8 +696,13 @@ class _ScannerScreenState extends State<ScannerScreen>
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: Colors.white, size: 20),
+                    Icon(
+                      unknown
+                          ? Icons.help_outline
+                          : Icons.warning_amber_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                         child: Text((_result!['summary'] ?? '').toString(),
@@ -626,6 +715,11 @@ class _ScannerScreenState extends State<ScannerScreen>
                 const SizedBox(height: 8),
                 Text((_result!['action'] ?? '').toString(),
                     style: const TextStyle(color: Colors.white70)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Photo observation only — not a building or route safety confirmation.',
+                  style: TextStyle(color: Colors.white60, fontSize: 11),
+                ),
               ],
             ),
           ),
@@ -656,7 +750,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.cyanAccent.withOpacity(0.1)
+      ..color = Colors.cyanAccent.withValues(alpha: 0.1)
       ..strokeWidth = 1;
 
     const double step = 40;

@@ -20,40 +20,26 @@ class FcmService {
   String? get fcmToken => _fcmToken;
   bool get isInitialized => _initialized;
 
-  /// Initialize FCM service
-  Future<void> initialize() async {
+  /// Initialize FCM without prompting. Uses existing authorization when present.
+  Future<void> initialize({bool requestPermission = false}) async {
     if (_initialized) return;
 
     try {
-      // Request notification permissions
-      final settings = await _firebaseMessaging.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
+      NotificationSettings settings;
+      if (requestPermission) {
+        settings = await _firebaseMessaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+      } else {
+        settings = await _firebaseMessaging.getNotificationSettings();
+      }
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        // Initialize local notifications
-        await _initializeLocalNotifications();
-
-        // Get FCM token
-        _fcmToken = await _firebaseMessaging.getToken();
-        if (_fcmToken != null) {
-          onTokenReceived?.call(_fcmToken!);
-        }
-
-        // Listen for token refresh
-        _firebaseMessaging.onTokenRefresh.listen((newToken) {
-          _fcmToken = newToken;
-          onTokenReceived?.call(newToken);
-        });
-
-        // Setup message handlers
-        _setupMessageHandlers();
-
-        _initialized = true;
+        await _completeInitialization();
       }
     } catch (e) {
       // Firebase might not be configured - that's okay
@@ -61,14 +47,53 @@ class FcmService {
     }
   }
 
+  /// Prompt for alert notifications at a relevant moment (e.g. Profile).
+  Future<AuthorizationStatus> requestAlertPermission() async {
+    try {
+      final settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        await _completeInitialization();
+      }
+      return settings.authorizationStatus;
+    } catch (e) {
+      print('FCM permission request error: $e');
+      return AuthorizationStatus.notDetermined;
+    }
+  }
+
+  Future<void> _completeInitialization() async {
+    if (_initialized) return;
+
+    await _initializeLocalNotifications();
+
+    _fcmToken = await _firebaseMessaging.getToken();
+    if (_fcmToken != null) {
+      onTokenReceived?.call(_fcmToken!);
+    }
+
+    _firebaseMessaging.onTokenRefresh.listen((newToken) {
+      _fcmToken = newToken;
+      onTokenReceived?.call(newToken);
+    });
+
+    _setupMessageHandlers();
+    _initialized = true;
+  }
+
   /// Initialize local notifications
   Future<void> _initializeLocalNotifications() async {
     const androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
     const initSettings = InitializationSettings(

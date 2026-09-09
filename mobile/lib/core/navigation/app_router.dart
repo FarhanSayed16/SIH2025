@@ -4,7 +4,7 @@ import '../../features/auth/models/user_model.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/teacher/screens/teacher_dashboard_screen.dart';
-import '../../features/parent/screens/parent_dashboard_screen.dart';
+import '../../features/parent/screens/parent_shell_screen.dart';
 import '../../features/kid/screens/kid_home_screen.dart';
 import '../../core/providers/kid_mode_provider.dart';
 
@@ -45,7 +45,7 @@ class AppRouter {
 
       case 'parent':
         return MaterialPageRoute(
-          builder: (_) => const ParentDashboardScreen(),
+          builder: (_) => const ParentShellScreen(),
           settings: settings,
         );
 
@@ -171,7 +171,7 @@ class AppRouter {
         }
 
       case 'parent':
-        return const ParentDashboardScreen(); // Parent dashboard
+        return const ParentShellScreen(); // Parent shell with tabs
 
       default:
         return const LoginScreen();
