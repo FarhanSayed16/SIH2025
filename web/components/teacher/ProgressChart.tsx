@@ -71,7 +71,8 @@ export function ProgressChart({
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
               }
-              return value;
+              const label = String(value ?? '');
+              return label.length > 14 ? `${label.slice(0, 12)}…` : label;
             }}
           />
           <YAxis stroke="#6b7280" tick={{ fontSize: 12 }} />
@@ -124,7 +125,8 @@ export function ProgressChart({
                 const date = new Date(value);
                 return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
               }
-              return value;
+              const label = String(value ?? '');
+              return label.length > 14 ? `${label.slice(0, 12)}…` : label;
             }}
           />
           <YAxis stroke="#6b7280" tick={{ fontSize: 12 }} />
@@ -186,7 +188,8 @@ export function ProgressChart({
               const date = new Date(value);
               return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
-            return value;
+            const label = String(value ?? '');
+            return label.length > 14 ? `${label.slice(0, 12)}…` : label;
           }}
         />
         <YAxis stroke="#6b7280" tick={{ fontSize: 12 }} />

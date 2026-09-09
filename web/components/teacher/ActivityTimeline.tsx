@@ -108,14 +108,15 @@ export function ActivityTimeline({
     loadActivities(true);
   }, [studentId, filterType, dateRange]);
 
+  // Soft auto-refresh: only while on first page so Load more pagination is preserved
   useEffect(() => {
-    if (autoRefresh) {
-      const interval = setInterval(() => {
-        loadActivities(true);
-      }, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh, refreshInterval, studentId, filterType, dateRange]);
+    if (!autoRefresh) return;
+    const interval = setInterval(() => {
+      if (page > 1) return;
+      loadActivities(true);
+    }, refreshInterval);
+    return () => clearInterval(interval);
+  }, [autoRefresh, refreshInterval, studentId, filterType, dateRange, page]);
 
   const formatActivityMessage = (activity: ActivityLog): string => {
     const data = activity.activityData || {};

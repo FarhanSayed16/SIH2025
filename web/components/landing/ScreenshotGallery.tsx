@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence, type Variants } from 'framer-motion';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 
+import { galleryLabelForSrc } from '@/lib/api/wb8-scenario';
+
 /* ─── Image data ─────────────────────────────────────────────── */
 
 interface GalleryItem {
@@ -11,26 +13,34 @@ interface GalleryItem {
   label: string;
 }
 
-const webScreenshots: GalleryItem[] = [
-  { src: '/gallery/web/teacher-1.png', label: 'Teacher — Dashboard' },
-  { src: '/gallery/web/teacher-2.png', label: 'Teacher — My Classes' },
-  { src: '/gallery/web/teacher-3.png', label: 'Teacher — Class Details' },
-  { src: '/gallery/web/teacher-4.png', label: 'Teacher — Scenarios' },
-  { src: '/gallery/web/teacher-5.png', label: 'Teacher — Analytics' },
-  { src: '/gallery/web/teacher-6.png', label: 'Teacher — Drill Management' },
-  { src: '/gallery/web/teacher-7.png', label: 'Teacher — Reports' },
-  { src: '/gallery/web/teacher-8.png', label: 'Teacher — Drills' },
-  { src: '/gallery/web/teacher-9.png', label: 'Teacher — Scenario Builder' },
-  { src: '/gallery/web/teacher-10.png', label: 'Teacher — Alerts' },
-  { src: '/gallery/web/teacher-11.png', label: 'Teacher — AI Scenario' },
-  { src: '/gallery/web/teacher-12.png', label: 'Teacher — Broadcast' },
-  { src: '/gallery/web/admin-16.png', label: 'Admin — Dashboard' },
-  { src: '/gallery/web/admin-17.png', label: 'Admin — Charts' },
-  { src: '/gallery/web/admin-18.png', label: 'Admin — IoT Devices' },
-  { src: '/gallery/web/admin-19.png', label: 'Admin — Analytics' },
-  { src: '/gallery/web/parent-14.png', label: 'Parent — Verify Student' },
-  { src: '/gallery/web/parent-15.png', label: 'Parent — Dashboard' },
-];
+const webScreenshotFiles = [
+  'teacher-1.png',
+  'teacher-2.png',
+  'teacher-3.png',
+  'teacher-4.png',
+  'teacher-5.png',
+  'teacher-6.png',
+  'teacher-7.png',
+  'teacher-8.png',
+  'teacher-9.png',
+  'teacher-10.png',
+  'teacher-11.png',
+  'teacher-12.png',
+  'admin-16.png',
+  'admin-17.png',
+  'admin-18.png',
+  'admin-19.png',
+  'parent-14.png',
+  'parent-15.png',
+] as const;
+
+const webScreenshots: GalleryItem[] = webScreenshotFiles.map((file) => {
+  const src = `/gallery/web/${file}`;
+  return {
+    src,
+    label: galleryLabelForSrc(src) || file,
+  };
+});
 
 const mobileScreenshots: GalleryItem[] = [
   { src: '/gallery/mobile/student-1.jpg', label: 'Student — Home' },
