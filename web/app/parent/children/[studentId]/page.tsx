@@ -7,12 +7,15 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { parentApi, ChildProgress, DrillParticipation, AttendanceData } from '@/lib/api/parent';
+import {
+  formatParentStatusLabel,
+  hasFiniteCoordinates,
+} from '@/lib/api/parent-honesty';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
@@ -35,15 +38,20 @@ import {
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 type TabType = 'overview' | 'progress' | 'drills' | 'attendance' | 'safety';
+const VALID_TABS: TabType[] = ['overview', 'progress', 'drills', 'attendance', 'safety'];
 
 export default function ChildDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const studentId = params?.studentId as string;
   const { user, isAuthenticated, accessToken } = useAuthStore();
   const { showToast } = useToast();
-  
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+
+  const tabFromUrl = searchParams.get('tab') as TabType | null;
+  const [activeTab, setActiveTab] = useState<TabType>(
+    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'overview'
+  );
   const [childDetails, setChildDetails] = useState<ChildProgress | null>(null);
   const [drills, setDrills] = useState<DrillParticipation[]>([]);
   const [attendance, setAttendance] = useState<AttendanceData | null>(null);
@@ -66,6 +74,16 @@ export default function ChildDetailPage() {
       loadChildDetails();
     }
   }, [isAuthenticated, router, accessToken, user, studentId]);
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as TabType | null;
+    if (t && VALID_TABS.includes(t)) setActiveTab(t);
+  }, [searchParams]);
+
+  const selectTab = (tab: TabType) => {
+    setActiveTab(tab);
+    router.replace(`/parent/children/${studentId}?tab=${tab}`, { scroll: false });
+  };
 
   const loadChildDetails = useCallback(async () => {
     setIsLoading(true);
@@ -173,49 +191,32 @@ export default function ChildDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <LoadingSkeleton />
-          </main>
-        </div>
-      </div>
+      <AppShell title="Child details">
+        <LoadingSkeleton />
+      </AppShell>
     );
   }
 
   if (!childDetails) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <Card className="p-12 text-center">
-              <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Child Not Found</h2>
-              <p className="text-gray-600 mb-4">Unable to load child details.</p>
-              <Button onClick={() => router.push('/parent/dashboard')}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Dashboard
-              </Button>
-            </Card>
-          </main>
-        </div>
-      </div>
+      <AppShell title="Child details">
+        <Card className="p-12 text-center">
+          <AlertTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Child not found</h2>
+          <p className="text-gray-600 mb-4">Unable to load child details.</p>
+          <Button onClick={() => router.push('/parent/dashboard')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to dashboard
+          </Button>
+        </Card>
+      </AppShell>
     );
   }
 
   const { student, progress } = childDetails;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
-          {/* Header */}
+    <AppShell title="Child details">
           <div className="mb-6">
             <Button
               onClick={() => router.push('/parent/dashboard')}
@@ -223,11 +224,11 @@ export default function ChildDetailPage() {
               className="mb-4"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back to dashboard
             </Button>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                <div className="w-16 h-16 bg-teal-800 rounded-full flex items-center justify-center text-white font-bold text-2xl">
                   {student.name.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -236,7 +237,10 @@ export default function ChildDetailPage() {
                     <p className="text-gray-600">Grade {student.grade} - Section {student.section}</p>
                   )}
                   {student.classId && (
-                    <p className="text-sm text-gray-500">Class: {student.classId.classCode}</p>
+                    <p className="text-sm text-gray-500">
+                      Grade {student.classId.grade}
+                      {student.classId.section ? ` · Section ${student.classId.section}` : ''}
+                    </p>
                   )}
                 </div>
               </div>
@@ -251,18 +255,20 @@ export default function ChildDetailPage() {
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="mb-6 border-b border-gray-200">
-            <div className="flex space-x-1">
+            <div className="flex flex-wrap gap-1" role="tablist">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => selectTab(tab.id)}
                     className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
                       activeTab === tab.id
-                        ? 'text-blue-600 border-b-2 border-blue-600'
+                        ? 'text-teal-800 border-b-2 border-teal-700'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
@@ -292,9 +298,7 @@ export default function ChildDetailPage() {
               <SafetyTab studentId={studentId} />
             )}
           </div>
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 
@@ -670,22 +674,27 @@ function SafetyTab({ studentId }: { studentId: string }) {
   const router = useRouter();
   const [location, setLocation] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadLocation();
-    const interval = setInterval(loadLocation, 30000); // Refresh every 30 seconds
+    loadLocation(false);
+    const interval = setInterval(() => loadLocation(true), 30000);
     return () => clearInterval(interval);
   }, [studentId]);
 
-  const loadLocation = async () => {
-    setIsLoading(true);
+  const loadLocation = async (soft = false) => {
+    if (!soft) setIsLoading(true);
+    setLoadError(null);
     try {
       const response = await parentApi.getChildLocation(studentId);
       if (response.success && response.data) {
         setLocation(response.data);
+      } else if (!soft) {
+        setLoadError(response.message || 'Failed to load safety status');
       }
     } catch (error: any) {
       console.error('Error loading location:', error);
+      if (!soft) setLoadError(error?.message || 'Failed to load safety status');
     } finally {
       setIsLoading(false);
     }
@@ -694,48 +703,77 @@ function SafetyTab({ studentId }: { studentId: string }) {
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Status</h3>
-        {isLoading ? (
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Safety status</h3>
+        {isLoading && !location ? (
           <LoadingSkeleton />
+        ) : loadError && !location ? (
+          <p className="text-sm text-red-700">{loadError}</p>
         ) : location ? (
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <div className="flex items-center gap-3">
-                <div className={`w-4 h-4 rounded-full ${
-                  location.status === 'safe' ? 'bg-green-500' :
-                  location.status === 'in_drill' ? 'bg-yellow-500' :
-                  location.status === 'emergency' ? 'bg-red-500' : 'bg-gray-500'
-                }`} />
-                <span className="font-medium text-gray-900 capitalize">
-                  Status: {location.status.replace('_', ' ')}
+                <div
+                  className={`w-4 h-4 rounded-full ${
+                    location.status === 'safe'
+                      ? 'bg-green-500'
+                      : location.status === 'in_drill'
+                      ? 'bg-yellow-500'
+                      : ['emergency', 'at_risk', 'missing', 'evacuating'].includes(location.status)
+                      ? 'bg-red-500'
+                      : 'bg-gray-400'
+                  }`}
+                />
+                <span className="font-medium text-gray-900">
+                  {formatParentStatusLabel(location.status)}
                 </span>
               </div>
             </div>
-            {location.latitude && location.longitude && (
+            {location.statusProvenance === 'unconfirmed' && (
+              <p className="text-sm text-amber-800">
+                No explicit safety report is on file. Legacy defaults are not shown as safe.
+              </p>
+            )}
+            {hasFiniteCoordinates(location.latitude, location.longitude) ? (
               <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-600 mb-2">Last Known Location</p>
+                <p className="text-sm text-gray-600 mb-2">Last known coordinates</p>
                 <p className="font-mono text-sm text-gray-900">
-                  {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+                  {Number(location.latitude).toFixed(6)}, {Number(location.longitude).toFixed(6)}
                 </p>
                 <Button
-                  onClick={() => router.push(`/map?lat=${location.latitude}&lng=${location.longitude}`)}
+                  onClick={() =>
+                    router.push(`/map?lat=${location.latitude}&lng=${location.longitude}`)
+                  }
                   className="mt-3"
                   variant="outline"
                 >
                   <MapPin className="w-4 h-4 mr-2" />
-                  View on Map
+                  Open institution map
                 </Button>
               </div>
+            ) : (
+              <p className="text-sm text-gray-600">No validated location coordinates on record.</p>
             )}
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-1">Last Seen</p>
-              <p className="font-medium text-gray-900">
-                {new Date(location.lastSeen).toLocaleString()}
-              </p>
+            <div className="p-4 bg-gray-50 rounded-lg space-y-2">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Safety report time</p>
+                <p className="font-medium text-gray-900">
+                  {location.statusReportedAt
+                    ? new Date(location.statusReportedAt).toLocaleString()
+                    : 'Report time unavailable'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Last activity (not a safety report)</p>
+                <p className="font-medium text-gray-900">
+                  {location.lastSeen
+                    ? new Date(location.lastSeen).toLocaleString()
+                    : 'Not recorded'}
+                </p>
+              </div>
             </div>
             {location.activeDrill && (
               <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm font-medium text-yellow-900 mb-1">Active Drill</p>
+                <p className="text-sm font-medium text-yellow-900 mb-1">Active drill</p>
                 <p className="text-sm text-yellow-700">
                   {location.activeDrill.drillType} - {location.activeDrill.status}
                 </p>
@@ -743,7 +781,7 @@ function SafetyTab({ studentId }: { studentId: string }) {
             )}
           </div>
         ) : (
-          <p className="text-gray-600">No location data available</p>
+          <p className="text-gray-600">No safety data available</p>
         )}
       </Card>
     </div>

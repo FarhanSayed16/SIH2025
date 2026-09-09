@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { classroomApi } from '@/lib/api/classroom';
 
@@ -241,14 +240,16 @@ export default function QRGeneratorPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
+    <AppShell title="QR generator">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900">QR Code Generator</h1>
-            <p className="text-gray-600 mt-2">Generate classroom join QR codes and student badge QR codes</p>
+            <p className="text-gray-600 mt-2">
+              Generate classroom join QR codes and student badge QR codes. Prefer the class Share
+              dialog when available — this page does not promise that older printouts are rejected.
+            </p>
+            <p className="text-xs text-amber-800 mt-2 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              WD06 deferred: generating a new join QR updates the server hash, but this UI does not
+              claim server-side rejection of previous codes until token/version checks are enforced.
+            </p>
           </div>
 
           <Card className="p-6 mb-6">
@@ -397,9 +398,7 @@ export default function QRGeneratorPage() {
               </Card>
             )}
           </div>
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

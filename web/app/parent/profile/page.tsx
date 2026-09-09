@@ -12,8 +12,7 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { parentApi } from '@/lib/api/parent';
 import { authApi } from '@/lib/api/auth';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -175,24 +174,14 @@ export default function ParentProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <LoadingSkeleton />
-          </main>
-        </div>
-      </div>
+      <AppShell title="Parent profile">
+        <LoadingSkeleton />
+      </AppShell>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
+    <AppShell title="Parent profile">
           {/* Header */}
           <div className="mb-6">
             <Button
@@ -429,9 +418,7 @@ export default function ParentProfilePage() {
               </div>
             </Card>
           </div>
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

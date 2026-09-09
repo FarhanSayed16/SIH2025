@@ -11,9 +11,9 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { parentApi, ParentChild } from '@/lib/api/parent';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
+import { formatParentStatusLabel } from '@/lib/api/parent-honesty';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/toast';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
@@ -95,7 +95,7 @@ export default function ChildrenManagementPage() {
   }, [showToast]);
 
   const handleUnlink = async (childId: string, childName: string) => {
-    if (!confirm(`Are you sure you want to unlink ${childName}? This action cannot be undone.`)) {
+    if (!confirm(`Unlink ${childName} from your parent account? This removes the parent–child link, not the student's school account.`)) {
       return;
     }
 
@@ -164,30 +164,19 @@ export default function ChildrenManagementPage() {
   };
 
   const getChildStatus = (child: ParentChild) => {
-    return child.stats?.status || child.safetyStatus || 'safe';
+    return child.stats?.status || child.safetyStatus || 'unknown';
   };
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <LoadingSkeleton />
-          </main>
-        </div>
-      </div>
+      <AppShell title="Manage children">
+        <LoadingSkeleton />
+      </AppShell>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
-          {/* Header */}
+    <AppShell title="Manage children">
           <div className="mb-6">
             <Button
               onClick={() => router.push('/parent/dashboard')}
@@ -200,7 +189,7 @@ export default function ChildrenManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center">
+                  <div className="w-12 h-12 bg-teal-800 rounded-lg flex items-center justify-center">
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   Manage Children
@@ -209,10 +198,10 @@ export default function ChildrenManagementPage() {
               </div>
               <Button
                 onClick={() => router.push('/parent/add-child')}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex items-center gap-2"
               >
                 <Users className="w-4 h-4" />
-                Add Child
+                Add child
               </Button>
             </div>
           </div>
@@ -340,7 +329,7 @@ export default function ChildrenManagementPage() {
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className={`px-3 py-1 rounded-full border inline-flex items-center gap-1 ${getStatusColor(status)}`}>
                               {getStatusIcon(status)}
-                              <span className="text-xs font-medium capitalize">{status.replace('_', ' ')}</span>
+                              <span className="text-xs font-medium">{formatParentStatusLabel(status)}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -384,9 +373,7 @@ export default function ChildrenManagementPage() {
               </div>
             </Card>
           )}
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

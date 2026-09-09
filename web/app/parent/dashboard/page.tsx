@@ -6,13 +6,17 @@
 
 'use client';
 
+import { AppShell } from '@/components/layout/app-shell';
+
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { parentApi, ParentChild } from '@/lib/api/parent';
+import {
+  childSafetyHref,
+  formatParentStatusLabel,
+} from '@/lib/api/parent-honesty';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -99,13 +103,15 @@ export default function ParentDashboardPage() {
       });
 
       const statuses = await Promise.all(statusPromises);
-      const statusMap: Record<string, any> = {};
-      statuses.forEach((status) => {
-        if (status) {
-          statusMap[status.childId] = status.status;
-        }
+      setChildStatuses((prev) => {
+        const next = { ...prev };
+        statuses.forEach((row) => {
+          if (row) {
+            next[row.childId] = row.status;
+          }
+        });
+        return next;
       });
-      setChildStatuses(statusMap);
     } catch (error: any) {
       console.error('Error fetching child statuses:', error);
     } finally {
@@ -155,11 +161,11 @@ export default function ParentDashboardPage() {
   }, [isAuthenticated, user]);
 
   const getChildStatus = (child: ParentChild) => {
-    // Priority: real-time status > stats.status > safetyStatus > 'safe'
+    // Never default missing reports to "safe".
     if (childStatuses[child._id]?.status) {
       return childStatuses[child._id].status;
     }
-    return child.stats?.status || child.safetyStatus || 'safe';
+    return child.stats?.status || child.safetyStatus || 'unknown';
   };
 
   const getStatusColor = (status: string) => {
@@ -169,6 +175,9 @@ export default function ParentDashboardPage() {
       case 'in_drill':
         return 'bg-yellow-100 text-yellow-700 border-yellow-200';
       case 'emergency':
+      case 'at_risk':
+      case 'missing':
+      case 'evacuating':
         return 'bg-red-100 text-red-700 border-red-200';
       default:
         return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -182,6 +191,9 @@ export default function ParentDashboardPage() {
       case 'in_drill':
         return <Activity className="w-5 h-5" />;
       case 'emergency':
+      case 'at_risk':
+      case 'missing':
+      case 'evacuating':
         return <AlertTriangle className="w-5 h-5" />;
       default:
         return <Clock className="w-5 h-5" />;
@@ -190,24 +202,14 @@ export default function ParentDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
+      <AppShell title="Parent Dashboard">
             <LoadingSkeleton />
-          </main>
-        </div>
-      </div>
+          </AppShell>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
+    <AppShell title="Parent Dashboard">
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
@@ -294,9 +296,11 @@ export default function ParentDashboardPage() {
                 <Card className="p-4 bg-green-50 border border-green-200">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Safe</p>
+                      <p className="text-sm text-gray-600 mb-1">Reported safe</p>
                       <p className="text-2xl font-bold text-green-700">
-                        {dashboardSummary?.safe || children.filter(c => getChildStatus(c) === 'safe').length}
+                        {dashboardSummary?.safeChildren ??
+                          dashboardSummary?.safe ??
+                          children.filter((c) => getChildStatus(c) === 'safe').length}
                       </p>
                     </div>
                     <CheckCircle className="w-8 h-8 text-green-600 opacity-50" />
@@ -307,7 +311,9 @@ export default function ParentDashboardPage() {
                     <div>
                       <p className="text-sm text-gray-600 mb-1">In Drill</p>
                       <p className="text-2xl font-bold text-yellow-700">
-                        {dashboardSummary?.inDrill || children.filter(c => getChildStatus(c) === 'in_drill').length}
+                        {dashboardSummary?.inDrillChildren ??
+                          dashboardSummary?.inDrill ??
+                          children.filter((c) => getChildStatus(c) === 'in_drill').length}
                       </p>
                     </div>
                     <Activity className="w-8 h-8 text-yellow-600 opacity-50" />
@@ -318,7 +324,9 @@ export default function ParentDashboardPage() {
                     <div>
                       <p className="text-sm text-gray-600 mb-1">Avg Preparedness</p>
                       <p className="text-2xl font-bold text-purple-700">
-                        {dashboardSummary?.averagePreparednessScore || 0}%
+                        {dashboardSummary?.averagePreparednessScore != null
+                          ? `${dashboardSummary.averagePreparednessScore}%`
+                          : '—'}
                       </p>
                     </div>
                     <TrendingUp className="w-8 h-8 text-purple-600 opacity-50" />
@@ -352,7 +360,7 @@ export default function ParentDashboardPage() {
                         </div>
                         <div className={`px-3 py-1 rounded-full border flex items-center gap-1 ${getStatusColor(status)}`}>
                           {getStatusIcon(status)}
-                          <span className="text-xs font-medium capitalize">{status.replace('_', ' ')}</span>
+                          <span className="text-xs font-medium">{formatParentStatusLabel(status)}</span>
                         </div>
                       </div>
 
@@ -366,7 +374,10 @@ export default function ParentDashboardPage() {
                         {child.classId && (
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Class:</span>
-                            <span className="font-medium text-gray-900">{child.classId.classCode}</span>
+                            <span className="font-medium text-gray-900">
+                              Grade {child.classId.grade}
+                              {child.classId.section ? ` · Section ${child.classId.section}` : ''}
+                            </span>
                           </div>
                         )}
                         {child.stats && (
@@ -381,7 +392,7 @@ export default function ParentDashboardPage() {
                             </div>
                             {child.stats.lastActivity && (
                               <div className="flex items-center justify-between text-sm">
-                                <span className="text-gray-600">Last Activity:</span>
+                                <span className="text-gray-600">Last learning activity:</span>
                                 <span className="font-medium text-gray-900 text-xs">
                                   {new Date(child.stats.lastActivity).toLocaleDateString()}
                                 </span>
@@ -389,14 +400,21 @@ export default function ParentDashboardPage() {
                             )}
                           </>
                         )}
-                        {childStatuses[child._id]?.lastSeen && (
+                        {childStatuses[child._id]?.statusReportedAt ? (
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Last Seen:</span>
+                            <span className="text-gray-600">Safety report time:</span>
+                            <span className="font-medium text-gray-900 text-xs">
+                              {new Date(childStatuses[child._id].statusReportedAt).toLocaleString()}
+                            </span>
+                          </div>
+                        ) : childStatuses[child._id]?.lastSeen ? (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Last activity (not a safety report):</span>
                             <span className="font-medium text-gray-900 text-xs">
                               {new Date(childStatuses[child._id].lastSeen).toLocaleString()}
                             </span>
                           </div>
-                        )}
+                        ) : null}
                       </div>
 
                       <div className="flex items-center gap-2 pt-4 border-t border-gray-200">
@@ -412,10 +430,11 @@ export default function ParentDashboardPage() {
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/parent/children/${child._id}/location`);
+                            router.push(childSafetyHref(child._id));
                           }}
                           variant="outline"
                           className="flex items-center gap-1"
+                          title="Safety status"
                         >
                           <MapPin className="w-4 h-4" />
                         </Button>
@@ -426,45 +445,45 @@ export default function ParentDashboardPage() {
                 })}
               </div>
 
-              {/* Quick Actions */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Button
+              {/* Secondary links */}
+              <Card className="p-4">
+                <div className="flex flex-wrap gap-3 text-sm">
+                  <button
+                    type="button"
+                    className="text-teal-800 font-medium hover:underline"
                     onClick={() => router.push('/parent/children/manage')}
-                    className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white h-16"
                   >
-                    <Users className="w-5 h-5" />
-                    <span>Manage Children</span>
-                  </Button>
-                  <Button
-                    onClick={() => router.push('/parent/profile')}
-                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white h-16"
-                  >
-                    <Shield className="w-5 h-5" />
-                    <span>My Profile</span>
-                  </Button>
-                  <Button
+                    Manage children
+                  </button>
+                  <span className="text-gray-300">·</span>
+                  <button
+                    type="button"
+                    className="text-teal-800 font-medium hover:underline"
                     onClick={() => router.push('/parent/verify-student')}
-                    className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white h-16"
                   >
-                    <QrCode className="w-5 h-5" />
-                    <span>Verify Student QR</span>
-                  </Button>
-                  <Button
+                    Verify student code
+                  </button>
+                  <span className="text-gray-300">·</span>
+                  <button
+                    type="button"
+                    className="text-teal-800 font-medium hover:underline"
                     onClick={() => router.push('/parent/notifications')}
-                    className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white h-16"
                   >
-                    <Bell className="w-5 h-5" />
-                    <span>Notifications</span>
-                  </Button>
+                    Notifications
+                  </button>
+                  <span className="text-gray-300">·</span>
+                  <button
+                    type="button"
+                    className="text-teal-800 font-medium hover:underline"
+                    onClick={() => router.push('/parent/profile')}
+                  >
+                    Profile
+                  </button>
                 </div>
               </Card>
             </div>
           )}
-        </main>
-      </div>
-    </div>
+        </AppShell>
   );
 }
 

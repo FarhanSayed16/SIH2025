@@ -12,8 +12,7 @@ import { useAuthStore } from '@/lib/store/auth-store';
 import { classroomApi, ClassroomJoinRequest } from '@/lib/api/classroom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 
 export default function TeacherClassApprovalsPage() {
   const router = useRouter();
@@ -98,11 +97,7 @@ export default function TeacherClassApprovalsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
+    <AppShell title="Pending Approvals">
           <div className="mb-6">
             <button
               onClick={() => router.push(`/teacher/classes/${classId}`)}
@@ -196,9 +191,7 @@ export default function TeacherClassApprovalsPage() {
               ))}
             </div>
           )}
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 

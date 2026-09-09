@@ -61,7 +61,7 @@ export function AlertStatusChart({ alerts }: AlertStatusChartProps) {
           </div>
         </div>
         <div className="text-center py-8 text-gray-500">
-          No alert data available
+          No alert records returned for this scope
         </div>
       </Card>
     );

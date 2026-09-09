@@ -6,25 +6,34 @@
 
 'use client';
 
+import { AppShell } from '@/components/layout/app-shell';
+
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { teacherApi, PendingStudent, ClassStudent } from '@/lib/api/teacher';
-import { classroomApi } from '@/lib/api/classroom';
+import { classroomApi, ClassroomQR } from '@/lib/api/classroom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
-import { StudentPerformanceCard, StudentPerformanceData } from '@/components/teacher/StudentPerformanceCard';
+import { StudentPerformanceCard } from '@/components/teacher/StudentPerformanceCard';
 import { PerformanceMetricsCard, MetricData } from '@/components/teacher/PerformanceMetricsCard';
+import { mapStudentProgressItem } from '@/lib/teacher/mapStudentPerformance';
 import { EmptyState } from '@/components/ui/empty-state';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import { Search, Award, BookOpen, Gamepad2, TrendingUp, Zap, Play, Clock, CheckCircle } from 'lucide-react';
-import { drillsApi, Drill } from '@/lib/api/drills';
+import { drillsApi, Drill, isDrillInProgress } from '@/lib/api/drills';
 import { socketService } from '@/lib/services/socket-service';
 import { getInstitutionId } from '@/lib/utils/institution';
 import { useToast } from '@/components/ui/toast';
 import Link from 'next/link';
+import {
+  ClassroomQRShareDialog,
+  ClassShareInfo,
+} from '@/components/teacher/ClassroomQRShareDialog';
+
+type ClassTab = 'pending' | 'approved' | 'roster' | 'performance' | 'drills';
+
+const VALID_TABS: ClassTab[] = ['pending', 'approved', 'roster', 'performance', 'drills'];
 
 interface Class {
   _id: string;
@@ -34,11 +43,14 @@ interface Class {
   teacherId: { _id: string; name: string; email: string };
   studentIds?: any[];
   institutionId?: { _id: string; name: string };
+  joinQRCode?: string;
+  joinQRExpiresAt?: string;
 }
 
 export default function TeacherClassDetailsPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const classId = params.classId as string;
   const { user, isAuthenticated, accessToken } = useAuthStore();
   const [classData, setClassData] = useState<Class | null>(null);
@@ -46,7 +58,10 @@ export default function TeacherClassDetailsPage() {
   const [approvedStudents, setApprovedStudents] = useState<ClassStudent[]>([]);
   const [rosterStudents, setRosterStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'roster' | 'performance' | 'drills'>('pending');
+  const tabFromUrl = searchParams.get('tab') as ClassTab | null;
+  const [activeTab, setActiveTab] = useState<ClassTab>(
+    tabFromUrl && VALID_TABS.includes(tabFromUrl) ? tabFromUrl : 'pending'
+  );
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [showRosterForm, setShowRosterForm] = useState(false);
   const [rosterFormData, setRosterFormData] = useState({
@@ -55,7 +70,9 @@ export default function TeacherClassDetailsPage() {
     parentPhone: '',
     notes: ''
   });
-  const [qrCodeData, setQrCodeData] = useState<any>(null);
+  const [sessionQR, setSessionQR] = useState<ClassroomQR | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [qrGeneratedNotice, setQrGeneratedNotice] = useState(false);
   const [isGeneratingQR, setIsGeneratingQR] = useState(false);
   const [studentProgress, setStudentProgress] = useState<any>(null);
   const [isLoadingProgress, setIsLoadingProgress] = useState(false);
@@ -119,13 +136,13 @@ export default function TeacherClassDetailsPage() {
       const response = await teacherApi.getClassStudents(classId);
       if (response.success && response.data) {
         const students = response.data.studentIds || [];
-        // Filter approved students: account_user with approved status
-        const approved = students.filter((s: any) => 
-          s.approvalStatus === 'approved' && s.userType === 'account_user'
+        // Class membership is membership in studentIds (join already approved).
+        // Split by userType — do not require User.approvalStatus for class roster.
+        const approved = students.filter(
+          (s: any) => s.userType !== 'roster_record'
         );
         setApprovedStudents(approved);
-        
-        // Filter roster students separately
+
         const roster = students.filter((s: any) => s.userType === 'roster_record');
         setRosterStudents(roster);
       }
@@ -224,13 +241,31 @@ export default function TeacherClassDetailsPage() {
     }
   };
 
+  const selectTab = useCallback(
+    (tab: ClassTab) => {
+      setActiveTab(tab);
+      const next = new URLSearchParams(searchParams.toString());
+      next.set('tab', tab);
+      router.replace(`/teacher/classes/${classId}?${next.toString()}`, { scroll: false });
+    },
+    [classId, router, searchParams]
+  );
+
+  useEffect(() => {
+    if (tabFromUrl && VALID_TABS.includes(tabFromUrl) && tabFromUrl !== activeTab) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
   const handleGenerateQR = async () => {
     setIsGeneratingQR(true);
     try {
       const response = await classroomApi.generateQR(classId);
       if (response.success && response.data) {
-        setQrCodeData(response.data);
-        alert('QR code generated successfully! Students can now scan this QR code to join your class.');
+        setSessionQR(response.data);
+        setQrGeneratedNotice(true);
+        setShareOpen(true);
+        loadClassData();
       } else {
         alert('Failed to generate QR code: ' + (response.message || 'Unknown error'));
       }
@@ -240,6 +275,17 @@ export default function TeacherClassDetailsPage() {
       setIsGeneratingQR(false);
     }
   };
+
+  const shareInfo: ClassShareInfo | null = classData
+    ? {
+        classId,
+        grade: classData.grade,
+        section: classData.section,
+        classCode: classData.classCode,
+        joinQRCode: (classData as any).joinQRCode,
+        joinQRExpiresAt: (classData as any).joinQRExpiresAt,
+      }
+    : null;
 
   const handleCreateRosterStudent = async () => {
     if (!rosterFormData.name.trim()) {
@@ -312,7 +358,6 @@ export default function TeacherClassDetailsPage() {
         const institutionId = getInstitutionId(user?.institutionId);
         
         if (institutionId && accessToken) {
-          socketService.connect(institutionId, accessToken);
           socketService.on('DRILL_START', (data: any) => {
             if (data.drillId) {
               loadClassDrills();
@@ -365,28 +410,18 @@ export default function TeacherClassDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6">
+      <AppShell title="Class Detail">
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
               <p className="text-gray-500 mt-4">Loading class details...</p>
             </div>
-          </main>
-        </div>
-      </div>
+          </AppShell>
     );
   }
 
   if (!classData) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6">
+      <AppShell title="Class Detail">
             <Card>
               <div className="text-center py-12">
                 <p className="text-gray-500">Class not found</p>
@@ -395,123 +430,133 @@ export default function TeacherClassDetailsPage() {
                 </Button>
               </div>
             </Card>
-          </main>
-        </div>
-      </div>
+          </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
+    <AppShell title="Class Detail">
           <div className="mb-6">
-            <button
-              onClick={() => router.push('/teacher/classes')}
-              className="text-blue-600 hover:text-blue-800 mb-4"
-            >
-              ← Back to My Classes
-            </button>
-            <div className="flex items-center justify-between">
+            <nav className="text-sm text-gray-500 mb-3" aria-label="Breadcrumb">
+              <ol className="flex flex-wrap items-center gap-1">
+                <li>
+                  <Link href="/teacher/classes" className="text-teal-800 hover:underline">
+                    My classes
+                  </Link>
+                </li>
+                <li aria-hidden="true">/</li>
+                <li className="text-gray-800 font-medium">
+                  Grade {classData.grade} · Section {classData.section}
+                </li>
+              </ol>
+            </nav>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  Grade {classData.grade} - Section {classData.section}
+                <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900">
+                  Grade {classData.grade} · Section {classData.section}
                 </h1>
-                <div className="mt-2 flex items-center space-x-4">
-                  <p className="text-gray-600">
-                    <span className="font-semibold">Class Code:</span>{' '}
-                    <span className="font-mono text-lg bg-blue-50 px-3 py-1 rounded border border-blue-200">
-                      {classData.classCode}
-                    </span>
+                <p className="mt-2 text-gray-600 text-sm">
+                  Class code{' '}
+                  <span className="font-mono font-semibold text-gray-900">{classData.classCode}</span>
+                </p>
+                {qrGeneratedNotice && (
+                  <p className="mt-2 text-sm text-emerald-800" role="status">
+                    Join QR ready in the share dialog for this session.
                   </p>
-                </div>
+                )}
               </div>
-              <div className="flex space-x-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11"
+                  onClick={() => setShareOpen(true)}
+                >
+                  Share join code
+                </Button>
+                <Button
+                  type="button"
                   onClick={handleGenerateQR}
                   disabled={isGeneratingQR}
-                  className="bg-green-600 hover:bg-green-700 text-white"
+                  className="min-h-11 bg-[var(--kavach-primary,#216E39)] text-white hover:opacity-90"
                 >
-                  {isGeneratingQR ? 'Generating...' : 'Generate QR Code'}
+                  {isGeneratingQR ? 'Generating…' : sessionQR ? 'Generate new QR' : 'Generate QR'}
                 </Button>
               </div>
             </div>
-            
-            {qrCodeData && (
-              <Card className="mt-4 p-4 bg-green-50 border-green-200">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-green-800">QR Code Generated!</p>
-                    <p className="text-xs text-green-600 mt-1">
-                      Students can scan this QR code to join your class. Expires: {new Date(qrCodeData.expiresAt).toLocaleString()}
-                    </p>
-                  </div>
-                  {qrCodeData.qrImage && (
-                    <img src={qrCodeData.qrImage} alt="Class QR Code" className="w-24 h-24" />
-                  )}
-                </div>
-              </Card>
-            )}
           </div>
 
           {/* Tabs */}
           <div className="mb-6 border-b border-gray-200">
-            <nav className="flex space-x-8">
+            <nav className="flex flex-wrap gap-1" role="tablist" aria-label="Class sections">
               <button
-                onClick={() => setActiveTab('pending')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'pending'}
+                onClick={() => selectTab('pending')}
+                className={`min-h-11 py-3 px-3 border-b-2 font-medium text-sm ${
                   activeTab === 'pending'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-teal-600 text-teal-800'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Pending Approval ({pendingStudents.length})
+                Requests ({pendingStudents.length})
               </button>
               <button
-                onClick={() => setActiveTab('approved')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'approved'}
+                onClick={() => selectTab('approved')}
+                className={`min-h-11 py-3 px-3 border-b-2 font-medium text-sm ${
                   activeTab === 'approved'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-teal-600 text-teal-800'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Approved Students ({approvedStudents.length})
+                Students ({approvedStudents.length})
               </button>
               <button
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'performance'}
                 onClick={() => {
-                  setActiveTab('performance');
+                  selectTab('performance');
                   if (!studentProgress) {
                     loadStudentProgress();
                   }
                 }}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`min-h-11 py-3 px-3 border-b-2 font-medium text-sm ${
                   activeTab === 'performance'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-teal-600 text-teal-800'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Student Performance
+                Learning progress
               </button>
               {isKG4Class && (
                 <button
-                  onClick={() => setActiveTab('roster')}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'roster'}
+                  onClick={() => selectTab('roster')}
+                  className={`min-h-11 py-3 px-3 border-b-2 font-medium text-sm ${
                     activeTab === 'roster'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-teal-600 text-teal-800'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
                   }`}
                 >
-                  Roster Students
+                  Roster students
                 </button>
               )}
               <button
-                onClick={() => setActiveTab('drills')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                type="button"
+                role="tab"
+                aria-selected={activeTab === 'drills'}
+                onClick={() => selectTab('drills')}
+                className={`min-h-11 py-3 px-3 border-b-2 font-medium text-sm ${
                   activeTab === 'drills'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-teal-600 text-teal-800'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
                 Drills
@@ -658,18 +703,24 @@ export default function TeacherClassDetailsPage() {
                           color: 'blue'
                         },
                         {
-                          label: 'Avg Modules',
-                          value: (studentProgress.summary.avgModulesCompleted || 0).toFixed(1),
+                          label: 'Avg distinct modules passed',
+                          value:
+                            studentProgress.summary.avgDistinctModulesCompleted ??
+                            studentProgress.summary.avgModulesCompleted ??
+                            '—',
                           color: 'purple'
                         },
                         {
-                          label: 'Avg Preparedness',
-                          value: Math.round(studentProgress.summary.avgPreparednessScore || 0),
+                          label: 'Avg preparedness',
+                          value:
+                            studentProgress.summary.avgPreparednessScore != null
+                              ? `${Math.round(studentProgress.summary.avgPreparednessScore)} (n=${studentProgress.summary.preparednessSampleSize ?? '—'})`
+                              : 'No recorded scores',
                           color: 'green'
                         },
                         {
-                          label: 'Avg Login Streak',
-                          value: (studentProgress.summary.avgLoginStreak || 0).toFixed(1),
+                          label: 'Games recorded',
+                          value: studentProgress.summary.totalGamesPlayed ?? 0,
                           color: 'indigo'
                         }
                       ]}
@@ -720,10 +771,22 @@ export default function TeacherClassDetailsPage() {
                             return (a.student?.name || '').localeCompare(b.student?.name || '');
                           case 'modules':
                             return (b.modules?.completed || 0) - (a.modules?.completed || 0);
-                          case 'quiz':
-                            return (b.quiz?.avgScore || 0) - (a.quiz?.avgScore || 0);
-                          case 'preparedness':
-                            return (b.progress?.preparednessScore || 0) - (a.progress?.preparednessScore || 0);
+                          case 'quiz': {
+                            const aq = a.quiz?.avgScore;
+                            const bq = b.quiz?.avgScore;
+                            if (aq == null && bq == null) return 0;
+                            if (aq == null) return 1;
+                            if (bq == null) return -1;
+                            return bq - aq;
+                          }
+                          case 'preparedness': {
+                            const ap = a.preparednessScore ?? a.progress?.preparednessScore;
+                            const bp = b.preparednessScore ?? b.progress?.preparednessScore;
+                            if (ap == null && bp == null) return 0;
+                            if (ap == null) return 1;
+                            if (bp == null) return -1;
+                            return bp - ap;
+                          }
                           default:
                             return 0;
                         }
@@ -740,42 +803,14 @@ export default function TeacherClassDetailsPage() {
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filtered.map((item: any) => {
-                          const studentData: StudentPerformanceData = {
-                            student: {
-                              id: item.student?.id || item.student?._id || '',
-                              name: item.student?.name || 'Unknown',
-                              email: item.student?.email,
-                              grade: item.student?.grade,
-                              section: item.student?.section
-                            },
-                            modules: {
-                              completed: item.modules?.completed || 0,
-                              inProgress: item.modules?.inProgress || 0,
-                              total: item.modules?.total || 0
-                            },
-                            quiz: {
-                              totalQuizzes: item.quiz?.totalQuizzes || 0,
-                              avgScore: item.quiz?.avgScore || 0,
-                              passRate: item.quiz?.passRate || 0
-                            },
-                            games: {
-                              totalGames: item.games?.totalGames || item.games?.played || 0,
-                              totalXP: item.games?.totalXP || 0,
-                              avgScore: item.games?.avgScore || item.games?.averageScore || 0
-                            },
-                            progress: {
-                              preparednessScore: item.progress?.preparednessScore || item.preparednessScore || 0,
-                              loginStreak: item.progress?.loginStreak || 0
-                            },
-                            lastActivity: item.lastActivity
-                          };
+                          const id = item.student?.id || item.student?._id || '';
                           return (
                             <StudentPerformanceCard
-                              key={studentData.student.id}
-                              data={studentData}
-                              onClick={() => {
-                                router.push(`/teacher/classes/${classId}/students/${studentData.student.id}`);
-                              }}
+                              key={id}
+                              data={mapStudentProgressItem(
+                                item,
+                                `/teacher/classes/${classId}/students/${id}`
+                              )}
                             />
                           );
                         })}
@@ -1017,17 +1052,23 @@ export default function TeacherClassDetailsPage() {
                 ) : (
                   <div className="space-y-4">
                     {classDrills
-                      .filter((d) => d.status === 'active')
-                      .map((drill) => (
+                      .filter((d) => isDrillInProgress(d.status))
+                      .map((drill) => {
+                        const startedAt = drill.actualStart || drill.scheduledAt;
+                        return (
                         <div key={drill._id} className="border border-orange-200 bg-orange-50 rounded-lg p-4">
                           <div className="flex justify-between items-start">
                             <div>
                               <div className="flex items-center space-x-2 mb-2">
                                 <span className="font-semibold text-lg">{drill.type.toUpperCase()}</span>
-                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">ACTIVE</span>
+                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">IN PROGRESS</span>
                               </div>
                               <p className="text-sm text-gray-600">
-                                Started: {new Date(drill.scheduledAt).toLocaleString()}
+                                {drill.actualStart
+                                  ? `Started: ${new Date(drill.actualStart).toLocaleString()}`
+                                  : startedAt
+                                  ? `Scheduled: ${new Date(startedAt).toLocaleString()} (actual start not recorded)`
+                                  : 'Start time unavailable'}
                               </p>
                             </div>
                             <Link href={`/drills/${drill._id}`}>
@@ -1035,7 +1076,8 @@ export default function TeacherClassDetailsPage() {
                             </Link>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
 
                     {/* Scheduled Drills */}
                     {classDrills
@@ -1088,9 +1130,16 @@ export default function TeacherClassDetailsPage() {
               </div>
             </Card>
           )}
-        </main>
-      </div>
-    </div>
+
+        <ClassroomQRShareDialog
+          open={shareOpen}
+          onClose={() => setShareOpen(false)}
+          classInfo={shareInfo}
+          sessionQR={sessionQR}
+          generating={isGeneratingQR}
+          onGenerate={handleGenerateQR}
+        />
+        </AppShell>
   );
 }
 

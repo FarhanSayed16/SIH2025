@@ -11,8 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { parentApi, ParentNotification } from '@/lib/api/parent';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
@@ -143,24 +142,14 @@ export default function ParentNotificationsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
-          <main className="flex-1 overflow-y-auto p-6">
-            <LoadingSkeleton />
-          </main>
-        </div>
-      </div>
+      <AppShell title="Notifications">
+        <LoadingSkeleton />
+      </AppShell>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-purple-50 via-white to-purple-50 p-6">
+    <AppShell title="Notifications">
           {/* Header */}
           <div className="mb-6">
             <Button
@@ -301,9 +290,7 @@ export default function ParentNotificationsPage() {
               ))}
             </div>
           )}
-        </main>
-      </div>
-    </div>
+    </AppShell>
   );
 }
 
