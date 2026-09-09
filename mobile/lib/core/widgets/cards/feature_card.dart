@@ -1,35 +1,21 @@
-/// Phase 101.2: Feature Card Component
-/// Professional quick-action card with accent color, icon, and optional description.
-/// Used in home screen Quick Actions and similar grids.
+/// Compact feature / quick-action card (B4).
+/// Leading icon, title, one supporting line — no empty Expanded space or corner arrow.
 
 import 'package:flutter/material.dart';
 import '../../design/design_system.dart';
 
-/// Feature Card - Professional card for quick actions
 class FeatureCard extends StatelessWidget {
-  /// Feature title
   final String title;
-
-  /// Feature description (optional)
   final String? description;
-
-  /// Feature icon
   final IconData icon;
-
-  /// Accent color for icon, left bar, and highlights
   final Color? iconColor;
-
-  /// Optional gradient (e.g. for primary CTA). When set, card uses gradient background.
   final List<Color>? gradientColors;
-
-  /// Whether card is tappable
   final bool clickable;
-
-  /// Callback when card is tapped
   final VoidCallback? onTap;
-
-  /// Custom padding
   final EdgeInsets? padding;
+
+  /// When true, card sizes to content (list / wrap). When false, fills grid cell.
+  final bool compact;
 
   const FeatureCard({
     super.key,
@@ -41,6 +27,7 @@ class FeatureCard extends StatelessWidget {
     this.clickable = false,
     this.onTap,
     this.padding,
+    this.compact = true,
   });
 
   @override
@@ -48,17 +35,69 @@ class FeatureCard extends StatelessWidget {
     final theme = Theme.of(context);
     final accent = iconColor ?? AppColors.primaryGreen;
     final useGradient = gradientColors != null && gradientColors!.length >= 2;
+    final onAccent = useGradient ? Colors.white : accent;
+    final titleColor =
+        useGradient ? AppColors.textWhite : theme.colorScheme.onSurface;
+    final bodyColor = useGradient
+        ? AppColors.textLight.withValues(alpha: 0.9)
+        : theme.colorScheme.onSurfaceVariant;
 
-    final contentRadius = useGradient
-        ? BorderRadius.circular(AppBorders.radiusLg)
-        : const BorderRadius.only(
-            topRight: Radius.circular(AppBorders.radiusLg),
-            bottomRight: Radius.circular(AppBorders.radiusLg),
-          );
-    final content = Container(
-      padding: padding ?? const EdgeInsets.all(AppSpacing.lg),
+    final content = Padding(
+      padding: padding ??
+          const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.md,
+          ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: useGradient
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(AppBorders.radiusMd),
+            ),
+            child: Icon(icon, size: 22, color: onAccent),
+          ),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: titleColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (description != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    description!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: bodyColor,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final decorated = DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: contentRadius,
+        borderRadius: BorderRadius.circular(AppBorders.radiusLg),
         gradient: useGradient
             ? LinearGradient(
                 begin: Alignment.topLeft,
@@ -67,126 +106,31 @@ class FeatureCard extends StatelessWidget {
               )
             : null,
         color: useGradient ? null : theme.colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: (useGradient ? accent : AppColors.divider).withOpacity(0.12),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-            spreadRadius: 0,
-          ),
-        ],
         border: useGradient
             ? null
-            : Border.all(
-                color: accent.withOpacity(0.2),
-                width: 1,
-              ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.max,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: useGradient
-                  ? Colors.white.withOpacity(0.2)
-                  : accent.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(AppBorders.radiusMd),
-            ),
-            child: Icon(
-              icon,
-              size: 26,
-              color: useGradient ? Colors.white : accent,
-            ),
+            : Border.all(color: accent.withValues(alpha: 0.22)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.divider.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            title,
-            style: AppTextStyles.h4.copyWith(
-              color: useGradient ? AppColors.textWhite : AppColors.textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (description != null) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Expanded(
-              child: Text(
-                description!,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: useGradient
-                      ? AppColors.textLight.withOpacity(0.9)
-                      : AppColors.textSecondary,
-                  fontSize: 12,
-                  height: 1.35,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-          if (clickable && !useGradient) ...[
-            const SizedBox(height: AppSpacing.xs),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 16,
-                  color: accent.withOpacity(0.7),
-                ),
-              ],
-            ),
-          ],
         ],
       ),
+      child: content,
     );
 
-    if (useGradient) {
-      return Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: clickable ? onTap : null,
-          borderRadius: BorderRadius.circular(AppBorders.radiusLg),
-          child: content,
-        ),
-      );
-    }
-
-    return Material(
+    final child = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: clickable ? onTap : null,
         borderRadius: BorderRadius.circular(AppBorders.radiusLg),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppBorders.radiusLg),
-          child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(AppBorders.radiusLg),
-                  bottomLeft: Radius.circular(AppBorders.radiusLg),
-                ),
-              ),
-            ),
-            Expanded(child: content),
-          ],
-        ),
-        ),
+        child: decorated,
       ),
     );
+
+    if (compact) return child;
+
+    return SizedBox.expand(child: child);
   }
 }

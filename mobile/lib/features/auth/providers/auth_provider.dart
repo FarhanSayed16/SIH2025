@@ -3,6 +3,7 @@ import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../core/providers/api_service_provider.dart';
+import '../../../data/module_data.dart';
 import '../../progress/services/progress_restoration_service.dart';
 import '../../drills/services/drill_service.dart';
 
@@ -122,6 +123,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         isLoading: false,
       );
+      await _restoreUserProgress(authResponse.user.id);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -164,6 +166,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         isLoading: false,
       );
+      await _restoreUserProgress(authResponse.user.id);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -178,6 +181,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true);
     try {
       await _authService.logout();
+      ModuleRepository().reset();
       state = AuthState();
     } catch (e) {
       state = state.copyWith(

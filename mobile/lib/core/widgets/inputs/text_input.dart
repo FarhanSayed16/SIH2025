@@ -43,6 +43,9 @@ class TextInputCustom extends StatefulWidget {
   /// Callback when trailing icon is pressed
   final VoidCallback? onTrailingIconPressed;
 
+  /// Semantics / tooltip for trailing icon
+  final String? trailingIconTooltip;
+
   /// Whether field is enabled
   final bool enabled;
 
@@ -76,6 +79,15 @@ class TextInputCustom extends StatefulWidget {
   /// Validator function
   final String? Function(String?)? validator;
 
+  /// Autofill hints (e.g. [AutofillHints.email])
+  final Iterable<String>? autofillHints;
+
+  /// Keyboard action (Next / Done / etc.)
+  final TextInputAction? textInputAction;
+
+  /// Capitalization behavior
+  final TextCapitalization textCapitalization;
+
   const TextInputCustom({
     super.key,
     this.label,
@@ -90,6 +102,7 @@ class TextInputCustom extends StatefulWidget {
     this.leadingIcon,
     this.trailingIcon,
     this.onTrailingIconPressed,
+    this.trailingIconTooltip,
     this.enabled = true,
     this.readOnly = false,
     this.required = false,
@@ -101,6 +114,9 @@ class TextInputCustom extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.validator,
+    this.autofillHints,
+    this.textInputAction,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   @override
@@ -137,6 +153,10 @@ class _TextInputCustomState extends State<TextInputCustom> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
+
     return TextFormField(
       controller: _controller,
       focusNode: widget.focusNode,
@@ -146,8 +166,15 @@ class _TextInputCustomState extends State<TextInputCustom> {
       maxLines: widget.maxLines,
       maxLength: widget.maxLength,
       keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      textCapitalization: widget.textCapitalization,
+      autofillHints: widget.autofillHints,
       inputFormatters: widget.inputFormatters,
-      style: AppTextStyles.bodyLarge,
+      style: theme.textTheme.bodyLarge?.copyWith(
+        color: widget.enabled
+            ? colorScheme.onSurface
+            : colorScheme.onSurface.withValues(alpha: 0.45),
+      ),
       decoration: InputDecoration(
         labelText: widget.label != null
             ? (widget.required ? '${widget.label} *' : widget.label)
@@ -156,15 +183,24 @@ class _TextInputCustomState extends State<TextInputCustom> {
         errorText: widget.errorText,
         helperText: widget.helperText,
         prefixIcon: widget.leadingIcon != null
-            ? Icon(widget.leadingIcon, size: 24)
+            ? Icon(
+                widget.leadingIcon,
+                size: 24,
+                color: hasError ? colorScheme.error : colorScheme.onSurfaceVariant,
+              )
             : null,
         suffixIcon: widget.trailingIcon != null
             ? IconButton(
                 icon: Icon(widget.trailingIcon, size: 24),
-                onPressed: widget.onTrailingIconPressed,
+                tooltip: widget.trailingIconTooltip,
+                onPressed: widget.enabled ? widget.onTrailingIconPressed : null,
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
               )
             : null,
         contentPadding: AppSpacing.input,
+        // Keep helper/error outside the 56px control height via InputDecorator.
+        isDense: false,
+        constraints: const BoxConstraints(minHeight: 56),
       ),
       onChanged: widget.onChanged,
       onFieldSubmitted: widget.onSubmitted,
@@ -173,4 +209,3 @@ class _TextInputCustomState extends State<TextInputCustom> {
     );
   }
 }
-

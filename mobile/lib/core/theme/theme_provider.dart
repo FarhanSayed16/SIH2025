@@ -1,4 +1,8 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+﻿import 'dart:async';
+
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/storage_service.dart';
+import '../constants/app_constants.dart';
 
 /// App mode state (Peace or Crisis)
 enum AppMode {
@@ -32,20 +36,50 @@ class AppModeNotifier extends StateNotifier<AppMode> {
   bool get isPeace => state == AppMode.peace;
 }
 
-/// Theme mode notifier
+/// Theme mode notifier — ordinary light/dark appearance (B9), not crisis.
 class ThemeModeNotifier extends StateNotifier<AppThemeMode> {
-  ThemeModeNotifier() : super(AppThemeMode.light);
+  final StorageService _storageService;
+
+  ThemeModeNotifier(this._storageService) : super(AppThemeMode.light) {
+    _loadSaved();
+  }
+
+  Future<void> _loadSaved() async {
+    try {
+      final saved = await _storageService.getFromBox(
+        AppConstants.settingsBox,
+        'theme_mode',
+      );
+      if (saved == 'dark') {
+        state = AppThemeMode.dark;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _persist(AppThemeMode mode) async {
+    try {
+      await _storageService.storeInBox(
+        AppConstants.settingsBox,
+        'theme_mode',
+        mode == AppThemeMode.dark ? 'dark' : 'light',
+      );
+    } catch (_) {}
+  }
 
   void setLight() {
     state = AppThemeMode.light;
+    unawaited(_persist(state));
   }
 
   void setDark() {
     state = AppThemeMode.dark;
+    unawaited(_persist(state));
   }
 
   void toggle() {
-    state = state == AppThemeMode.light ? AppThemeMode.dark : AppThemeMode.light;
+    state =
+        state == AppThemeMode.light ? AppThemeMode.dark : AppThemeMode.light;
+    unawaited(_persist(state));
   }
 }
 
@@ -54,7 +88,7 @@ final appModeProvider = StateNotifierProvider<AppModeNotifier, AppMode>((ref) {
   return AppModeNotifier();
 });
 
-final themeModeProvider = StateNotifierProvider<ThemeModeNotifier, AppThemeMode>((ref) {
-  return ThemeModeNotifier();
+final themeModeProvider =
+    StateNotifierProvider<ThemeModeNotifier, AppThemeMode>((ref) {
+  return ThemeModeNotifier(StorageService());
 });
-

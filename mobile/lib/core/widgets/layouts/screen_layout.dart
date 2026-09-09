@@ -15,8 +15,12 @@ class ScreenLayout extends StatelessWidget {
   /// Background color
   final Color? backgroundColor;
 
-  /// Whether to use safe area
+  /// Whether to use safe area (all sides by default)
   final bool useSafeArea;
+
+  /// When true and [useSafeArea] is true, skip bottom inset —
+  /// use when a parent shell already owns bottom navigation / FAB space.
+  final bool excludeBottomSafeArea;
 
   /// App bar
   final PreferredSizeWidget? appBar;
@@ -42,6 +46,7 @@ class ScreenLayout extends StatelessWidget {
     this.padding,
     this.backgroundColor,
     this.useSafeArea = true,
+    this.excludeBottomSafeArea = false,
     this.appBar,
     this.bottomNavigationBar,
     this.floatingActionButton,
@@ -50,8 +55,16 @@ class ScreenLayout extends StatelessWidget {
     this.loadingMessage,
   });
 
+  /// Horizontal page padding: 16 below 600 width, 24 at/above.
+  static EdgeInsets pagePaddingOf(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final horizontal = width >= 600 ? AppSpacing.xl : AppSpacing.lg;
+    return EdgeInsets.symmetric(horizontal: horizontal);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     Widget content = child;
 
     if (padding != null) {
@@ -62,11 +75,15 @@ class ScreenLayout extends StatelessWidget {
     }
 
     if (useSafeArea) {
-      content = SafeArea(child: content);
+      content = SafeArea(
+        bottom: !excludeBottomSafeArea && bottomNavigationBar == null,
+        child: content,
+      );
     }
 
     return Scaffold(
-      backgroundColor: backgroundColor ?? AppColors.backgroundLight,
+      backgroundColor:
+          backgroundColor ?? theme.scaffoldBackgroundColor,
       appBar: appBar,
       drawer: drawer,
       bottomNavigationBar: bottomNavigationBar,
@@ -85,13 +102,13 @@ class ScreenLayout extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         CircularProgressIndicator(
-                          color: AppColors.primaryGreen,
+                          color: theme.colorScheme.primary,
                         ),
                         if (loadingMessage != null) ...[
                           SizedBox(height: AppSpacing.md),
                           Text(
                             loadingMessage!,
-                            style: AppTextStyles.bodyMedium,
+                            style: theme.textTheme.bodyMedium,
                           ),
                         ],
                       ],
@@ -105,4 +122,3 @@ class ScreenLayout extends StatelessWidget {
     );
   }
 }
-

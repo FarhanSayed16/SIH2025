@@ -10,13 +10,22 @@ import '../../../core/constants/api_endpoints.dart';
 import '../../../core/design/design_system.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/tts_service.dart';
+import '../../../l10n/app_localizations.dart';
 
 class _ChatMessage {
   final bool isUser;
   final String text;
   final DateTime at;
+  final bool isError;
+  final String? retryQuestion;
 
-  _ChatMessage({required this.isUser, required this.text, required this.at});
+  _ChatMessage({
+    required this.isUser,
+    required this.text,
+    required this.at,
+    this.isError = false,
+    this.retryQuestion,
+  });
 }
 
 class AskKavachScreen extends StatefulWidget {
@@ -105,20 +114,7 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
           _loading = false;
         });
         _scrollToBottom();
-        // C-V1: Read the reply aloud (C-V2: same bubble shows "Stop" while playing)
-        if (replyText.isNotEmpty) {
-          final replyIndex = _messages.length - 1;
-          setState(() {
-            _isSpeaking = true;
-            _playingMessageIndex = replyIndex;
-          });
-          await _tts.speak(replyText, onDone: () {
-            if (mounted) setState(() {
-              _isSpeaking = false;
-              _playingMessageIndex = null;
-            });
-          });
-        }
+        // Read-aloud is opt-in via Listen on each bot bubble.
       }
     } catch (e) {
       String errorText = 'Something went wrong. Please check your connection and try again.';
@@ -128,7 +124,13 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
       }
       if (mounted) {
         setState(() {
-          _messages.add(_ChatMessage(isUser: false, text: errorText, at: DateTime.now()));
+          _messages.add(_ChatMessage(
+            isUser: false,
+            text: errorText,
+            at: DateTime.now(),
+            isError: true,
+            retryQuestion: text,
+          ));
           _loading = false;
         });
         _scrollToBottom();
@@ -171,13 +173,24 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
     setState(() => _isListening = true);
     await _speech.listen(
       onResult: (result) {
-        if (!result.finalResult || result.recognizedWords.isEmpty) return;
         final text = result.recognizedWords.trim();
         if (text.isEmpty) return;
-        _speech.stop();
-        if (mounted) {
-          setState(() => _isListening = false);
-          _sendMessageWithText(text);
+        // Put transcript in composer for review; send only when user taps Send.
+        _inputController.text = text;
+        _inputController.selection = TextSelection.fromPosition(
+          TextPosition(offset: _inputController.text.length),
+        );
+        if (result.finalResult) {
+          _speech.stop();
+          if (mounted) {
+            setState(() => _isListening = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Review the transcript, then press Send'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
         }
       },
       listenFor: const Duration(seconds: 10),
@@ -206,6 +219,7 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundWhite,
@@ -222,7 +236,7 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Ask Kavach'),
+                Text(l10n.askKavach),
                 if (_isSpeaking)
                   Text(
                     'Speaking...',
@@ -361,8 +375,8 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
                     ),
                   ),
                 ),
-                // C-V2: Listen button on each bot message
-                if (isBot) ...[
+                // C-V2: Listen button on each bot message (opt-in read-aloud)
+                if (isBot && !msg.isError) ...[
                   const SizedBox(height: 6),
                   InkWell(
                     onTap: () => _playMessageAt(index),
@@ -383,6 +397,32 @@ class _AskKavachScreenState extends State<AskKavachScreen> {
                             style: theme.textTheme.labelSmall?.copyWith(
                               color: isThisPlaying ? AppColors.primaryRed : AppColors.primaryGreen,
                               fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+                if (isBot && msg.isError && msg.retryQuestion != null) ...[
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: _loading
+                        ? null
+                        : () => _sendMessageWithText(msg.retryQuestion!),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.refresh_rounded, size: 18, color: AppColors.primaryRed),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Retry',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: AppColors.primaryRed,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],

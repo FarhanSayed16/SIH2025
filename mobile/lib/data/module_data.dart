@@ -13,42 +13,40 @@ class ModuleRepository {
   List<LearningModule>? _modules;
   bool _isInitialized = false;
   bool _isInitializing = false;
+  String? _scopedUserId;
   final VideoProgressService _videoProgressService = VideoProgressService();
 
-  /// Initialize the repository
-  /// Loads modules from data and restores video progress from Hive
-  /// This must be called before getModules() is used
-  Future<void> initialize() async {
-    if (_isInitialized) {
-      print('✅ [MODULE REPO] Already initialized');
+  String? get scopedUserId => _scopedUserId;
+
+  /// Initialize the repository for [userId] (user-scoped video progress).
+  Future<void> initialize({String? userId}) async {
+    if (_isInitialized && _scopedUserId == userId) {
       return;
+    }
+
+    // Different learner on shared device — drop in-memory cache
+    if (_isInitialized && _scopedUserId != userId) {
+      reset();
     }
 
     if (_isInitializing) {
-      // Wait for ongoing initialization
       while (_isInitializing) {
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
-      return;
+      if (_isInitialized && _scopedUserId == userId) return;
+      if (_isInitialized && _scopedUserId != userId) {
+        reset();
+      }
     }
 
     _isInitializing = true;
-    print('🔄 [MODULE REPO] Initializing repository...');
 
     try {
-      // 1. Load modules from static data
       _modules = _loadModulesFromData();
-      print('✅ [MODULE REPO] Loaded ${_modules!.length} modules from data');
-
-      // 2. Load video progress from Hive and update modules
+      _scopedUserId = userId;
       await _loadVideoProgress();
-      print('✅ [MODULE REPO] Video progress loaded and applied');
-
       _isInitialized = true;
-      print('✅ [MODULE REPO] Repository initialized successfully');
     } catch (e) {
-      print('❌ [MODULE REPO] Error initializing repository: $e');
-      // Still mark as initialized to prevent infinite loops
       _isInitialized = true;
     } finally {
       _isInitializing = false;
@@ -477,36 +475,33 @@ class ModuleRepository {
     ];
   }
 
-  /// Load video progress from Hive and update module video completion status
-  /// Phase: Video Progress Persistence Fix
   Future<void> _loadVideoProgress() async {
     if (_modules == null) return;
 
     try {
-      print('🔄 [MODULE REPO] Loading video progress for all modules...');
-      int updatedCount = 0;
-
       for (final module in _modules!) {
         try {
-          final progress = await _videoProgressService.getModuleVideoProgress(module.id);
-          if (progress != null && progress.completedCount > 0) {
-            // Update VideoLesson.isCompleted from loaded progress
+          final progress = await _videoProgressService.getModuleVideoProgress(
+            module.id,
+            userId: _scopedUserId,
+          );
+          if (progress == null) {
             for (final video in module.videos) {
-              video.isCompleted = progress.isVideoCompleted(video.title);
+              video.isCompleted = false;
             }
-            updatedCount++;
-            print('✅ [MODULE REPO] Updated progress for ${module.id}: ${progress.completedCount}/${progress.videos.length} videos');
+            continue;
           }
-        } catch (e) {
-          print('⚠️ [MODULE REPO] Error loading progress for ${module.id}: $e');
-          // Continue with other modules
+          for (final video in module.videos) {
+            video.isCompleted = progress.isVideoCompleted(video.title);
+            final entry = progress.getVideoProgress(video.title);
+            video.lastPosition =
+                video.isCompleted ? null : entry?.lastPosition;
+          }
+        } catch (_) {
+          // Keep module video flags as loaded from data (false)
         }
       }
-
-      print('✅ [MODULE REPO] Video progress loaded: $updatedCount modules updated');
-    } catch (e) {
-      print('❌ [MODULE REPO] Error loading video progress: $e');
-    }
+    } catch (_) {}
   }
 
   /// Get modules (cached)
@@ -552,10 +547,11 @@ class ModuleRepository {
   /// Check if repository is initialized
   bool get isInitialized => _isInitialized;
 
-  /// Reset repository (for testing/debugging)
+  /// Reset repository (logout / user switch)
   void reset() {
     _modules = null;
     _isInitialized = false;
     _isInitializing = false;
+    _scopedUserId = null;
   }
 }

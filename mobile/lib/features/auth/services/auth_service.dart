@@ -65,9 +65,9 @@ class AuthService {
     } catch (e) {
       if (e is DioException) {
         final errorMessage = _handleDioError(e);
-        // Preserve the original error message for approval pending detection
-        // The login screen checks for "pending teacher approval" in the error string
-        throw Exception(errorMessage);
+        // Preserve typed errors so the login screen can distinguish
+        // pending approval, field errors, credentials, and network failure.
+        throw AuthValidationException(errorMessage, extractFieldErrors(e));
       }
       rethrow;
     }

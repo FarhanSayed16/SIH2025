@@ -53,61 +53,82 @@ class BottomNavBarCustom extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final navTheme = theme.bottomNavigationBarTheme;
+
     return BottomNavigationBar(
       currentIndex: selectedIndex.clamp(0, items.length - 1),
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
-      backgroundColor: backgroundColor ?? AppColors.backgroundWhite,
-      selectedItemColor: selectedItemColor ?? AppColors.primaryGreen,
-      unselectedItemColor: unselectedItemColor ?? AppColors.textSecondary,
-      selectedLabelStyle: AppTextStyles.labelSmall,
-      unselectedLabelStyle: AppTextStyles.labelSmall,
-      elevation: 8,
+      backgroundColor: backgroundColor ??
+          navTheme.backgroundColor ??
+          colorScheme.surface,
+      selectedItemColor: selectedItemColor ??
+          navTheme.selectedItemColor ??
+          colorScheme.primary,
+      unselectedItemColor: unselectedItemColor ??
+          navTheme.unselectedItemColor ??
+          colorScheme.onSurfaceVariant,
+      selectedLabelStyle: navTheme.selectedLabelStyle ?? AppTextStyles.labelSmall,
+      unselectedLabelStyle:
+          navTheme.unselectedLabelStyle ?? AppTextStyles.labelSmall,
+      elevation: navTheme.elevation ?? 8,
       items: items.asMap().entries.map((entry) {
         final index = entry.key;
         final item = entry.value;
         final isSelected = index == selectedIndex;
 
         return BottomNavigationBarItem(
-          icon: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Icon(
-                isSelected && item.selectedIcon != null
-                    ? item.selectedIcon!
-                    : item.icon,
-              ),
-              if (item.badgeCount > 0)
-                Positioned(
-                  right: -8,
-                  top: -8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryRed,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      item.badgeCount > 9 ? '9+' : '${item.badgeCount}',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textWhite,
-                        fontSize: 10,
-                      ),
-                      textAlign: TextAlign.center,
+          icon: Semantics(
+            selected: isSelected,
+            label: item.label,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                SizedBox(
+                  width: 48,
+                  height: 32,
+                  child: Center(
+                    child: Icon(
+                      isSelected && item.selectedIcon != null
+                          ? item.selectedIcon!
+                          : item.icon,
                     ),
                   ),
-                )
-              else if (item.badge != null)
-                Positioned(
-                  right: -4,
-                  top: -4,
-                  child: item.badge!,
                 ),
-            ],
+                if (item.badgeCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: colorScheme.error,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        item.badgeCount > 9 ? '9+' : '${item.badgeCount}',
+                        style: AppTextStyles.caption.copyWith(
+                          color: colorScheme.onError,
+                          fontSize: 10,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  )
+                else if (item.badge != null)
+                  Positioned(
+                    right: 4,
+                    top: 0,
+                    child: item.badge!,
+                  ),
+              ],
+            ),
           ),
           label: item.label,
         );
@@ -115,4 +136,3 @@ class BottomNavBarCustom extends StatelessWidget {
     );
   }
 }
-

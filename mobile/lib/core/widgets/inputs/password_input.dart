@@ -51,6 +51,12 @@ class PasswordInputCustom extends StatefulWidget {
   /// Validator function
   final String? Function(String?)? validator;
 
+  /// Autofill hints (password / newPassword)
+  final Iterable<String>? autofillHints;
+
+  /// Keyboard action
+  final TextInputAction? textInputAction;
+
   const PasswordInputCustom({
     super.key,
     this.label,
@@ -68,6 +74,8 @@ class PasswordInputCustom extends StatefulWidget {
     this.focusNode,
     this.autofocus = false,
     this.validator,
+    this.autofillHints,
+    this.textInputAction,
   });
 
   @override
@@ -111,6 +119,12 @@ class _PasswordInputCustomState extends State<PasswordInputCustom> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final hasError = widget.errorText != null && widget.errorText!.isNotEmpty;
+    final visibilityLabel =
+        _obscureText ? 'Show password' : 'Hide password';
+
     return TextFormField(
       controller: _controller,
       focusNode: widget.focusNode,
@@ -118,7 +132,13 @@ class _PasswordInputCustomState extends State<PasswordInputCustom> {
       enabled: widget.enabled,
       obscureText: _obscureText,
       keyboardType: TextInputType.visiblePassword,
-      style: AppTextStyles.bodyLarge,
+      textInputAction: widget.textInputAction ?? TextInputAction.done,
+      autofillHints: widget.autofillHints ?? const [AutofillHints.password],
+      style: theme.textTheme.bodyLarge?.copyWith(
+        color: widget.enabled
+            ? colorScheme.onSurface
+            : colorScheme.onSurface.withValues(alpha: 0.45),
+      ),
       decoration: InputDecoration(
         labelText: widget.label != null
             ? (widget.required ? '${widget.label} *' : widget.label)
@@ -126,15 +146,25 @@ class _PasswordInputCustomState extends State<PasswordInputCustom> {
         hintText: widget.hint ?? 'Enter password',
         errorText: widget.errorText,
         helperText: widget.helperText,
-        prefixIcon: const Icon(Icons.lock_outline, size: 24),
+        prefixIcon: Icon(
+          Icons.lock_outline,
+          size: 24,
+          color: hasError ? colorScheme.error : colorScheme.onSurfaceVariant,
+        ),
         suffixIcon: IconButton(
           icon: Icon(
-            _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+            _obscureText
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
             size: 24,
           ),
-          onPressed: _toggleVisibility,
+          tooltip: visibilityLabel,
+          onPressed: widget.enabled ? _toggleVisibility : null,
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         ),
         contentPadding: AppSpacing.input,
+        isDense: false,
+        constraints: const BoxConstraints(minHeight: 56),
       ),
       onChanged: widget.onChanged,
       onFieldSubmitted: widget.onSubmitted,
@@ -143,4 +173,3 @@ class _PasswordInputCustomState extends State<PasswordInputCustom> {
     );
   }
 }
-

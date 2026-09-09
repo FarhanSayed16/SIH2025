@@ -26,7 +26,7 @@ class _DamageScanScreenState extends State<DamageScanScreen> {
   String? _accessibilityDescription;
   bool _descriptionLoading = false;
 
-  Future<void> _pickAndScan({required ImageSource source}) async {
+  Future<void> _pickImage({required ImageSource source}) async {
     final picker = ImagePicker();
     final xFile = await picker.pickImage(
       source: source,
@@ -38,6 +38,16 @@ class _DamageScanScreenState extends State<DamageScanScreen> {
 
     setState(() {
       _pickedImage = File(xFile.path);
+      _error = null;
+      _result = null;
+      _accessibilityDescription = null;
+    });
+  }
+
+  Future<void> _analyzeImage() async {
+    if (_pickedImage == null || _loading) return;
+
+    setState(() {
       _error = null;
       _result = null;
       _loading = true;
@@ -161,7 +171,8 @@ class _DamageScanScreenState extends State<DamageScanScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Take or pick a photo after a drill or incident. AI will identify visible damage and suggest follow-up.',
+                  'Take or pick a photo after a drill or incident, review the preview, then tap Analyze. '
+                  'Results describe visible damage in this photo only — not building safety.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -201,7 +212,7 @@ class _DamageScanScreenState extends State<DamageScanScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       FilledButton.icon(
-                        onPressed: _loading ? null : () => _pickAndScan(source: ImageSource.camera),
+                        onPressed: _loading ? null : () => _pickImage(source: ImageSource.camera),
                         icon: const Icon(Icons.camera_alt_rounded, size: 22),
                         label: const Text('Camera'),
                         style: FilledButton.styleFrom(
@@ -215,7 +226,7 @@ class _DamageScanScreenState extends State<DamageScanScreen> {
                       ),
                       const SizedBox(width: 12),
                       OutlinedButton.icon(
-                        onPressed: _loading ? null : () => _pickAndScan(source: ImageSource.gallery),
+                        onPressed: _loading ? null : () => _pickImage(source: ImageSource.gallery),
                         icon: const Icon(Icons.photo_library_rounded, size: 22),
                         label: const Text('Gallery'),
                         style: OutlinedButton.styleFrom(
@@ -227,6 +238,22 @@ class _DamageScanScreenState extends State<DamageScanScreen> {
                       ),
                     ],
                   ),
+                  if (_pickedImage != null && !_loading && _result == null) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _analyzeImage,
+                      icon: const Icon(Icons.search_rounded),
+                      label: const Text('Analyze photo'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.accentOrange,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Text(
                     'Tip: Capture the full area of damage for best results.',
@@ -411,17 +438,32 @@ class _DamageResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final hasDamageField = result.containsKey('damageDetected');
     final damageDetected = result['damageDetected'] == true;
     final severity = (result['severity'] ?? '').toString().trim().toLowerCase();
     final description = (result['description'] ?? '').toString();
     final followUp = (result['followUp'] ?? '').toString();
 
-    final Color statusColor = damageDetected ? AppColors.accentOrange : AppColors.primaryGreen;
-    final IconData statusIcon = damageDetected ? Icons.warning_amber_rounded : Icons.check_circle_rounded;
-    final String statusLabel = damageDetected ? 'Damage detected' : 'No damage detected';
-    final String statusSubtitle = damageDetected
-        ? (severity.isNotEmpty ? '$severity severity' : 'Review details below')
-        : 'Area appears safe';
+    final Color statusColor = !hasDamageField
+        ? Colors.grey
+        : damageDetected
+            ? AppColors.accentOrange
+            : AppColors.primaryGreen;
+    final IconData statusIcon = !hasDamageField
+        ? Icons.help_outline_rounded
+        : damageDetected
+            ? Icons.warning_amber_rounded
+            : Icons.check_circle_rounded;
+    final String statusLabel = !hasDamageField
+        ? 'Unable to assess this photo'
+        : damageDetected
+            ? 'Damage detected'
+            : 'No damage detected in this photo';
+    final String statusSubtitle = !hasDamageField
+        ? 'The analysis result was incomplete or ambiguous'
+        : damageDetected
+            ? (severity.isNotEmpty ? '$severity severity' : 'Review details below')
+            : 'Photo observation only — not a building safety confirmation';
 
     // Severity chip color
     Color severityColor = theme.colorScheme.onSurfaceVariant;

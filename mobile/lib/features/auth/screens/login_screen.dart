@@ -1,21 +1,17 @@
-/// RBAC Refinement: Login Screen - Modern Redesign
-/// High-end startup-quality UI with animations and glassmorphism
+/// Compact Login — B3 layout and explained class-join flow.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:dio/dio.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../core/design/design_system.dart';
 import '../../../core/utils/validators.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/auth_provider.dart';
+import '../providers/pending_join_intent_provider.dart';
+import '../services/auth_service.dart';
 import 'register_screen.dart';
 import 'approval_pending_screen.dart';
-import '../../qr/screens/qr_scanner_screen.dart';
-import '../../student/services/student_service.dart';
-import '../../../core/providers/api_service_provider.dart';
-import '../../student/screens/join_class_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -28,713 +24,523 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
-  // Field-specific error messages from backend
   String? _emailError;
   String? _passwordError;
-
-  // Touched state tracking
   bool _emailTouched = false;
   bool _passwordTouched = false;
+  bool _isSubmitting = false;
+
+  static const _languageOptions = <(String code, String label)>[
+    ('en', 'English'),
+    ('hi', 'हिंदी'),
+    ('mr', 'मराठी'),
+    ('pa', 'ਪੰਜਾਬੀ'),
+  ];
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _handleJoinClassByQR(BuildContext context, String qrCode) async {
-    // Use shared ApiService from provider to ensure token is available
-    final apiService = ref.read(apiServiceProvider);
-    final studentService = StudentService(apiService: apiService);
-
-    // Show loading
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
-    try {
-      // Parse QR code to extract classId
-      final classId = studentService.parseClassQRCode(qrCode);
-      if (classId == null) {
-        Navigator.pop(context); // Close loading
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                  'Invalid QR code format. Please scan a valid class QR code.'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-
-      // Join class using classId
-      final response = await studentService.joinClassByQR(classId);
-
-      Navigator.pop(context); // Close loading
-
-      if (response['success'] == true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                (response['message'] as String?) ??
-                    'Join request sent successfully!',
-              ),
-              backgroundColor: AppColors.success,
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                (response['message'] as String?) ?? 'Failed to join class',
-              ),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      Navigator.pop(context); // Close loading
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceAll('Exception: ', '')),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
-  // Validate field and update errors
   void _validateEmail() {
     if (_emailTouched) {
-      final email = _emailController.text.trim();
-      final error = Validators.emailError(email);
       setState(() {
-        _emailError = error;
+        _emailError = Validators.emailError(_emailController.text.trim());
       });
     }
   }
 
   void _validatePassword() {
     if (_passwordTouched) {
-      final password = _passwordController.text;
-      final error = Validators.passwordError(password);
       setState(() {
-        _passwordError = error;
+        _passwordError = Validators.passwordError(_passwordController.text);
       });
     }
   }
 
-  // Check if form is valid
   bool _isFormValid() {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-
-    if (email.isEmpty || password.isEmpty) {
-      return false;
-    }
-
-    // Check for validation errors
-    if (_emailError != null || _passwordError != null) {
-      return false;
-    }
-
-    // Validate fields
-    if (Validators.emailError(email) != null) {
-      return false;
-    }
-    if (Validators.passwordError(password) != null) {
-      return false;
-    }
-
+    if (email.isEmpty || password.isEmpty) return false;
+    if (_emailError != null || _passwordError != null) return false;
+    if (Validators.emailError(email) != null) return false;
+    if (Validators.passwordError(password) != null) return false;
     return true;
   }
 
   Future<void> _handleLogin() async {
-    // Mark all fields as touched
+    if (_isSubmitting) return;
+
     setState(() {
       _emailTouched = true;
       _passwordTouched = true;
-    });
-
-    // Clear previous backend errors
-    setState(() {
       _emailError = null;
       _passwordError = null;
     });
 
-    // Validate all fields
     _validateEmail();
     _validatePassword();
 
-    // Check if form is valid
     if (!_isFormValid()) {
-      // Trigger form validation to show errors
       _formKey.currentState?.validate();
       return;
     }
 
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _isSubmitting = true);
     try {
       await ref.read(authProvider.notifier).login(
             _emailController.text.trim(),
             _passwordController.text,
           );
-      // Navigation handled automatically by main.dart
-    } on DioException catch (e) {
-      // Handle DioException (API errors)
+      // Navigation + pending join intent handled by app shell.
+    } on AuthValidationException catch (e) {
+      if (!mounted) return;
+      await _handleAuthError(e);
+    } catch (e) {
       if (mounted) {
-        final data = e.response?.data as Map<String, dynamic>?;
-
-        // Extract error message from response
-        String errorMessage = 'Login failed';
-        if (data != null) {
-          errorMessage = data['message'] as String? ??
-              data['error'] as String? ??
-              errorMessage;
-        }
-
-        // Extract field-specific errors if available
-        Map<String, String> fieldErrors = {};
-        if (data != null) {
-          final errors = data['errors'] as Map<String, dynamic>?;
-          if (errors != null) {
-            final fields = errors['fields'] as Map<String, dynamic>?;
-            if (fields != null) {
-              fields.forEach((key, value) {
-                if (value is String) {
-                  fieldErrors[key] = value;
-                }
-              });
-            }
-          }
-        }
-
-        // Update field errors
-        if (fieldErrors.isNotEmpty) {
-          setState(() {
-            _emailError = fieldErrors['email'];
-            _passwordError = fieldErrors['password'];
-          });
-        }
-
-        final errorString = errorMessage.toLowerCase();
-
-        // Debug: Print the actual error to help diagnose
-        print('🔍 Login catch - Error type: ${e.runtimeType}');
-        print('🔍 Login catch - Error message: $errorMessage');
-
-        // Check if account is pending approval - navigate to approval screen
-        final isPendingApproval =
-            errorString.contains('pending teacher approval') ||
-                errorString.contains('pending approval') ||
-                errorString.contains('account is pending') ||
-                errorString.contains('wait for approval') ||
-                (errorString.contains('pending') &&
-                    errorString.contains('teacher')) ||
-                (errorString.contains('pending') &&
-                    errorString.contains('approval'));
-
-        // Check if user is a roster record (cannot login)
-        final isRosterRecord = errorString.contains('roster record') ||
-            errorString.contains('cannot login') ||
-            errorString.contains('contact your teacher') ||
-            errorString.contains('contact your school admin') ||
-            errorString.contains('please register');
-
-        print('🔍 Is pending approval? $isPendingApproval');
-        print('🔍 Is roster record? $isRosterRecord');
-
-        if (isPendingApproval) {
-          // Extract email from controller for student name
-          final email = _emailController.text.trim();
-          // Format name from email (e.g., "rohan.sharma@student.com" -> "rohan sharma")
-          final nameParts = email.split('@').first.split('.');
-          final name = nameParts
-              .map((part) =>
-                  part.isEmpty ? '' : part[0].toUpperCase() + part.substring(1))
-              .join(' ');
-
-          print(
-              '✅ Detected pending approval - navigating to ApprovalPendingScreen');
-          print('   Email: $email');
-          print('   Name: $name');
-
-          Navigator.of(context).pushReplacement<void, void>(
-            MaterialPageRoute<void>(
-              builder: (context) => ApprovalPendingScreen(
-                studentName: name.isNotEmpty ? name : email.split('@').first,
-                studentEmail: email,
-              ),
-            ),
-          );
-          return; // Don't show snackbar, we navigated
-        } else if (isRosterRecord) {
-          // Roster records cannot login - show specific message
-          errorMessage =
-              'Roster records cannot login. Please contact your teacher.';
-        } else if (errorString.contains('rejected')) {
-          errorMessage =
-              'Your account has been rejected. Please contact your teacher.';
-        } else if (errorString.contains('invalid credentials') ||
-            errorString.contains('invalid email or password')) {
-          errorMessage = 'Invalid email or password';
-        } else if (errorString.contains('connection timeout') ||
-            errorString.contains('no internet') ||
-            errorString.contains('connection error')) {
-          errorMessage =
-              'Connection error. Please check your internet connection.';
-        }
-
-        // Only show snackbar if we didn't navigate away
-        if (!isPendingApproval) {
-          SnackbarWidget.show(
-            context,
-            message: errorMessage,
-            type: SnackbarType.error,
-          );
-        }
-      }
-    } catch (e, stack) {
-      // Fallback for unexpected errors
-      if (mounted) {
-        print('❌ Login error: $e');
-        print('Stack trace: $stack');
         SnackbarWidget.show(
           context,
           message: 'Something went wrong. Please try again.',
           type: SnackbarType.error,
         );
       }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _handleAuthError(AuthValidationException e) async {
+    String errorMessage = e.message.isNotEmpty ? e.message : 'Login failed';
+    final fieldErrors = e.fieldErrors;
+
+    if (fieldErrors.isNotEmpty) {
+      setState(() {
+        _emailError = fieldErrors['email'];
+        _passwordError = fieldErrors['password'];
+      });
+    }
+
+    final errorString = errorMessage.toLowerCase();
+
+    final isPendingApproval =
+        errorString.contains('pending teacher approval') ||
+            errorString.contains('pending approval') ||
+            errorString.contains('account is pending') ||
+            errorString.contains('wait for approval') ||
+            (errorString.contains('pending') &&
+                errorString.contains('teacher')) ||
+            (errorString.contains('pending') &&
+                errorString.contains('approval'));
+
+    final isRosterRecord = errorString.contains('roster record') ||
+        errorString.contains('cannot login') ||
+        errorString.contains('contact your teacher') ||
+        errorString.contains('contact your school admin') ||
+        errorString.contains('please register');
+
+    if (isPendingApproval) {
+      final email = _emailController.text.trim();
+      final nameParts = email.split('@').first.split('.');
+      final name = nameParts
+          .map((part) =>
+              part.isEmpty ? '' : part[0].toUpperCase() + part.substring(1))
+          .join(' ');
+
+      Navigator.of(context).pushReplacement<void, void>(
+        MaterialPageRoute<void>(
+          builder: (context) => ApprovalPendingScreen(
+            studentName: name.isNotEmpty ? name : email.split('@').first,
+            studentEmail: email,
+          ),
+        ),
+      );
+      return;
+    } else if (isRosterRecord) {
+      errorMessage =
+          'Roster records cannot login. Please contact your teacher.';
+    } else if (errorString.contains('rejected')) {
+      errorMessage =
+          'Your account has been rejected. Please contact your teacher.';
+    } else if (errorString.contains('invalid credentials') ||
+        errorString.contains('invalid email or password')) {
+      errorMessage = 'Invalid email or password';
+    } else if (errorString.contains('connection timeout') ||
+        errorString.contains('no internet') ||
+        errorString.contains('connection error')) {
+      errorMessage =
+          'Connection error. Please check your internet connection.';
+    }
+
+    SnackbarWidget.show(
+      context,
+      message: errorMessage,
+      type: SnackbarType.error,
+    );
+  }
+
+  void _openJoinClassSheet() {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: theme.colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  l10n.joinYourClass,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in or create an account to join a class. '
+                  'You can enter a class code or scan a classroom QR after you are signed in.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                PrimaryButton(
+                  label: l10n.signIn,
+                  fullWidth: true,
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    _emailFocus.requestFocus();
+                  },
+                ),
+                const SizedBox(height: 12),
+                OutlinedButtonCustom(
+                  label: 'Create an account',
+                  fullWidth: true,
+                  onPressed: () {
+                    Navigator.pop(sheetContext);
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(
+                        builder: (context) => const RegisterScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Already planning how you will join?',
+                  style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.password, color: theme.colorScheme.primary),
+                  title: const Text('I will use a class code'),
+                  subtitle: const Text('Opens after you sign in'),
+                  onTap: () {
+                    ref.read(pendingJoinIntentProvider.notifier).state =
+                        PendingJoinMode.classCode;
+                    Navigator.pop(sheetContext);
+                    SnackbarWidget.show(
+                      context,
+                      message: 'Sign in to continue with your class code.',
+                      type: SnackbarType.info,
+                    );
+                    _emailFocus.requestFocus();
+                  },
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.qr_code_scanner,
+                      color: theme.colorScheme.primary),
+                  title: const Text('I will scan a classroom QR'),
+                  subtitle: const Text('Opens after you sign in'),
+                  onTap: () {
+                    ref.read(pendingJoinIntentProvider.notifier).state =
+                        PendingJoinMode.scanQr;
+                    Navigator.pop(sheetContext);
+                    SnackbarWidget.show(
+                      context,
+                      message: 'Sign in to scan your classroom QR code.',
+                      type: SnackbarType.info,
+                    );
+                    _emailFocus.requestFocus();
+                  },
+                ),
+                TextButton(
+                  onPressed: () {
+                    ref.read(pendingJoinIntentProvider.notifier).state = null;
+                    Navigator.pop(sheetContext);
+                  },
+                  child: const Text('Cancel'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageControl(BuildContext context) {
+    final locale = ref.watch(localeProvider).locale.languageCode;
+    final current = _languageOptions.firstWhere(
+      (o) => o.$1 == locale,
+      orElse: () => _languageOptions.first,
+    );
+
+    return Align(
+      alignment: Alignment.centerRight,
+      child: PopupMenuButton<String>(
+        tooltip: 'Application language',
+        onSelected: (code) {
+          ref.read(localeProvider.notifier).setLocale(Locale(code));
+        },
+        itemBuilder: (context) => _languageOptions
+            .map(
+              (o) => PopupMenuItem<String>(
+                value: o.$1,
+                child: Text(
+                  o.$2,
+                  style: TextStyle(
+                    fontWeight:
+                        o.$1 == locale ? FontWeight.w700 : FontWeight.w400,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.language, size: 20, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                current.$2,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+              ),
+              const Icon(Icons.arrow_drop_down, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
     final l10n = AppLocalizations.of(context);
-    final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final busy = authState.isLoading || _isSubmitting;
 
     return Scaffold(
+      backgroundColor: colorScheme.surface,
       body: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              AppColors.primaryGreen.withOpacity(0.1),
-              AppColors.backgroundLight,
-              AppColors.primaryGreenSubtle.withOpacity(0.05),
+              AppColors.primaryGreenSubtle.withValues(alpha: 0.65),
+              colorScheme.surface,
+              colorScheme.surface,
             ],
+            stops: const [0, 0.28, 1],
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: AppSpacing.screenEdge,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(height: size.height * 0.08),
-
-                    // Logo
-                    Column(
-                      children: [
-                        const KavachLogo(size: KavachLogoSize.login)
-                            .animate()
-                            .scale(
-                                delay: 100.ms,
-                                duration: 600.ms,
-                                curve: Curves.easeOut)
-                            .fadeIn(delay: 100.ms, duration: 600.ms),
-                        SizedBox(height: AppSpacing.lg),
-                        Text(
-                          l10n.appName,
-                          style: AppTextStyles.h1.copyWith(
-                            color: AppColors.primaryGreen,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        )
-                            .animate()
-                            .fadeIn(delay: 300.ms, duration: 600.ms)
-                            .slideY(
-                                begin: -0.2,
-                                end: 0,
-                                delay: 300.ms,
-                                duration: 600.ms),
-                        SizedBox(height: AppSpacing.sm),
-                        Text(
-                          l10n.appDescription,
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ).animate().fadeIn(delay: 500.ms, duration: 600.ms),
-                      ],
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: AutofillGroup(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: ScreenLayout.pagePaddingOf(context).copyWith(
+                      top: AppSpacing.sm,
+                      bottom: AppSpacing.xl,
                     ),
-
-                    SizedBox(height: AppSpacing.xxl * 1.5),
-
-                    // Glassmorphic Card Container
-                    Container(
-                      padding: const EdgeInsets.all(AppSpacing.xl),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius:
-                            BorderRadius.circular(AppBorders.radiusXl),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 1.5,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryGreen.withOpacity(0.1),
-                            blurRadius: 30,
-                            spreadRadius: 5,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
+                    children: [
+                      _buildLanguageControl(context),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Center(
+                        child: KavachLogo(size: KavachLogoSize.login),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Email Field
-                          TextInputCustom(
-                            label: l10n.email,
-                            hint: 'example@gmail.com',
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            leadingIcon: Icons.email_outlined,
-                            required: true,
-                            errorText: _emailError,
-                            onChanged: (value) {
-                              // Clear backend error when user starts typing
-                              if (_emailError != null &&
-                                  !_emailError!.contains('Gmail')) {
-                                setState(() {
-                                  _emailError = null;
-                                });
-                              }
-                              // Real-time validation if touched
-                              if (_emailTouched) {
-                                _validateEmail();
-                              }
-                            },
-                            onEditingComplete: () {
-                              setState(() {
-                                _emailTouched = true;
-                              });
-                              _validateEmail();
-                            },
-                            validator: (value) {
-                              // Show backend error if available, otherwise use client-side validation
-                              if (_emailError != null) {
-                                return _emailError;
-                              }
-                              // Only show client-side error if field is touched
-                              if (_emailTouched) {
-                                return Validators.emailError(value ?? '');
-                              }
-                              return null;
-                            },
-                          )
-                              .animate()
-                              .fadeIn(delay: 700.ms, duration: 500.ms)
-                              .slideX(
-                                  begin: -0.1,
-                                  end: 0,
-                                  delay: 700.ms,
-                                  duration: 500.ms),
-
-                          SizedBox(height: AppSpacing.lg),
-
-                          // Password Field
-                          PasswordInputCustom(
-                            label: l10n.password,
-                            hint: '${l10n.password}...',
-                            controller: _passwordController,
-                            required: true,
-                            errorText: _passwordError,
-                            onChanged: (value) {
-                              // Clear backend error when user starts typing
-                              if (_passwordError != null) {
-                                setState(() {
-                                  _passwordError = null;
-                                });
-                              }
-                              // Real-time validation if touched
-                              if (_passwordTouched) {
-                                _validatePassword();
-                              }
-                            },
-                            onEditingComplete: () {
-                              setState(() {
-                                _passwordTouched = true;
-                              });
-                              _validatePassword();
-                            },
-                            validator: (value) {
-                              // Show backend error if available, otherwise use client-side validation
-                              if (_passwordError != null) {
-                                return _passwordError;
-                              }
-                              // Only show client-side error if field is touched
-                              if (_passwordTouched) {
-                                return Validators.passwordError(value ?? '');
-                              }
-                              return null;
-                            },
-                          )
-                              .animate()
-                              .fadeIn(delay: 800.ms, duration: 500.ms)
-                              .slideX(
-                                  begin: -0.1,
-                                  end: 0,
-                                  delay: 800.ms,
-                                  duration: 500.ms),
-
-                          SizedBox(height: AppSpacing.md),
-
-                          // Forgot Password Link
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButtonCustom(
-                              label: 'Forgot Password?',
-                              onPressed: () {
-                                Navigator.of(context)
-                                    .pushNamed('/forgot-password');
-                              },
-                            ),
-                          ).animate().fadeIn(delay: 900.ms, duration: 400.ms),
-
-                          SizedBox(height: AppSpacing.lg),
-
-                          // Login Button
-                          PrimaryButton(
-                            label: l10n.login,
-                            onPressed: (authState.isLoading || !_isFormValid())
-                                ? null
-                                : _handleLogin,
-                            isLoading: authState.isLoading,
-                            fullWidth: true,
-                            size: ButtonSize.large,
-                          )
-                              .animate()
-                              .fadeIn(delay: 1000.ms, duration: 500.ms)
-                              .scale(
-                                  delay: 1000.ms,
-                                  duration: 500.ms,
-                                  begin: const Offset(0.95, 0.95)),
-                        ],
+                      const SizedBox(height: AppSpacing.md),
+                      Text(
+                        l10n.appName,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          color: colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ).animate().fadeIn(delay: 600.ms, duration: 800.ms).slideY(
-                        begin: 0.2,
-                        end: 0,
-                        delay: 600.ms,
-                        duration: 800.ms,
-                        curve: Curves.easeOut),
-
-                    SizedBox(height: AppSpacing.xl),
-
-                    // Divider with Animation
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                            color: AppColors.divider.withOpacity(0.5),
-                            thickness: 1,
-                          ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        l10n.loginTagline,
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md),
-                          child: Text(
-                            'OR',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                              fontWeight: FontWeight.w500,
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      Text(
+                        l10n.signIn,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      TextInputCustom(
+                        label: l10n.email,
+                        hint: 'you@school.edu',
+                        controller: _emailController,
+                        focusNode: _emailFocus,
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
+                        textCapitalization: TextCapitalization.none,
+                        autofillHints: const [AutofillHints.email],
+                        leadingIcon: Icons.email_outlined,
+                        required: true,
+                        errorText: _emailError,
+                        onChanged: (_) {
+                          setState(() {
+                            if (_emailError != null &&
+                                !_emailError!.contains('Gmail')) {
+                              _emailError = null;
+                            }
+                          });
+                          if (_emailTouched) _validateEmail();
+                        },
+                        onEditingComplete: () {
+                          setState(() => _emailTouched = true);
+                          _validateEmail();
+                          _passwordFocus.requestFocus();
+                        },
+                        onSubmitted: (_) => _passwordFocus.requestFocus(),
+                        validator: (value) {
+                          if (_emailError != null) return _emailError;
+                          if (_emailTouched) {
+                            return Validators.emailError(value ?? '');
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      PasswordInputCustom(
+                        label: l10n.password,
+                        controller: _passwordController,
+                        focusNode: _passwordFocus,
+                        required: true,
+                        errorText: _passwordError,
+                        textInputAction: TextInputAction.done,
+                        autofillHints: const [AutofillHints.password],
+                        onSubmitted: (_) {
+                          if (_isFormValid() && !busy) {
+                            _handleLogin();
+                          }
+                        },
+                        onChanged: (_) {
+                          setState(() {
+                            if (_passwordError != null) _passwordError = null;
+                          });
+                          if (_passwordTouched) _validatePassword();
+                        },
+                        onEditingComplete: () {
+                          setState(() => _passwordTouched = true);
+                          _validatePassword();
+                        },
+                        validator: (value) {
+                          if (_passwordError != null) return _passwordError;
+                          if (_passwordTouched) {
+                            return Validators.passwordError(value ?? '');
+                          }
+                          return null;
+                        },
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pushNamed('/forgot-password');
+                          },
+                          child: Text(l10n.forgotPassword),
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      PrimaryButton(
+                        label: l10n.login,
+                        onPressed: (busy || !_isFormValid()) ? null : _handleLogin,
+                        isLoading: busy,
+                        fullWidth: true,
+                        size: ButtonSize.large,
+                      ),
+                      const SizedBox(height: AppSpacing.xl),
+                      OutlinedButtonCustom(
+                        label: l10n.joinYourClass,
+                        icon: Icons.school_outlined,
+                        fullWidth: true,
+                        onPressed: _openJoinClassSheet,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text.rich(
+                        TextSpan(
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          children: [
+                            const TextSpan(text: 'New to EduSafe? '),
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
+                                  minimumSize: const Size(48, 40),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                onPressed: () {
+                                  Navigator.of(context).push<void>(
+                                    MaterialPageRoute<void>(
+                                      builder: (context) =>
+                                          const RegisterScreen(),
+                                    ),
+                                  );
+                                },
+                                child: Text(l10n.register),
+                              ),
                             ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                            color: AppColors.divider.withOpacity(0.5),
-                            thickness: 1,
-                          ),
-                        ),
-                      ],
-                    )
-                        .animate()
-                        .fadeIn(delay: 1100.ms, duration: 500.ms)
-                        .scale(delay: 1100.ms, duration: 500.ms),
-
-                    SizedBox(height: AppSpacing.lg),
-
-                    // QR Login Button - Prominent for Students
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppColors.primaryGreen.withOpacity(0.1),
-                            AppColors.primaryGreenSubtle.withOpacity(0.05),
                           ],
                         ),
-                        borderRadius:
-                            BorderRadius.circular(AppBorders.radiusLg),
-                        border: Border.all(
-                          color: AppColors.primaryGreen.withOpacity(0.3),
-                          width: 1.5,
-                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      child: Column(
-                        children: [
-                          // Join Class Header
-                          Text(
-                            'Join a Class',
-                            style: AppTextStyles.h4.copyWith(
-                              color: AppColors.primaryGreen,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: AppSpacing.sm),
-                          Text(
-                            'Use class code or QR code',
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                          SizedBox(height: AppSpacing.lg),
-
-                          // Manual Code Option
-                          OutlinedButtonCustom(
-                            label: 'Enter Class Code',
-                            onPressed: () {
-                              final authState = ref.read(authProvider);
-                              if (!authState.isAuthenticated) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                        'Please login first to join a class'),
-                                    backgroundColor: AppColors.warning,
-                                    duration: const Duration(seconds: 3),
-                                  ),
-                                );
-                                return;
-                              }
-                              // Navigate to join class screen
-                              Navigator.of(context).push<void>(
-                                MaterialPageRoute<void>(
-                                  builder: (context) => const JoinClassScreen(),
-                                ),
-                              );
-                            },
-                            icon: Icons.text_fields,
-                            fullWidth: true,
-                            size: ButtonSize.large,
-                          ),
-                          SizedBox(height: AppSpacing.md),
-
-                          // QR Code Option
-                          OutlinedButtonCustom(
-                            label: 'Scan QR Code',
-                            onPressed: () {
-                              // Check if user is logged in
-                              final authState = ref.read(authProvider);
-                              if (authState.isAuthenticated &&
-                                  authState.user != null) {
-                                // User is logged in - open QR scanner for class join
-                                Navigator.of(context)
-                                    .push<String>(
-                                  MaterialPageRoute(
-                                    builder: (context) => const QRScannerScreen(
-                                      title: 'Scan Class QR Code',
-                                      isClassroomMode: true,
-                                    ),
-                                  ),
-                                )
-                                    .then((qrCode) async {
-                                  if (qrCode != null && mounted) {
-                                    await _handleJoinClassByQR(context, qrCode);
-                                  }
-                                });
-                              } else {
-                                // User not logged in - show message
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                      'Please login first to join a class via QR code',
-                                    ),
-                                    action: SnackBarAction(
-                                      label: 'Login',
-                                      textColor: Colors.white,
-                                      onPressed: () {
-                                        // Focus on email field to encourage login
-                                        FocusScope.of(context).requestFocus(
-                                          FocusNode(),
-                                        );
-                                      },
-                                    ),
-                                    backgroundColor: AppColors.warning,
-                                    duration: const Duration(seconds: 4),
-                                  ),
-                                );
-                              }
-                            },
-                            icon: Icons.qr_code_scanner_rounded,
-                            fullWidth: true,
-                            size: ButtonSize.large,
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 1200.ms, duration: 500.ms).slideY(
-                        begin: 0.1, end: 0, delay: 1200.ms, duration: 500.ms),
-
-                    SizedBox(height: AppSpacing.xl),
-
-                    // Register Link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Don't have an account? ",
-                          style: AppTextStyles.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        TextButtonCustom(
-                          label: l10n.register,
-                          onPressed: () {
-                            Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (context) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ).animate().fadeIn(delay: 1300.ms, duration: 500.ms),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
