@@ -105,32 +105,30 @@ class FeatureCard extends StatelessWidget {
                 colors: gradientColors!,
               )
             : null,
-        color: useGradient ? null : theme.colorScheme.surface,
         border: useGradient
             ? null
-            : Border.all(color: accent.withValues(alpha: 0.22)),
+            : Border.all(color: AppColors.borderLight),
         boxShadow: [
           BoxShadow(
-            color: AppColors.divider.withValues(alpha: 0.1),
-            blurRadius: 8,
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: content,
-    );
-
-    final child = Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: clickable ? onTap : null,
+      child: Material(
+        color: useGradient ? Colors.transparent : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(AppBorders.radiusLg),
-        child: decorated,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: clickable ? onTap : null,
+          child: content,
+        ),
       ),
     );
 
-    if (compact) return child;
+    if (compact) return decorated;
 
-    return SizedBox.expand(child: child);
+    return SizedBox.expand(child: decorated);
   }
 }

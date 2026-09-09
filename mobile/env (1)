@@ -1,0 +1,5 @@
+# VS Code Dev Tunnel → local backend :3000
+BASE_URL=https://g6xrghvh-3000.inc1.devtunnels.ms
+SOCKET_URL=https://g6xrghvh-3000.inc1.devtunnels.ms
+API_VERSION=v1
+ENVIRONMENT=development

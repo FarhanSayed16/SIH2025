@@ -368,7 +368,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
@@ -433,11 +433,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: 8),
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             child: LinearProgressIndicator(
               value: value / 100,
-              minHeight: 8,
-              backgroundColor: AppColors.backgroundMedium,
+              minHeight: 12,
+              backgroundColor: AppColors.primaryGreenSubtle,
               valueColor: AlwaysStoppedAnimation<Color>(accent),
             ),
           ),
@@ -590,8 +590,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             spacing: 8,
             children: [
               _tipChip('English', 'en'),
-              _tipChip('?????', 'hi'),
-              _tipChip('?????', 'mr'),
+              _tipChip('हिन्दी', 'hi'),
+              _tipChip('मराठी', 'mr'),
             ],
           ),
         ],
