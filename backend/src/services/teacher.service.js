@@ -44,7 +44,7 @@ export const getTeacherClasses = async (teacherId) => {
 export const getClassStudents = async (classId, teacherId) => {
   try {
     const classData = await Class.findById(classId)
-      .populate('studentIds', 'name grade section email qrCode qrBadgeId accessLevel canUseApp')
+      .populate('studentIds', 'name grade section email userType approvalStatus qrCode qrBadgeId accessLevel canUseApp parentName parentPhone')
       .populate('teacherId', 'name email')
       .populate('institutionId', 'name');
 
@@ -371,9 +371,12 @@ export const markParticipation = async (classId, studentId, participated, teache
  * @param {string} teacherId - Teacher ID (for verification)
  * @returns {Object} Class analytics
  */
+/**
+ * Get class drill history / analytics for a teacher-owned class (WD08).
+ * Uses participantSelection.classIds (not a nonexistent Drill.classId).
+ */
 export const getClassAnalytics = async (classId, teacherId) => {
   try {
-    // Verify teacher owns class
     const classData = await Class.findById(classId);
     if (!classData) {
       throw new Error('Class not found');
@@ -383,35 +386,55 @@ export const getClassAnalytics = async (classId, teacherId) => {
       throw new Error('Unauthorized: Teacher does not own this class');
     }
 
-    // Get recent drills for this class
-    const recentDrills = await Drill.find({
-      classId,
-      status: 'completed'
-    })
-      .sort({ createdAt: -1 })
+    const classObjectId = classData._id;
+    const classScopeQuery = {
+      'participantSelection.classIds': classObjectId,
+    };
+
+    const totalDrills = await Drill.countDocuments(classScopeQuery);
+
+    const recentDrills = await Drill.find(classScopeQuery)
+      .sort({ completedAt: -1, actualStart: -1, scheduledAt: -1 })
       .limit(10);
 
-    // Calculate statistics
-    const totalDrills = recentDrills.length;
-    const avgParticipation = recentDrills.length > 0
-      ? recentDrills.reduce((sum, drill) => {
+    const completedInList = recentDrills.filter((d) => d.status === 'completed');
+    const avgParticipation = completedInList.length > 0
+      ? completedInList.reduce((sum, drill) => {
           const participants = drill.participants || [];
-          const participated = participants.filter(p => p.status === 'completed').length;
-          return sum + (participated / participants.length || 0);
-        }, 0) / recentDrills.length
-      : 0;
+          if (participants.length === 0) return sum;
+          const finished = participants.filter((p) => p.completedAt != null).length;
+          return sum + finished / participants.length;
+        }, 0) / completedInList.length
+      : null;
 
     return {
       classId,
       totalStudents: classData.studentIds.length,
       totalDrills,
-      avgParticipation: Math.round(avgParticipation * 100),
-      recentDrills: recentDrills.map(drill => ({
-        id: drill._id,
-        type: drill.type,
-        date: drill.createdAt,
-        participation: drill.results?.participationRate || 0
-      }))
+      recentListLimit: 10,
+      recentListCount: recentDrills.length,
+      avgParticipation:
+        avgParticipation == null ? null : Math.round(avgParticipation * 100),
+      recentDrills: recentDrills.map((drill) => {
+        const participants = drill.participants || [];
+        const finished = participants.filter((p) => p.completedAt != null).length;
+        return {
+          id: drill._id,
+          type: drill.type,
+          status: drill.status,
+          scheduledAt: drill.scheduledAt,
+          actualStart: drill.actualStart,
+          completedAt: drill.completedAt,
+          // Prefer measured completion time; fall back to schedule for display only
+          eventAt: drill.completedAt || drill.actualStart || drill.scheduledAt || drill.createdAt,
+          participationRate:
+            participants.length > 0
+              ? Math.round((finished / participants.length) * 100)
+              : drill.results?.participationRate ?? null,
+          completedParticipants: finished,
+          totalParticipants: participants.length,
+        };
+      }),
     };
   } catch (error) {
     logger.error('Get class analytics error:', error);
@@ -420,15 +443,11 @@ export const getClassAnalytics = async (classId, teacherId) => {
 };
 
 /**
- * Get student progress overview for a class
- * Phase 3.4.5: Enhanced student progress tracking
- * @param {string} classId - Class ID
- * @param {string} teacherId - Teacher ID (for verification)
- * @returns {Object} Student progress data
+ * Get student progress overview for a class (WD07).
+ * Distinct passed modules ≠ quiz attempt count; eligible denominator from active modules.
  */
 export const getStudentProgress = async (classId, teacherId) => {
   try {
-    // Verify teacher owns class
     const classData = await Class.findById(classId)
       .populate('studentIds', 'name email grade section progress');
     if (!classData) {
@@ -439,93 +458,193 @@ export const getStudentProgress = async (classId, teacherId) => {
       throw new Error('Unauthorized: Teacher does not own this class');
     }
 
-    const studentIds = classData.studentIds.map(s => s._id);
+    const studentIds = classData.studentIds.map((s) => s._id);
+    const classGrade = classData.grade;
 
-    // Get quiz results for all students
+    // Eligible curriculum modules for this class grade (includes 'all')
+    const eligibleModules = await Module.find({
+      isActive: true,
+      gradeLevel: { $in: [classGrade, 'all'] },
+    }).select('_id');
+    const eligibleDenominator = eligibleModules.length;
+    const denominatorAvailable = eligibleDenominator > 0;
+
     const quizResults = await QuizResult.find({
       userId: { $in: studentIds },
-      institutionId: classData.institutionId
+      institutionId: classData.institutionId,
     })
       .populate('moduleId', 'title')
       .sort({ completedAt: -1 });
 
-    // Get game scores for all students
     const gameScores = await GameScore.find({
       userId: { $in: studentIds },
-      institutionId: classData.institutionId
-    })
-      .sort({ completedAt: -1 });
+      institutionId: classData.institutionId,
+    }).sort({ completedAt: -1 });
 
-    // Aggregate progress by student
     const progressByStudent = {};
 
-    classData.studentIds.forEach(student => {
+    classData.studentIds.forEach((student) => {
+      const preparedness =
+        student.progress?.preparednessScore != null &&
+        Number.isFinite(student.progress.preparednessScore)
+          ? student.progress.preparednessScore
+          : null;
+
       progressByStudent[student._id] = {
         student: {
           id: student._id,
           name: student.name,
           email: student.email,
           grade: student.grade,
-          section: student.section
+          section: student.section,
         },
         modules: {
+          /** Distinct modules with at least one passed quiz */
           completed: 0,
           inProgress: 0,
-          total: 0,
-          averageScore: 0
+          /** Eligible assigned/active modules for this class grade; null if none configured */
+          total: denominatorAvailable ? eligibleDenominator : null,
+          denominatorAvailable,
+          averageScore: null,
+          quizAttempts: 0,
+        },
+        quiz: {
+          totalAttempts: 0,
+          distinctModulesAttempted: 0,
+          avgScore: null,
+          passRate: null,
+          recorded: false,
         },
         games: {
           played: 0,
           totalXP: 0,
-          averageScore: 0
+          averageScore: null,
         },
-        preparednessScore: student.progress?.preparednessScore || 0,
-        badges: student.progress?.badges?.length || 0
+        preparednessScore: preparedness,
+        badges: student.progress?.badges?.length || 0,
+        lastActivity: null,
+        loginStreak: null, // not provided by this contract
       };
     });
 
-    // Process quiz results
-    quizResults.forEach(result => {
+    /** studentId -> Map(moduleId -> { passed, bestScore, scores[] }) */
+    const moduleMaps = {};
+
+    quizResults.forEach((result) => {
       const studentId = result.userId.toString();
-      if (progressByStudent[studentId]) {
-        progressByStudent[studentId].modules.completed++;
-        progressByStudent[studentId].modules.total++;
-      }
-    });
+      const row = progressByStudent[studentId];
+      if (!row) return;
 
-    // Process game scores
-    const studentXP = {};
-    const studentGameScores = {};
-    gameScores.forEach(score => {
-      const studentId = score.userId.toString();
-      if (progressByStudent[studentId]) {
-        progressByStudent[studentId].games.played++;
-        progressByStudent[studentId].games.totalXP += score.xpEarned || 0;
-        
-        if (!studentGameScores[studentId]) {
-          studentGameScores[studentId] = [];
+      row.modules.quizAttempts += 1;
+      row.quiz.totalAttempts += 1;
+      row.quiz.recorded = true;
+
+      const moduleId =
+        result.moduleId?._id?.toString?.() ||
+        result.moduleId?.toString?.() ||
+        null;
+      if (!moduleMaps[studentId]) moduleMaps[studentId] = new Map();
+      if (moduleId) {
+        const prev = moduleMaps[studentId].get(moduleId) || {
+          passed: false,
+          bestScore: null,
+          scores: [],
+        };
+        prev.scores.push(result.score);
+        if (result.score != null) {
+          prev.bestScore =
+            prev.bestScore == null ? result.score : Math.max(prev.bestScore, result.score);
         }
-        studentGameScores[studentId].push(score.score);
+        if (result.passed) prev.passed = true;
+        moduleMaps[studentId].set(moduleId, prev);
+      }
+
+      if (result.completedAt) {
+        const t = new Date(result.completedAt).getTime();
+        if (!row.lastActivity || t > new Date(row.lastActivity).getTime()) {
+          row.lastActivity = result.completedAt;
+        }
       }
     });
 
-    // Calculate averages
-    Object.keys(progressByStudent).forEach(studentId => {
+    Object.keys(moduleMaps).forEach((studentId) => {
+      const row = progressByStudent[studentId];
+      if (!row) return;
+      const entries = [...moduleMaps[studentId].values()];
+      row.modules.completed = entries.filter((e) => e.passed).length;
+      row.quiz.distinctModulesAttempted = entries.length;
+      const allScores = entries.flatMap((e) => e.scores).filter((s) => s != null);
+      if (allScores.length > 0) {
+        row.quiz.avgScore = Math.round(
+          allScores.reduce((a, b) => a + b, 0) / allScores.length
+        );
+        row.modules.averageScore = row.quiz.avgScore;
+      }
+      const attempted = entries.length;
+      if (attempted > 0) {
+        row.quiz.passRate = Math.round((row.modules.completed / attempted) * 100);
+      }
+    });
+
+    const studentGameScores = {};
+    gameScores.forEach((score) => {
+      const studentId = score.userId.toString();
+      const row = progressByStudent[studentId];
+      if (!row) return;
+      row.games.played += 1;
+      row.games.totalXP += score.xpEarned || 0;
+      if (!studentGameScores[studentId]) studentGameScores[studentId] = [];
+      studentGameScores[studentId].push(score.score);
+
+      const at = score.completedAt || score.createdAt;
+      if (at) {
+        const t = new Date(at).getTime();
+        if (!row.lastActivity || t > new Date(row.lastActivity).getTime()) {
+          row.lastActivity = at;
+        }
+      }
+    });
+
+    Object.keys(progressByStudent).forEach((studentId) => {
       const progress = progressByStudent[studentId];
-      
-      // Calculate average game score
-      if (studentGameScores[studentId] && studentGameScores[studentId].length > 0) {
+      if (studentGameScores[studentId]?.length > 0) {
         const scores = studentGameScores[studentId];
         progress.games.averageScore = Math.round(
-          scores.reduce((sum, score) => sum + score, 0) / scores.length
+          scores.reduce((sum, s) => sum + s, 0) / scores.length
         );
       }
     });
 
+    const students = Object.values(progressByStudent);
+    const preparednessValues = students
+      .map((s) => s.preparednessScore)
+      .filter((v) => v != null && Number.isFinite(v));
+
     return {
       classId,
       totalStudents: classData.studentIds.length,
-      students: Object.values(progressByStudent)
+      eligibleModuleCount: denominatorAvailable ? eligibleDenominator : null,
+      denominatorAvailable,
+      students,
+      summary: {
+        totalStudents: classData.studentIds.length,
+        avgDistinctModulesCompleted:
+          students.length > 0
+            ? Math.round(
+                (students.reduce((sum, s) => sum + (s.modules.completed || 0), 0) /
+                  students.length) *
+                  10
+              ) / 10
+            : 0,
+        avgPreparednessScore:
+          preparednessValues.length > 0
+            ? Math.round(
+                preparednessValues.reduce((a, b) => a + b, 0) / preparednessValues.length
+              )
+            : null,
+        preparednessSampleSize: preparednessValues.length,
+        totalGamesPlayed: students.reduce((sum, s) => sum + (s.games.played || 0), 0),
+      },
     };
   } catch (error) {
     logger.error('Get student progress error:', error);

@@ -75,11 +75,49 @@ describe('A17 scheduled broadcast completion', () => {
     expect(current.stats).toMatchObject({ sent: 0, failed: 1 });
   });
 
+  it('all-skipped (no push token, push-only) is failed — not sent', async () => {
+    scheduled.channels = ['push'];
+    current.channels = ['push'];
+    User.find.mockReturnValue({
+      select: jest.fn().mockResolvedValue([
+        { _id: 'student-1', name: 'Student', email: 'student@example.test' }, // no fcmToken
+      ]),
+    });
+    await processScheduledBroadcasts();
+    expect(sendNotification).not.toHaveBeenCalled();
+    expect(current.status).toBe('failed');
+    expect(current.stats.skippedNoToken).toBeGreaterThan(0);
+  });
+
+  it('does not silently add email when push has no token', async () => {
+    scheduled.channels = ['push'];
+    current.channels = ['push'];
+    User.find.mockReturnValue({
+      select: jest.fn().mockResolvedValue([
+        { _id: 'student-1', email: 'student@example.test' },
+      ]),
+    });
+    await processScheduledBroadcasts();
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+
   it('a scheduler that loses the atomic claim sends nothing', async () => {
     BroadcastMessage.updateOne.mockResolvedValue({ modifiedCount: 0 });
     await processScheduledBroadcasts();
     expect(sendNotification).not.toHaveBeenCalled();
     expect(BroadcastMessage.findById).not.toHaveBeenCalled();
     expect(current.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('WD10 channel resolution', () => {
+  it('honors explicit channels without admin override defaults', async () => {
+    const { resolveEffectiveChannels, deriveBroadcastSendStatus } = await import(
+      '../../src/services/broadcast.service.js'
+    );
+    expect(resolveEffectiveChannels(['email', 'push', 'email'])).toEqual(['email', 'push']);
+    expect(resolveEffectiveChannels(undefined)).toEqual([]);
+    expect(deriveBroadcastSendStatus({ successful: 0 })).toBe('failed');
+    expect(deriveBroadcastSendStatus({ successful: 2 })).toBe('sent');
   });
 });

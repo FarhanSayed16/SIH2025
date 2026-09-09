@@ -13,6 +13,38 @@ import Attendance from '../models/Attendance.js';
 import logger from '../config/logger.js';
 
 /**
+ * WD12 / D01 — display status only from explicit report provenance or active drill.
+ * Legacy schema defaults of "safe" without statusReportedAt remain unknown.
+ */
+export const resolveParentSafetyDisplay = ({
+  safetyStatus,
+  statusReportedAt,
+  inActiveDrill = false,
+} = {}) => {
+  if (inActiveDrill) {
+    return {
+      status: 'in_drill',
+      provenance: 'active_drill',
+      statusReportedAt: statusReportedAt || null,
+    };
+  }
+  if (!safetyStatus) {
+    return { status: 'unknown', provenance: 'none', statusReportedAt: null };
+  }
+  if (!statusReportedAt) {
+    return { status: 'unknown', provenance: 'unconfirmed', statusReportedAt: null };
+  }
+  return {
+    status: safetyStatus,
+    provenance: 'reported',
+    statusReportedAt,
+  };
+};
+
+const finiteCoord = (value) =>
+  value != null && Number.isFinite(Number(value)) ? Number(value) : null;
+
+/**
  * Get quick stats for a child (for dashboard display)
  * @param {string} studentId - Student ID
  * @returns {Promise<Object>} Quick stats object
@@ -20,7 +52,7 @@ import logger from '../config/logger.js';
 const getChildQuickStats = async (studentId) => {
   try {
     const student = await User.findById(studentId)
-      .select('progress lastLogin updatedAt safetyStatus lastSeen')
+      .select('progress lastLogin updatedAt safetyStatus lastSeen statusReportedAt')
       .lean();
     
     if (!student) {
@@ -29,20 +61,27 @@ const getChildQuickStats = async (studentId) => {
         modulesCompleted: 0,
         lastActivity: null,
         loginStreak: 0,
-        status: 'unknown'
+        status: 'unknown',
+        statusProvenance: 'none',
+        statusReportedAt: null,
       };
     }
 
     const progress = student.progress || {};
     const completedModules = progress.completedModules || [];
+    const display = resolveParentSafetyDisplay({
+      safetyStatus: student.safetyStatus,
+      statusReportedAt: student.statusReportedAt,
+    });
     
     return {
       preparednessScore: progress.preparednessScore || 0,
       modulesCompleted: completedModules.length,
       lastActivity: student.lastLogin || student.updatedAt || null,
       loginStreak: progress.loginStreak || 0,
-      // Missing safetyStatus is unknown — never invent "safe".
-      status: student.safetyStatus || 'unknown'
+      status: display.status,
+      statusProvenance: display.provenance,
+      statusReportedAt: display.statusReportedAt,
     };
   } catch (error) {
     logger.error('Get child quick stats error:', error);
@@ -51,7 +90,9 @@ const getChildQuickStats = async (studentId) => {
       modulesCompleted: 0,
       lastActivity: null,
       loginStreak: 0,
-      status: 'unknown'
+      status: 'unknown',
+      statusProvenance: 'none',
+      statusReportedAt: null,
     };
   }
 };
@@ -76,7 +117,7 @@ export const getParentChildren = async (parentId) => {
     // Extract student IDs and populate full student data
     const studentIds = relationships.map(rel => rel.studentId);
     const students = await User.find({ _id: { $in: studentIds } })
-      .select('name email grade section classId institutionId qrCode qrBadgeId progress lastLogin safetyStatus lastSeen')
+      .select('name email grade section classId institutionId qrCode qrBadgeId progress lastLogin safetyStatus lastSeen statusReportedAt')
       .populate('classId', 'grade section classCode')
       .populate('institutionId', 'name')
       .lean();
@@ -283,7 +324,7 @@ export const getChildLocation = async (parentId, studentId) => {
     }
 
     const student = await User.findById(studentId)
-      .select('currentLocation lastLogin')
+      .select('currentLocation lastLogin safetyStatus lastSeen statusReportedAt')
       .lean();
 
     if (!student) {
@@ -299,15 +340,30 @@ export const getChildLocation = async (parentId, studentId) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    const coords = student.currentLocation?.coordinates;
+    const longitude = Array.isArray(coords) ? finiteCoord(coords[0]) : null;
+    const latitude = Array.isArray(coords) ? finiteCoord(coords[1]) : null;
+
+    const display = resolveParentSafetyDisplay({
+      safetyStatus: student.safetyStatus,
+      statusReportedAt: student.statusReportedAt,
+      inActiveDrill: Boolean(activeDrill),
+    });
+
     return {
-      latitude: student.currentLocation?.coordinates?.[1] || null,
-      longitude: student.currentLocation?.coordinates?.[0] || null,
-      accuracy: student.currentLocation?.accuracy || null,
+      latitude,
+      longitude,
+      accuracy:
+        student.currentLocation?.accuracy != null &&
+        Number.isFinite(Number(student.currentLocation.accuracy))
+          ? Number(student.currentLocation.accuracy)
+          : null,
       timestamp: student.currentLocation?.timestamp || null,
-      status: activeDrill
-        ? 'in_drill'
-        : (student.safetyStatus || 'unknown'),
-      lastSeen: student.lastSeen || student.lastLogin || null,
+      status: display.status,
+      statusProvenance: display.provenance,
+      statusReportedAt: display.statusReportedAt,
+      lastSeen: student.lastSeen || null,
+      lastActivity: student.lastLogin || student.lastSeen || null,
       activeDrill: activeDrill ? {
         drillId: activeDrill.drillId?._id,
         drillType: activeDrill.drillId?.type,
@@ -998,7 +1054,7 @@ export const getChildRealTimeStatus = async (parentId, studentId) => {
 
     // Get student with location and status
     const student = await User.findById(studentId)
-      .select('name safetyStatus lastSeen currentLocation')
+      .select('name safetyStatus lastSeen statusReportedAt currentLocation')
       .lean();
 
     if (!student) {
@@ -1011,11 +1067,19 @@ export const getChildRealTimeStatus = async (parentId, studentId) => {
       'participants.userId': studentId,
       status: { $in: ['active', 'in_progress'] }
     })
-      .select('drillType status startTime')
+      .select('drillType status startTime type')
       .lean();
 
+    const display = resolveParentSafetyDisplay({
+      safetyStatus: student.safetyStatus,
+      statusReportedAt: student.statusReportedAt,
+      inActiveDrill: Boolean(activeDrill),
+    });
+
     return {
-      status: student.safetyStatus || 'unknown',
+      status: display.status,
+      statusProvenance: display.provenance,
+      statusReportedAt: display.statusReportedAt,
       lastSeen: student.lastSeen || null,
       location: student.currentLocation || null,
       activeDrill: activeDrill || null

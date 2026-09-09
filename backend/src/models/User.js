@@ -269,11 +269,17 @@ const userSchema = new mongoose.Schema({
   safetyStatus: {
     type: String,
     enum: ['safe', 'missing', 'at_risk', 'evacuating'],
-    default: 'safe'
+    // No default — missing means unknown until an authorized report is written (WD12 / D01)
+    required: false,
+  },
+  /** Set only when updateSafetyStatus (or equivalent) records an explicit report */
+  statusReportedAt: {
+    type: Date,
+    default: null,
   },
   lastSeen: {
     type: Date,
-    default: Date.now
+    default: null,
   },
   deviceToken: {
     type: String, // For push notifications
@@ -404,9 +410,10 @@ userSchema.methods.updateLocation = function(lat, lng) {
   return this.save();
 };
 
-// Method to update safety status
+// Method to update safety status (explicit report only)
 userSchema.methods.updateSafetyStatus = function(status) {
   this.safetyStatus = status;
+  this.statusReportedAt = new Date();
   this.lastSeen = new Date();
   return this.save();
 };

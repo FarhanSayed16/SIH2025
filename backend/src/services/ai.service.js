@@ -795,6 +795,7 @@ Keep options to exactly 4 short choices (A–D). nextScenario should be engaging
         tip: null
       });
       if (!Array.isArray(data.options)) data.options = [].slice(0, 4);
+      data.quotaLimited = false;
       logger.info('Scenario: initial step generated');
       return data;
     }
@@ -833,9 +834,15 @@ Limit to 3-5 steps total; after 2-4 choices set isGameOver true. Keep options to
     if (!Array.isArray(data.options)) data.options = [];
     if (data.isGameOver) {
       data.options = [];
-      if (!data.safetyScoreSentence) data.safetyScoreSentence = 'You completed the scenario.';
-      if (!data.tip) data.tip = 'Stay calm and follow school safety procedures.';
+      // Do not invent narrative feedback or tips when the model omitted them
+      if (data.safetyScoreSentence == null || data.safetyScoreSentence === '') {
+        data.safetyScoreSentence = null;
+      }
+      if (data.tip == null || data.tip === '') {
+        data.tip = null;
+      }
     }
+    data.quotaLimited = false;
     logger.info('Scenario: step generated', { isGameOver: data.isGameOver });
     return data;
   } catch (error) {

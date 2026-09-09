@@ -37,14 +37,27 @@ export const processSensorTelemetry = async (deviceId, telemetryData) => {
       readings = telemetryData.readings; // ESP32 sends { readings: {...}, timestamp: ... }
     }
 
+    // Prefer device-reported sample time when valid; always record server receipt time separately
+    const rawSample = telemetryData.timestamp || telemetryData.sampleTimestamp || readings.timestamp;
+    let sampleTimestamp = null;
+    if (rawSample) {
+      const parsed = new Date(rawSample);
+      if (!Number.isNaN(parsed.getTime())) sampleTimestamp = parsed;
+    }
+    const receivedAt = new Date();
+
     // Store telemetry in historical database
     const telemetry = await IoTSensorTelemetry.create({
       deviceId: device.deviceId,
       institutionId: device.institutionId,
-      sensorType: device.deviceType, // Use deviceType instead of type
+      sensorType: device.deviceType,
       readings: readings,
       location: device.location || { type: 'Point', coordinates: [0, 0] },
-      timestamp: new Date()
+      timestamp: sampleTimestamp || receivedAt,
+      metadata: {
+        sampleTimestamp: sampleTimestamp || null,
+        receivedAt,
+      },
     });
 
     // Check thresholds (use the actual readings)
@@ -166,19 +179,26 @@ const checkThresholds = async (device, readings) => {
     }
   }
 
-  // Flood sensor thresholds (single sensor)
+  // Flood sensor thresholds (single sensor) — same polarity as multi-sensor water
   if (device.deviceType === 'flood-sensor') {
     const waterLevelThreshold = config.waterLevelThreshold || 20; // cm
-    if (readings.waterLevel && readings.waterLevel > waterLevelThreshold) {
+    if (readings.waterLevel != null && Number.isFinite(Number(readings.waterLevel)) && readings.waterLevel > waterLevelThreshold) {
       breached = true;
       alertType = 'flood';
       severity = 'high';
     }
-    // Also check for water reading (for consistency)
-    if (readings.water && readings.water > 2000) {
-      breached = true;
-      alertType = 'flood';
-      severity = 'high';
+    // Analog water: default low = flooded (unless waterHighMeansFlood)
+    if (readings.water != null && Number.isFinite(Number(readings.water))) {
+      const waterHighMeansFlood = config.waterHighMeansFlood === true;
+      const waterThreshold = config.waterThreshold ?? 2000;
+      const isDanger = waterHighMeansFlood
+        ? readings.water > waterThreshold
+        : readings.water < waterThreshold;
+      if (isDanger) {
+        breached = true;
+        alertType = 'flood';
+        severity = 'high';
+      }
     }
   }
 
@@ -303,18 +323,28 @@ export const getDeviceHealthMonitoring = async (institutionId) => {
 
     const healthData = await Promise.all(devices.map(async (device) => {
       const now = new Date();
-      const lastSeen = new Date(device.lastSeen);
-      const minutesSinceLastSeen = (now - lastSeen) / (1000 * 60);
+      const lastSeen = device.lastSeen ? new Date(device.lastSeen) : null;
+      const minutesSinceLastSeen =
+        lastSeen && !Number.isNaN(lastSeen.getTime())
+          ? (now - lastSeen) / (1000 * 60)
+          : null;
 
       // Get recent telemetry stats
       const recentTelemetry = await IoTSensorTelemetry.find({
         deviceId: device.deviceId,
-        timestamp: { $gte: new Date(now - 24 * 60 * 60 * 1000) } // Last 24 hours
+        timestamp: { $gte: new Date(now - 24 * 60 * 60 * 1000) }
       }).sort({ timestamp: -1 }).limit(1);
 
       const latestReading = recentTelemetry[0];
-      const batteryLevel = latestReading?.readings?.batteryLevel || null;
-      const signalStrength = latestReading?.readings?.signalStrength || null;
+      const batteryLevel = latestReading?.readings?.batteryLevel ?? null;
+      const signalStrength = latestReading?.readings?.signalStrength ?? null;
+      const sampleTimestamp =
+        latestReading?.metadata?.sampleTimestamp ||
+        (latestReading?.timestamp || null);
+      const receivedAt =
+        latestReading?.metadata?.receivedAt ||
+        latestReading?.createdAt ||
+        null;
 
       return {
         deviceId: device.deviceId,
@@ -322,8 +352,12 @@ export const getDeviceHealthMonitoring = async (institutionId) => {
         deviceType: device.deviceType,
         status: device.status,
         health: getDeviceHealthStatus(device),
-        lastSeen: device.lastSeen,
-        minutesSinceLastSeen: Math.round(minutesSinceLastSeen),
+        lastSeen: device.lastSeen || null,
+        lastContact: device.lastSeen || null,
+        sampleTimestamp: sampleTimestamp || null,
+        receivedAt: receivedAt || null,
+        minutesSinceLastSeen:
+          minutesSinceLastSeen == null ? null : Math.round(minutesSinceLastSeen),
         batteryLevel,
         signalStrength,
         location: device.location,

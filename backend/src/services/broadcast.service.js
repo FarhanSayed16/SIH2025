@@ -15,6 +15,26 @@ import {
 } from './communication.service.js';
 import logger from '../config/logger.js';
 
+const ALLOWED_CHANNELS = new Set(['push', 'email', 'sms']);
+
+/**
+ * WD10 — honor explicit channel selection only.
+ * No admin force-push, no silent email/push defaults that broaden the send.
+ */
+export const resolveEffectiveChannels = (channels) => {
+  const list = Array.isArray(channels) ? channels : [];
+  return Array.from(new Set(list.filter((c) => ALLOWED_CHANNELS.has(c))));
+};
+
+/**
+ * WD11 — status from send attempts, not assumed delivery.
+ * Any successful channel task → sent (partial still sent with failed counts).
+ * Zero successes → failed (including all-skipped / no-token).
+ */
+export const deriveBroadcastSendStatus = ({ successful }) => {
+  return successful > 0 ? 'sent' : 'failed';
+};
+
 // Map broadcast priority to incident severity
 const mapPriorityToSeverity = (priority = 'medium') => {
   switch (priority) {
@@ -298,7 +318,7 @@ export const sendBroadcast = async (options) => {
     type,
     priority = 'medium',
     recipients: recipientConfig,
-    channels = ['push', 'email'], // include email by default to ensure delivery without tokens
+    channels,
     subject,
     title,
     message,
@@ -314,10 +334,13 @@ export const sendBroadcast = async (options) => {
     const normalizedInstitutionId =
       (institutionId && institutionId._id) ? institutionId._id : institutionId;
 
-    // Normalize channels; for admin-only broadcasts, force push-only to keep it fast/reliable
-    const recipientType = recipientConfig?.type;
-    const effectiveChannels =
-      recipientType === 'admins' ? ['push'] : Array.from(new Set(channels));
+    const effectiveChannels = resolveEffectiveChannels(channels);
+    if (effectiveChannels.length === 0) {
+      return {
+        success: false,
+        error: 'At least one channel must be selected (push, email, or sms)'
+      };
+    }
 
     // Get recipients
     const recipients = await getRecipients(recipientConfig, normalizedInstitutionId, senderRole);
@@ -329,10 +352,11 @@ export const sendBroadcast = async (options) => {
       };
     }
 
-    // Quick check: if push channel selected but nobody has a token, fail fast to avoid long retries
+    // Quick check: if push is the only selected channel and nobody has a token, fail fast
     const wantsPush = effectiveChannels.includes('push');
     const pushCapable = recipients.filter(r => r.fcmToken).length;
-    if (wantsPush && pushCapable === 0) {
+    const nonPushChannels = effectiveChannels.filter((c) => c !== 'push');
+    if (wantsPush && pushCapable === 0 && nonPushChannels.length === 0) {
       logger.warn(`Broadcast aborted: push selected but no recipients have FCM tokens (recipientType=${recipientConfig?.type})`);
       return {
         success: false,
@@ -347,7 +371,7 @@ export const sendBroadcast = async (options) => {
       type,
       priority,
       recipients: recipientConfig,
-      channels,
+      channels: effectiveChannels,
       subject,
       title,
       message,
@@ -365,18 +389,15 @@ export const sendBroadcast = async (options) => {
     let skippedNoToken = 0;
     let skippedNoChannel = 0;
 
-    // Build send tasks with per-recipient channel filtering and fallback
+    // Build send tasks — per-recipient filtering only; never add unselected channels
     const tasks = recipients.flatMap(recipient => {
       const recipientChannels = new Set(effectiveChannels);
 
-      // If push selected but no token, skip push and optionally fallback to email
-        if (recipientChannels.has('push') && !recipient.fcmToken) {
-          skippedNoToken += 1;
-          // Do not fallback to email automatically; keep behavior explicit
-          recipientChannels.delete('push');
-        }
+      if (recipientChannels.has('push') && !recipient.fcmToken) {
+        skippedNoToken += 1;
+        recipientChannels.delete('push');
+      }
 
-      // If no channels left, skip
       if (recipientChannels.size === 0) {
         skippedNoChannel += 1;
         return [];
@@ -421,13 +442,16 @@ export const sendBroadcast = async (options) => {
     ).length;
     const failed = results.length - successful - skipped;
 
-    // Update broadcast status
-    broadcast.status = 'sent';
-    broadcast.sentAt = new Date();
+    const finalStatus = deriveBroadcastSendStatus({ successful });
+    broadcast.status = finalStatus;
+    if (finalStatus === 'sent') {
+      broadcast.sentAt = new Date();
+    }
     broadcast.stats = {
       totalRecipients: recipients.length,
       sent: successful,
-      delivered: 0, // Will be updated via delivery callbacks
+      // Delivery receipts are not wired; keep 0 and never invent a rate from this field alone
+      delivered: 0,
       failed,
       skipped,
       skippedNoToken,
@@ -444,18 +468,24 @@ export const sendBroadcast = async (options) => {
       skipped,
       skippedNoToken,
       skippedNoChannel,
-      channels: channels.length
+      channels: effectiveChannels.length
     });
 
-    logger.info(`Broadcast sent: ${successful} successful, ${failed} failed`);
+    logger.info(`Broadcast ${finalStatus}: ${successful} successful, ${failed} failed`);
 
     return {
-      success: true,
+      success: finalStatus === 'sent',
       broadcastId: broadcast._id,
+      status: finalStatus,
       totalRecipients: recipients.length,
-      channels: channels.length,
+      channels: effectiveChannels,
       successful,
-      failed
+      failed,
+      skipped,
+      skippedNoToken,
+      skippedNoChannel,
+      deliveryReceiptsAvailable: false,
+      error: finalStatus === 'failed' ? 'No channel send tasks succeeded' : undefined
     };
   } catch (error) {
     logger.error('Send broadcast error:', error);
@@ -472,11 +502,20 @@ export const sendBroadcast = async (options) => {
  * @returns {Promise<Object>} Scheduled broadcast result
  */
 export const scheduleBroadcast = async (options) => {
-  const { scheduledAt, ...broadcastOptions } = options;
+  const { scheduledAt, channels, ...broadcastOptions } = options;
 
   try {
+    const effectiveChannels = resolveEffectiveChannels(channels);
+    if (effectiveChannels.length === 0) {
+      return {
+        success: false,
+        error: 'At least one channel must be selected (push, email, or sms)'
+      };
+    }
+
     const broadcast = await BroadcastMessage.create({
       ...broadcastOptions,
+      channels: effectiveChannels,
       scheduledAt: new Date(scheduledAt),
       status: 'scheduled'
     });
@@ -486,7 +525,9 @@ export const scheduleBroadcast = async (options) => {
     return {
       success: true,
       broadcastId: broadcast._id,
-      scheduledAt: broadcast.scheduledAt
+      scheduledAt: broadcast.scheduledAt,
+      status: 'scheduled',
+      channels: effectiveChannels
     };
   } catch (error) {
     logger.error('Schedule broadcast error:', error);
@@ -554,15 +595,31 @@ export const processScheduledBroadcasts = async () => {
         let skippedNoToken = 0;
         let skippedNoChannel = 0;
 
+        const storedChannels = resolveEffectiveChannels(broadcast.channels);
+        if (storedChannels.length === 0) {
+          currentBroadcast.status = 'failed';
+          currentBroadcast.stats = {
+            totalRecipients: recipients.length,
+            sent: 0,
+            delivered: 0,
+            failed: 0,
+            skipped: 0,
+            skippedNoToken: 0,
+            skippedNoChannel: recipients.length,
+            pending: 0
+          };
+          await currentBroadcast.save();
+          logger.warn(`Scheduled broadcast ${broadcast._id} has no valid channels`);
+          continue;
+        }
+
         const scheduledTasks = recipients.flatMap(recipient => {
-          const recipientChannels = new Set(broadcast.channels || ['push', 'email']);
+          const recipientChannels = new Set(storedChannels);
 
           if (recipientChannels.has('push') && !recipient.fcmToken) {
             skippedNoToken += 1;
             recipientChannels.delete('push');
-            if (recipient.email) {
-              recipientChannels.add('email');
-            }
+            // WD10: do not silently add email
           }
 
           if (recipientChannels.size === 0) {
@@ -609,21 +666,16 @@ export const processScheduledBroadcasts = async () => {
         ).length;
         const failed = results.length - successful - skipped;
 
-        // Only mark as 'sent' if at least some notifications were successful
-        if (successful > 0) {
-          currentBroadcast.status = 'sent';
+        const finalStatus = deriveBroadcastSendStatus({ successful });
+        currentBroadcast.status = finalStatus;
+        if (finalStatus === 'sent') {
           currentBroadcast.sentAt = new Date();
-        } else if (skipped > 0 || skippedNoToken > 0 || skippedNoChannel > 0) {
-          currentBroadcast.status = 'sent'; // treated as sent with skips
-          currentBroadcast.sentAt = new Date();
-        } else {
-          currentBroadcast.status = 'failed';
         }
 
         currentBroadcast.stats = {
           totalRecipients: recipients.length,
           sent: successful,
-          delivered: 0, // Will be updated via delivery callbacks
+          delivered: 0,
           failed,
           skipped,
           skippedNoToken,

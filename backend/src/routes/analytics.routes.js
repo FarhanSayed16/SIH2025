@@ -89,21 +89,21 @@ import {
  * @desc    Generate PDF report
  * @access  Private
  */
-router.post('/reports/pdf', generatePDF);
+router.post('/reports/pdf', requireAdmin, generatePDF);
 
 /**
  * @route   POST /analytics/reports/excel
  * @desc    Generate Excel report
- * @access  Private
+ * @access  Private (admin)
  */
-router.post('/reports/excel', generateExcel);
+router.post('/reports/excel', requireAdmin, generateExcel);
 
 /**
  * @route   POST /analytics/reports/csv
  * @desc    Generate CSV report
- * @access  Private
+ * @access  Private (admin)
  */
-router.post('/reports/csv', generateCSV);
+router.post('/reports/csv', requireAdmin, generateCSV);
 
 /**
  * @route   GET /analytics/reports/:filename
