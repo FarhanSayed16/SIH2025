@@ -52,8 +52,8 @@ class ProgressRestorationService {
       final completedModules = await _localCompletionService.getCompletedModules();
       print('✅ [PROGRESS] Restored ${completedModules.length} completed modules');
       
-      // 2. Restore video progress for all NDMA modules
-      await _restoreVideoProgress();
+      // 2. Restore video progress for all NDMA modules (user-scoped)
+      await _restoreVideoProgress(userId);
       
       // 3. Load game stats
       // Note: GameStatsProvider auto-loads from Hive on initialization
@@ -84,21 +84,10 @@ class ProgressRestorationService {
     }
   }
 
-  /// Restore video progress for all NDMA modules
-  /// Phase: NDMA Module Video Progress Persistence
-  /// This ensures video completion status is restored on app startup
-  /// Now uses ModuleRepository singleton which handles progress loading
-  Future<void> _restoreVideoProgress() async {
+  Future<void> _restoreVideoProgress(String userId) async {
     try {
-      print('🔄 [PROGRESS] Initializing ModuleRepository (loads video progress)...');
-      
-      // Initialize ModuleRepository - this will load modules and video progress
-      await ModuleRepository().initialize();
-      
-      print('✅ [PROGRESS] ModuleRepository initialized with video progress');
-    } catch (e) {
-      print('❌ [PROGRESS] Error initializing ModuleRepository: $e');
-    }
+      await ModuleRepository().initialize(userId: userId);
+    } catch (_) {}
   }
 }
 

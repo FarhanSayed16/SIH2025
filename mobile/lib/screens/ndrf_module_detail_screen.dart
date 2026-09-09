@@ -225,7 +225,7 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
                             const Icon(Icons.video_library,
                                 size: 14, color: Colors.grey),
                             const SizedBox(width: 4),
-                            const Text('NDRF Official',
+                            const Text('NDRF source materials',
                                 style: TextStyle(
                                     color: Colors.grey, fontSize: 12)),
 
@@ -235,7 +235,7 @@ class _NdrfModuleDetailScreenState extends State<NdrfModuleDetailScreen> {
                             OutlinedButton.icon(
                               onPressed: () {
                                 String content = summary ??
-                                    'Summary not available.\n\nDebug Info:\nLooking for key: $lookupKey\nVideo Title: ${video.title}';
+                                    'Summary is not available for this video.';
                                 _showSummaryDialog(
                                     context, video.title, content);
                               },

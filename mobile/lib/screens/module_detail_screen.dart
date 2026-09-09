@@ -1,9 +1,20 @@
-﻿import 'package:flutter/material.dart';
-import '../models/module_models.dart';
-import 'video_player_view.dart';
-import 'quiz_screen.dart'; // Import the new game file
+﻿/// NDMA lesson detail — persist video completion under current user (B5 §10.3).
 
-class ModuleDetailScreen extends StatefulWidget {
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/design/design_system.dart';
+import '../core/providers/api_service_provider.dart';
+import '../data/module_data.dart';
+import '../features/auth/providers/auth_provider.dart';
+import '../features/modules/services/module_completion_service.dart';
+import '../features/modules/services/video_progress_service.dart';
+import '../models/module_models.dart';
+import 'quiz_screen.dart';
+import 'video_player_view.dart';
+
+class ModuleDetailScreen extends ConsumerStatefulWidget {
   final LearningModule module;
   final VoidCallback onModuleUpdated;
 
@@ -14,323 +25,301 @@ class ModuleDetailScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<ModuleDetailScreen> createState() => _ModuleDetailScreenState();
+  ConsumerState<ModuleDetailScreen> createState() => _ModuleDetailScreenState();
 }
 
-class _ModuleDetailScreenState extends State<ModuleDetailScreen> {
+class _ModuleDetailScreenState extends ConsumerState<ModuleDetailScreen> {
+  final VideoProgressService _videoProgress = VideoProgressService();
+  bool _persisting = false;
+
+  Future<void> _onVideoCompleted(VideoLesson video) async {
+    if (video.isCompleted || _persisting) return;
+
+    setState(() {
+      video.isCompleted = true;
+      video.lastPosition = null;
+      _persisting = true;
+    });
+    widget.onModuleUpdated();
+
+    final userId = ref.read(authProvider).user?.id;
+    ModuleRepository().updateVideoProgress(
+      widget.module.id,
+      video.title,
+      true,
+    );
+
+    try {
+      await _videoProgress.markVideoCompleted(
+        moduleId: widget.module.id,
+        videoTitle: video.title,
+        videoUrl: video.url,
+        userId: userId,
+      );
+    } catch (_) {
+      // Local memory + cache already updated; Hive failure is non-fatal for UI
+    }
+
+    try {
+      final api = ref.read(apiServiceProvider);
+      await ModuleCompletionService(apiService: api).markVideoCompleted(
+        moduleId: widget.module.id,
+        moduleType: 'ndma',
+        videoId: video.title,
+        totalVideos: widget.module.videos.length,
+      );
+    } catch (_) {
+      // Offline / server failure — local progress remains; sync can retry later
+    }
+
+    if (mounted) setState(() => _persisting = false);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final videos = widget.module.videos;
-    bool canTakeQuiz = videos.isNotEmpty && videos.every((v) => v.isCompleted);
-    final int completedCount = videos.where((v) => v.isCompleted).length;
+    final canTakeQuiz =
+        videos.isNotEmpty && videos.every((v) => v.isCompleted);
+    final completedCount = videos.where((v) => v.isCompleted).length;
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Column(
+      backgroundColor: theme.colorScheme.surface,
+      appBar: AppBar(
+        title: Text(widget.module.title),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
-          // 1. Blue Header Section
-          Container(
-            padding: const EdgeInsets.only(top: 50, bottom: 20, left: 16, right: 16),
-            width: double.infinity,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF42A5F5), Color(0xFF2196F3)],
+          Text(
+            'Source: NDMA materials · Format: video · Requires internet',
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            widget.module.description,
+            style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _tag(Icons.trending_up, widget.module.levelSentenceCase),
+              _tag(Icons.schedule, 'Est. ${widget.module.duration}'),
+              _tag(
+                Icons.ondemand_video,
+                'Videos $completedCount / ${videos.length}',
               ),
+              if (widget.module.isQuizPassed)
+                _tag(Icons.emoji_events_outlined, 'Quiz passed'),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Lesson videos',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Playback needs a network connection. Completing a video does not mean the quiz is passed.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...videos.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final video = entry.value;
+            final status = video.isCompleted
+                ? 'Completed'
+                : video.hasResumePosition
+                    ? 'Resume'
+                    : 'Not started';
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    Navigator.push<void>(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (context) => VideoPlayerView(
+                          title: video.title,
+                          videoUrl: video.url,
+                          autoPlay: false,
+                          initialPosition: video.hasResumePosition
+                              ? video.lastPosition
+                              : null,
+                          onPositionSave: (position, seconds) {
+                            video.lastPosition = position;
+                            final userId = ref.read(authProvider).user?.id;
+                            unawaited(_videoProgress.saveVideoPosition(
+                              moduleId: widget.module.id,
+                              videoTitle: video.title,
+                              videoUrl: video.url,
+                              position: position,
+                              watchTimeSeconds: seconds,
+                              userId: userId,
+                            ));
+                          },
+                          onVideoCompleted: () => _onVideoCompleted(video),
+                        ),
+                      ),
+                    ).then((_) {
+                      if (mounted) setState(() {});
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          video.isCompleted
+                              ? Icons.check_circle
+                              : video.hasResumePosition
+                                  ? Icons.replay_circle_filled
+                                  : Icons.play_circle_outline,
+                          color: video.isCompleted
+                              ? AppColors.success
+                              : theme.colorScheme.primary,
+                          size: 36,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${idx + 1}. ${video.title}',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                status,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.warningBackground.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.accentOrange.withValues(alpha: 0.35)),
             ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                Icon(widget.module.iconData, size: 60, color: Colors.white.withOpacity(0.9)),
-                const SizedBox(height: 10),
                 Text(
-                  widget.module.title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
+                  'Module quiz',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
+                Text(
+                  canTakeQuiz
+                      ? 'All lesson videos are completed. Video completion and quiz completion are tracked separately.'
+                      : 'Unlocks after all lesson videos in this module are completed ($completedCount / ${videos.length}).',
+                  style: theme.textTheme.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: canTakeQuiz
+                        ? () {
+                            Navigator.push<void>(
+                              context,
+                              MaterialPageRoute<void>(
+                                builder: (context) => QuizScreen(
+                                  moduleTitle: widget.module.title,
+                                  quizPath: widget.module.quizJsonPath,
+                                  onQuizFinished: (passed) {
+                                    if (passed) {
+                                      setState(() {
+                                        widget.module.isQuizPassed = true;
+                                      });
+                                      widget.onModuleUpdated();
+                                    }
+                                  },
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    icon: const Icon(Icons.quiz_outlined),
+                    label: Text(
+                      canTakeQuiz ? 'Start module quiz' : 'Quiz locked',
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-
-          // 2. Scrollable Body
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Description
-                  Text(
-                    widget.module.description,
-                    style: TextStyle(color: Colors.grey.shade700, fontSize: 15, height: 1.5),
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.backgroundMedium,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.borderLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AI-generated quiz',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(height: 16),
-
-                  // Tags Row
-                  Row(
-                    children: [
-                      _buildOutlineTag(Icons.category, 'safety'),
-                      const SizedBox(width: 10),
-                      _buildOutlineTag(Icons.trending_up, widget.module.level.toLowerCase()),
-                      const SizedBox(width: 10),
-                      _buildOutlineTag(Icons.schedule, widget.module.duration),
-                    ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'This option is not available in the app yet.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 16),
-
-                  // Stats Row
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.amber),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 16),
-                            const SizedBox(width: 4),
-                            Text('${widget.module.points} pts', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Row(
-                        children: [
-                          const Icon(Icons.visibility_outlined, size: 16, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          const Text('35 views', style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      Row(
-                        children: [
-                          Icon(Icons.check_circle_outline, size: 16, color: widget.module.isQuizPassed ? Colors.green : Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$completedCount completed',
-                            style: TextStyle(color: widget.module.isQuizPassed ? Colors.green : Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Unavailable',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
                   ),
-                  const SizedBox(height: 24),
-
-                  // "Did you know?" Card
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${widget.module.title} is crucial. Always follow safety protocols strictly.',
-                            style: const TextStyle(fontSize: 14, color: Colors.black87),
-                          ),
-                        ),
-                        const Icon(Icons.volume_up, color: Colors.green, size: 20),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Videos List
-                  ...widget.module.videos.asMap().entries.map((entry) {
-                    int idx = entry.key;
-                    VideoLesson video = entry.value;
-                    return GestureDetector(
-                      onTap: () {
-                         Navigator.push(
-                            context,
-                            MaterialPageRoute<dynamic>(
-                              builder: (context) => VideoPlayerView(
-                                title: video.title,
-                                videoUrl: video.url,
-                                onVideoCompleted: () {
-                                  setState(() {
-                                    video.isCompleted = true;
-                                  });
-                                  widget.onModuleUpdated();
-                                },
-                              ),
-                            ),
-                          );
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              height: 180,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.black12,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Stack(
-                                children: [
-                                  Center(
-                                    child: Icon(
-                                      video.isCompleted ? Icons.check_circle : Icons.play_circle_fill, 
-                                      size: 50, 
-                                      color: video.isCompleted ? Colors.green : Colors.grey[700]
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 10,
-                                    right: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.7),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text('Video', style: TextStyle(color: Colors.white, fontSize: 10)),
-                                    ),
-                                  )
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${idx + 1}. ${video.title}',
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-
-                  const SizedBox(height: 10),
-
-                  // Module Quiz Section
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFF8E1),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.amber.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(color: Colors.amber, borderRadius: BorderRadius.circular(4)),
-                              child: const Icon(Icons.quiz, color: Colors.white, size: 16),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text('Quiz', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        const Text('Module Quiz', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const Text('Test your knowledge to earn the badge.', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                        const SizedBox(height: 20),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.play_arrow, color: Colors.white),
-                            label: const Text('Start Module Quiz', style: TextStyle(color: Colors.white)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: canTakeQuiz ? Colors.orange : Colors.grey,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            onPressed: canTakeQuiz
-                                ? () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<dynamic>(
-                                        builder: (context) => QuizScreen(
-                                          moduleTitle: widget.module.title,
-                                          quizPath: widget.module.quizJsonPath,
-                                          onQuizFinished: (passed) {
-                                            if (passed) {
-                                              setState(() {
-                                                widget.module.isQuizPassed = true;
-                                              });
-                                              widget.onModuleUpdated();
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // AI Quiz Section (Updated with redirect)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF3E5F5), // Light purple
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.auto_awesome, color: Colors.purple, size: 18),
-                            SizedBox(width: 8),
-                            Text('AI-Generated Quiz', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        const Text('Generate unlimited quiz questions using AI', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            onPressed: () {
-                              // Redirect to the AI Quiz Game
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('AI Quiz - Coming Soon')));
-                            },
-                            child: const Text('Generate AI Quiz', style: TextStyle(color: Colors.white)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -338,20 +327,19 @@ class _ModuleDetailScreenState extends State<ModuleDetailScreen> {
     );
   }
 
-  Widget _buildOutlineTag(IconData icon, String label) {
+  Widget _tag(IconData icon, String label) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: AppColors.borderLight),
         borderRadius: BorderRadius.circular(8),
-        color: Colors.white,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: Colors.green),
+          Icon(icon, size: 14, color: AppColors.primaryGreen),
           const SizedBox(width: 4),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
     );

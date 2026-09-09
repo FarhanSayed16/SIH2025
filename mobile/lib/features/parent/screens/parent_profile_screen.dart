@@ -13,7 +13,14 @@ import '../../../core/providers/api_service_provider.dart';
 import 'child_detail_screen.dart';
 
 class ParentProfileScreen extends ConsumerStatefulWidget {
-  const ParentProfileScreen({super.key});
+  final bool embedded;
+  final ValueChanged<int>? onSelectTab;
+
+  const ParentProfileScreen({
+    super.key,
+    this.embedded = false,
+    this.onSelectTab,
+  });
 
   @override
   ConsumerState<ParentProfileScreen> createState() =>
@@ -84,20 +91,23 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
       final profileData = <String, dynamic>{
         'name': _nameController.text.trim(),
         'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'parentProfile': {
-          'phoneNumber': _phoneNumberController.text.trim(),
-          'alternatePhoneNumber': _alternatePhoneController.text.trim().isEmpty
-              ? null
-              : _alternatePhoneController.text.trim(),
-          'relationship': _selectedRelationship,
-        },
       };
+      // Only send phone fields when the user entered a value — avoid wiping
+      // existing server phones with empty strings from unhydrated form state.
+      final phone = _phoneController.text.trim();
+      final phoneNumber = _phoneNumberController.text.trim();
+      final altPhone = _alternatePhoneController.text.trim();
+      if (phone.isNotEmpty) profileData['phone'] = phone;
+      final parentProfile = <String, dynamic>{
+        'relationship': _selectedRelationship,
+      };
+      if (phoneNumber.isNotEmpty) parentProfile['phoneNumber'] = phoneNumber;
+      if (altPhone.isNotEmpty) {
+        parentProfile['alternatePhoneNumber'] = altPhone;
+      }
+      profileData['parentProfile'] = parentProfile;
 
       await parentService.updateProfile(profileData);
-
-      // Reload profile data
-      _loadProfile();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -108,6 +118,7 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
         );
         setState(() {
           _isEditing = false;
+          // Keep edited field values — do not wipe phones by reloading empty auth snapshot
         });
       }
     } catch (e) {
@@ -118,6 +129,7 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
             backgroundColor: AppColors.error,
           ),
         );
+        // Retain in-progress edits on failure
       }
     } finally {
       if (mounted) {
@@ -265,7 +277,10 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      user.name[0].toUpperCase(),
+                      (user.name.trim().isNotEmpty
+                              ? user.name.trim()[0]
+                              : '?')
+                          .toUpperCase(),
                       style: AppTextStyles.h3.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -479,7 +494,10 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
                       leading: CircleAvatar(
                         backgroundColor: AppColors.accentBlue.withOpacity(0.1),
                         child: Text(
-                          child.name[0].toUpperCase(),
+                          (child.name.trim().isNotEmpty
+                                  ? child.name.trim()[0]
+                                  : '?')
+                              .toUpperCase(),
                           style: TextStyle(
                             color: AppColors.accentBlue,
                             fontWeight: FontWeight.bold,

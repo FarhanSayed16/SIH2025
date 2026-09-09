@@ -1,4 +1,6 @@
-﻿import 'dart:async';
+﻿/// Comic reader — page indicator, explicit narration, portrait restore (B6 §12.3).
+
+import 'dart:async';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,14 +8,14 @@ import '../../managers/game_manager.dart';
 
 class ComicReaderScreen extends StatefulWidget {
   final int totalPages;
-  final String topicName; // e.g., "EARTHQUAKE"
-  final String characterName; // e.g., "doremon", "shinchan"
+  final String topicName;
+  final String characterName;
 
   const ComicReaderScreen({
-    super.key, 
-    this.totalPages = 10, 
+    super.key,
+    this.totalPages = 10,
     this.topicName = 'EARTHQUAKE',
-    this.characterName = 'doremon', // Default
+    this.characterName = 'doremon',
   });
 
   @override
@@ -36,24 +38,14 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     _audioCompletion = _audioPlayer.onPlayerComplete.listen((_) {
       if (mounted) setState(() => _isPlaying = false);
     });
-    
-    // Force Landscape for better comic viewing
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
+    // Prefer current orientation for reading; landscape remains available.
     _initStory();
   }
 
   void _initStory() {
     _currentLang = GameManager().selectedLanguage;
-
-    // DYNAMIC PATH CONSTRUCTION
-    // Structure: assets/Mod_game/{character}/{topic}/{language}/
-    _basePath = 'Mod_game/${widget.characterName}/${widget.topicName}/$_currentLang';
-
-    _playAudioForPage(_currentPage);
+    _basePath =
+        'Mod_game/${widget.characterName}/${widget.topicName}/$_currentLang';
   }
 
   Future<void> _playAudioForPage(int pageIndex) async {
@@ -61,23 +53,32 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       await _audioPlayer.stop();
       if (mounted) setState(() => _isPlaying = false);
       if (!_hasAudio) return;
-      String audioPath = '$_basePath/$pageIndex.mp3';
+      final audioPath = '$_basePath/$pageIndex.mp3';
       await _audioPlayer.play(AssetSource(audioPath));
       if (mounted) setState(() => _isPlaying = true);
-      
-
-
     } catch (e) {
       debugPrint('Error playing audio for page $pageIndex: $e');
+      if (mounted) setState(() => _isPlaying = false);
     }
   }
 
+  Future<void> _toggleAudio() async {
+    if (!_hasAudio) return;
+    if (_isPlaying) {
+      await _audioPlayer.stop();
+      if (mounted) setState(() => _isPlaying = false);
+      return;
+    }
+    await _playAudioForPage(_currentPage);
+  }
+
   void _nextPage() {
+    _audioPlayer.stop();
     if (_currentPage < widget.totalPages) {
       setState(() {
         _currentPage++;
+        _isPlaying = false;
       });
-      _playAudioForPage(_currentPage);
     } else {
       _finishStory();
     }
@@ -85,15 +86,12 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
 
   void _prevPage() {
     if (_currentPage > 1) {
+      _audioPlayer.stop();
       setState(() {
         _currentPage--;
+        _isPlaying = false;
       });
-      _playAudioForPage(_currentPage);
     }
-  }
-
-  void _replayAudio() {
-    _playAudioForPage(_currentPage);
   }
 
   void _finishStory() {
@@ -102,31 +100,24 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.black87,
-        title: Text(
-          GameManager().getTrans('Win'), 
-          style: const TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        content: const Text(
-          'Great job learning about safety!',
-          style: TextStyle(color: Colors.white),
-          textAlign: TextAlign.center,
-        ),
+        title: Text(GameManager().getTrans('Win')),
+        content: const Text('Great job learning about safety!'),
         actions: [
-          Center(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              onPressed: () {
-                Navigator.pop(ctx); 
-                Navigator.pop(context); 
-              },
-              child: Text(GameManager().getTrans('Exit')),
-            ),
-          )
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              Navigator.pop(context);
+            },
+            child: Text(GameManager().getTrans('Exit')),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _close() async {
+    await _audioPlayer.stop();
+    if (mounted) Navigator.pop(context);
   }
 
   @override
@@ -135,121 +126,128 @@ class _ComicReaderScreenState extends State<ComicReaderScreen> {
     _audioPlayer.dispose();
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
     ]);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    String imagePath = 'assets/$_basePath/$_currentPage.png';
+    final imagePath = 'assets/$_basePath/$_currentPage.png';
+    final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF2C3E50),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            // --- 1. MAIN IMAGE AREA ---
-            Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 60, vertical: 10),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white, width: 4),
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.black,
-                  boxShadow: const [BoxShadow(color: Colors.black45, blurRadius: 10, offset: Offset(0, 5))]
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    imagePath,
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.broken_image, color: Colors.white54, size: 50),
-                            const SizedBox(height: 10),
-                            Text('Missing Image: $_currentPage.png', style: const TextStyle(color: Colors.white54)),
-                            Text('Path: $imagePath', style: const TextStyle(color: Colors.white24, fontSize: 10)),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
-            ),
-
-            // --- 2. TOP HUD ---
-            Positioned(
-              top: 10,
-              left: 20,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
-              ),
-            ),
-
-            Positioned(
-              top: 10,
-              right: 20,
-              child: IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close, color: Colors.white, size: 30),
-              ),
-            ),
-
-            // --- 3. NAVIGATION BUTTONS ---
-            if (_currentPage > 1)
-              Positioned(
-                left: 10,
-                top: 0,
-                bottom: 0,
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) await _audioPlayer.stop();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF1E2A32),
+        appBar: AppBar(
+          backgroundColor: Colors.black87,
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            tooltip: 'Close',
+            icon: const Icon(Icons.close),
+            onPressed: _close,
+          ),
+          title: Text(
+            '$_currentPage / ${widget.totalPages}',
+            style: const TextStyle(fontSize: 16),
+          ),
+          centerTitle: true,
+          actions: [
+            if (_hasAudio)
+              IconButton(
+                tooltip: _isPlaying ? 'Stop narration' : 'Play narration',
+                onPressed: _toggleAudio,
+                icon: Icon(_isPlaying ? Icons.stop_circle_outlined : Icons.volume_up),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(right: 12),
                 child: Center(
-                  child: CircleAvatar(
-                    backgroundColor: Colors.white.withOpacity(0.8),
-                    radius: 25,
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.black),
-                      onPressed: _prevPage,
+                  child: Text(
+                    'No narration',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white70,
                     ),
                   ),
                 ),
               ),
-
-            Positioned(
-              right: 10,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: CircleAvatar(
-                  backgroundColor: Colors.greenAccent.withOpacity(0.9),
-                  radius: 30,
-                  child: IconButton(
-                    icon: Icon(
-                      _currentPage == widget.totalPages ? Icons.check : Icons.arrow_forward, 
-                      color: Colors.black, size: 30
-                    ),
-                    onPressed: _nextPage,
-                  ),
-                ),
-              ),
-            ),
-
-            // --- 4. AUDIO CONTROLS ---
-            Positioned(
-              bottom: 15,
-              right: 80,
-              child: FloatingActionButton.small(
-                backgroundColor: _isPlaying ? Colors.green : Colors.orangeAccent,
-                onPressed: _hasAudio ? _replayAudio : null,
-                child: Icon(_isPlaying ? Icons.volume_up : Icons.replay),
-              ),
-            ),
           ],
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 3,
+                  child: Center(
+                    child: Image.asset(
+                      imagePath,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.broken_image,
+                                  color: Colors.white54, size: 48),
+                              SizedBox(height: 12),
+                              Text(
+                                'This page image is unavailable.',
+                                style: TextStyle(color: Colors.white70),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: IconButton.filledTonal(
+                        onPressed: _currentPage > 1 ? _prevPage : null,
+                        icon: const Icon(Icons.arrow_back),
+                        tooltip: 'Previous page',
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      widget.topicName,
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 56,
+                      height: 56,
+                      child: IconButton.filled(
+                        onPressed: _nextPage,
+                        icon: Icon(
+                          _currentPage == widget.totalPages
+                              ? Icons.check
+                              : Icons.arrow_forward,
+                        ),
+                        tooltip: _currentPage == widget.totalPages
+                            ? 'Finish'
+                            : 'Next page',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

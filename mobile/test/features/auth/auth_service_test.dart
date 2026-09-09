@@ -76,7 +76,7 @@ void main() {
         verify(mockStorageService.storeRefreshToken('test_refresh_token')).called(1);
       });
 
-      test('should throw exception on failed login', () async {
+      test('should throw AuthValidationException on failed login', () async {
         // Arrange
         when(mockApiService.post(any, data: anyNamed('data')))
             .thenThrow(DioException(
@@ -91,10 +91,10 @@ void main() {
         // Act & Assert
         await expectLater(
           authService.login('test@example.com', 'wrongpassword'),
-          throwsA(isA<Exception>().having(
-            (error) => error.toString(),
+          throwsA(isA<AuthValidationException>().having(
+            (error) => error.message,
             'message',
-            'Exception: Invalid credentials',
+            'Invalid credentials',
           )),
         );
         verifyNever(mockStorageService.storeAccessToken(any));

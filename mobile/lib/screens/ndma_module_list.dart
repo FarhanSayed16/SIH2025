@@ -1,72 +1,185 @@
-﻿import 'package:flutter/material.dart';
+﻿/// NDMA catalogue — search, honest zero progress, Start/Continue/Review (B5 §10).
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/design/design_system.dart';
 import '../data/module_data.dart';
+import '../features/auth/providers/auth_provider.dart';
 import '../models/module_models.dart';
 import 'module_detail_screen.dart';
 
-class NdmaModulesList extends StatefulWidget {
+class NdmaModulesList extends ConsumerStatefulWidget {
   const NdmaModulesList({Key? key}) : super(key: key);
 
   @override
-  State<NdmaModulesList> createState() => _NdmaModulesListState();
+  ConsumerState<NdmaModulesList> createState() => _NdmaModulesListState();
 }
 
-class _NdmaModulesListState extends State<NdmaModulesList> {
-  late List<LearningModule> modules;
+class _NdmaModulesListState extends ConsumerState<NdmaModulesList> {
+  List<LearningModule> modules = [];
   String searchQuery = '';
+  bool _loading = true;
+  String? _loadError;
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    modules = ModuleRepository().getModules(); // Use instance method
+    _loadModules();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadModules() async {
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
+    try {
+      final userId = ref.read(authProvider).user?.id;
+      await ModuleRepository().initialize(userId: userId);
+      if (!mounted) return;
+      setState(() {
+        modules = ModuleRepository().getModules();
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = 'Could not load NDMA guides. Try again.';
+      });
+    }
+  }
+
+  List<LearningModule> get _filtered {
+    final q = searchQuery.trim().toLowerCase();
+    if (q.isEmpty) return modules;
+    return modules.where((m) {
+      if (m.title.toLowerCase().contains(q)) return true;
+      if (m.catalogueSummary.toLowerCase().contains(q)) return true;
+      if (m.tags.any((t) => t.toLowerCase().contains(q))) return true;
+      return false;
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredModules = modules.where((m) {
-      return m.title.toLowerCase().contains(searchQuery.toLowerCase());
-    }).toList();
+    final theme = Theme.of(context);
+    final filtered = _filtered;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF43A047),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: theme.colorScheme.onPrimary,
         elevation: 0,
-        title: const Text('NDMA Modules',
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w600)),
+        title: const Text('NDMA safety guides'),
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
           Container(
-            color: const Color(0xFF43A047),
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            color: theme.colorScheme.primary,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: TextField(
+              controller: _searchController,
               onChanged: (val) => setState(() => searchQuery = val),
               decoration: InputDecoration(
-                hintText: 'Search modules...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                hintText: 'Search title, summary, or topic',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchQuery.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => searchQuery = '');
+                        },
+                      ),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: theme.colorScheme.surface,
                 contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(28),
                   borderSide: BorderSide.none,
                 ),
               ),
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredModules.length,
-              itemBuilder: (context, index) {
-                return _buildModuleCard(filteredModules[index]);
-              },
+          if (!_loading && _loadError == null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  searchQuery.isEmpty
+                      ? '${filtered.length} guides'
+                      : '${filtered.length} result${filtered.length == 1 ? '' : 's'}',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _loadError != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_loadError!, textAlign: TextAlign.center),
+                              const SizedBox(height: 12),
+                              TextButton(
+                                onPressed: _loadModules,
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : filtered.isEmpty
+                        ? ListView(
+                            padding: const EdgeInsets.all(24),
+                            children: [
+                              const SizedBox(height: 48),
+                              Icon(
+                                Icons.search_off,
+                                size: 48,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'No guides match your search',
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.titleMedium,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Try another title or topic. Your search text stays editable above.',
+                                textAlign: TextAlign.center,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              return _buildModuleCard(filtered[index]);
+                            },
+                          ),
           ),
         ],
       ),
@@ -74,37 +187,27 @@ class _NdmaModulesListState extends State<NdmaModulesList> {
   }
 
   Widget _buildModuleCard(LearningModule module) {
-    bool isComingSoon = module.isComingSoon;
-    double progress = module.progress;
-    int progressPercent = (progress * 100).toInt();
+    final theme = Theme.of(context);
+    final isComingSoon = module.isComingSoon;
+    final progress = module.progress;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.borderLight),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: isComingSoon
-              ? () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming Soon!')),
-                  );
-                }
+              ? null
               : () async {
-                  await Navigator.push(
+                  await Navigator.push<void>(
                     context,
-                    MaterialPageRoute<dynamic>(
+                    MaterialPageRoute<void>(
                       builder: (context) => ModuleDetailScreen(
                         module: module,
                         onModuleUpdated: () => setState(() {}),
@@ -114,84 +217,91 @@ class _NdmaModulesListState extends State<NdmaModulesList> {
                   setState(() {});
                 },
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(14),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 60,
-                      height: 60,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
-                        color: module.color.withOpacity(0.2),
+                        color: module.color.withValues(alpha: 0.25),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
-                        module.iconData,
-                        color: module.color.withOpacity(1.0).withBlue(50),
-                        size: 30,
-                      ),
+                      child: Icon(module.iconData, color: AppColors.primaryGreen, size: 26),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             module.title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            module.description,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey.shade600,
-                              height: 1.3,
+                            module.catalogueSummary,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              height: 1.35,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              if (!isComingSoon) ...[
-                                _buildTag('${progressPercent}%',
-                                    Colors.green.shade50, Colors.green),
-                                const SizedBox(width: 8),
-                              ],
-                              _buildTag(module.level.toLowerCase(),
-                                  Colors.orange.shade50, Colors.orange),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.access_time,
-                                  size: 14, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Text(
-                                module.duration,
-                                style: const TextStyle(
-                                    fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
-                          )
                         ],
                       ),
-                    )
+                    ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: isComingSoon ? 0 : (progress == 0 ? 0.02 : progress),
-                    backgroundColor: Colors.grey.shade100,
-                    color: isComingSoon ? Colors.grey : const Color(0xFF43A047),
-                    minHeight: 6,
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _metaChip(module.progressStatusLabel),
+                    _metaChip(module.levelSentenceCase),
+                    _metaChip('Est. ${module.duration}'),
+                    if (!isComingSoon)
+                      _metaChip(
+                        '${(progress * 100).round()}% videos',
+                      ),
+                  ],
+                ),
+                if (!isComingSoon) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      backgroundColor: AppColors.backgroundMedium,
+                      color: theme.colorScheme.primary,
+                      minHeight: 6,
+                    ),
                   ),
+                ],
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: isComingSoon
+                      ? Text(
+                          'Content not available yet',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        )
+                      : Text(
+                          module.primaryActionLabel,
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -201,19 +311,19 @@ class _NdmaModulesListState extends State<NdmaModulesList> {
     );
   }
 
-  Widget _buildTag(String text, Color bgColor, Color textColor) {
+  Widget _metaChip(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(4),
+        color: AppColors.backgroundMedium,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         text,
-        style: TextStyle(
-          color: textColor,
+        style: const TextStyle(
           fontSize: 11,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
         ),
       ),
     );

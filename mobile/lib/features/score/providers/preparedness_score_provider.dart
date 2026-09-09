@@ -22,28 +22,47 @@ final localScoreCalculatorProvider = Provider<LocalScoreCalculator>((ref) {
   return LocalScoreCalculator();
 });
 
+/// Where the currently shown score came from (B4 honesty).
+enum ScoreSource {
+  /// No valid score object to show.
+  none,
+
+  /// Estimated from on-device Hive data — not server-confirmed.
+  localEstimate,
+
+  /// Returned by the preparedness score API.
+  server,
+}
+
 /// Preparedness Score State
 class PreparednessScoreState {
   final PreparednessScore? score;
+  final ScoreSource source;
   final bool isLoading;
   final String? error;
   final DateTime? lastFetched;
 
   PreparednessScoreState({
     this.score,
+    this.source = ScoreSource.none,
     this.isLoading = false,
     this.error,
     this.lastFetched,
   });
 
+  bool get hasScore => score != null;
+
   PreparednessScoreState copyWith({
     PreparednessScore? score,
+    ScoreSource? source,
     bool? isLoading,
     String? error,
     DateTime? lastFetched,
+    bool clearScore = false,
   }) {
     return PreparednessScoreState(
-      score: score ?? this.score,
+      score: clearScore ? null : (score ?? this.score),
+      source: clearScore ? ScoreSource.none : (source ?? this.source),
       isLoading: isLoading ?? this.isLoading,
       error: error,
       lastFetched: lastFetched ?? this.lastFetched,
@@ -79,21 +98,26 @@ class PreparednessScoreNotifier extends StateNotifier<PreparednessScoreState> {
       final userId = _ref.read(authProvider).user?.id;
       if (userId == null) {
         print('⚠️ [SCORE] No user ID for local score calculation');
+        state = state.copyWith(isLoading: false, source: ScoreSource.none);
         return;
       }
-      
-      // Calculate from local data immediately
-      final localScore = await _localCalculator.calculateFromLocal(userId: userId);
+
+      final localScore =
+          await _localCalculator.calculateFromLocal(userId: userId);
       state = PreparednessScoreState(
         score: localScore,
-        isLoading: false, // Set to false immediately for instant UI
+        source: ScoreSource.localEstimate,
+        isLoading: false,
         lastFetched: DateTime.now(),
       );
       print('✅ [SCORE] Loaded from local storage: ${localScore.score}%');
     } catch (e) {
       print('⚠️ [SCORE] Error loading from local storage: $e');
-      // Don't set to zero - keep loading state
-      state = state.copyWith(isLoading: false, error: e.toString());
+      state = state.copyWith(
+        isLoading: false,
+        clearScore: true,
+        error: e.toString(),
+      );
     }
   }
 
@@ -135,18 +159,24 @@ class PreparednessScoreNotifier extends StateNotifier<PreparednessScoreState> {
         print('⚠️ [SCORE] No user ID for local score calculation');
         return;
       }
-      
-      final localScore = await _localCalculator.calculateFromLocal(userId: userId);
-      // Update state immediately (optimistic)
+
+      final localScore =
+          await _localCalculator.calculateFromLocal(userId: userId);
+      // Keep server score if we already have one; local is for optimistic / offline.
+      if (state.source == ScoreSource.server && state.score != null) {
+        return;
+      }
       state = PreparednessScoreState(
         score: localScore,
+        source: ScoreSource.localEstimate,
         isLoading: false,
         lastFetched: DateTime.now(),
+        error: state.error,
       );
       print('✅ [SCORE] Local score calculated: ${localScore.score}%');
     } catch (e) {
       print('⚠️ [SCORE] Error calculating local score: $e');
-      // Don't update state on error - keep existing score
+      // Keep existing score; do not invent zero
     }
   }
 
@@ -162,30 +192,31 @@ class PreparednessScoreNotifier extends StateNotifier<PreparednessScoreState> {
 
     state = state.copyWith(isLoading: true, error: null);
 
-    // Phase 2: Calculate locally FIRST for instant update
-    try {
-      await _calculateLocalScore();
-    } catch (e) {
-      print('⚠️ Local score calculation failed: $e');
+    // Local estimate first when we do not yet have a server score
+    if (state.source != ScoreSource.server) {
+      try {
+        await _calculateLocalScore();
+      } catch (e) {
+        print('⚠️ Local score calculation failed: $e');
+      }
     }
 
-    // Then fetch from API in background (backend is source of truth)
     try {
       final apiScore = await _service.getPreparednessScore(userId: userId);
-      // Update with backend score (more accurate)
       state = PreparednessScoreState(
         score: apiScore,
+        source: ScoreSource.server,
         isLoading: false,
         lastFetched: DateTime.now(),
       );
       print('✅ Score synced with backend: ${apiScore.score}%');
     } catch (e) {
-      // If API fails, keep local score (already set above)
+      // Retain labeled local/server cache; surface refresh failure
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
       );
-      print('⚠️ Backend score fetch failed, using local score: $e');
+      print('⚠️ Backend score fetch failed, using cached score: $e');
     }
   }
 
@@ -194,30 +225,38 @@ class PreparednessScoreNotifier extends StateNotifier<PreparednessScoreState> {
   Future<void> recalculateScore({String? userId}) async {
     state = state.copyWith(isLoading: true, error: null);
 
-    // Phase 2: Calculate locally FIRST for instant update
     try {
-      await _calculateLocalScore();
+      // Force local refresh even if a server score exists
+      final uid = userId ?? _ref.read(authProvider).user?.id;
+      if (uid != null) {
+        final localScore =
+            await _localCalculator.calculateFromLocal(userId: uid);
+        state = PreparednessScoreState(
+          score: localScore,
+          source: ScoreSource.localEstimate,
+          isLoading: true,
+          lastFetched: DateTime.now(),
+        );
+      }
     } catch (e) {
       print('⚠️ Local score calculation failed: $e');
     }
 
-    // Then trigger backend recalculation
     try {
       final score = await _service.recalculatePreparednessScore(userId: userId);
-      // Update with backend score (more accurate)
       state = PreparednessScoreState(
         score: score,
+        source: ScoreSource.server,
         isLoading: false,
         lastFetched: DateTime.now(),
       );
       print('✅ Score recalculated and synced: ${score.score}%');
     } catch (e) {
-      // If API fails, keep local score (already set above)
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
       );
-      print('⚠️ Backend recalculation failed, using local score: $e');
+      print('⚠️ Backend recalculation failed, using cached score: $e');
     }
   }
 

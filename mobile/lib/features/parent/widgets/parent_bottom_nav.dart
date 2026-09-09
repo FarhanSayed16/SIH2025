@@ -1,11 +1,8 @@
-﻿/// Parent Bottom Navigation Bar
-/// Provides quick access to main parent features
-/// Parent Monitoring System - Phase 3 Enhancement
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/design/design_system.dart';
-import '../screens/parent_dashboard_screen.dart';
+import '../../../l10n/app_localizations.dart';
+import '../screens/parent_shell_screen.dart';
 import '../screens/qr_verification_screen.dart';
 import '../screens/notifications_screen.dart';
 import '../providers/parent_provider.dart';
@@ -23,62 +20,49 @@ class ParentBottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unreadCount = ref.watch(unreadNotificationsCountProvider);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final navTheme = theme.bottomNavigationBarTheme;
+    final l10n = AppLocalizations.of(context);
 
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
       type: BottomNavigationBarType.fixed,
-      selectedItemColor: AppColors.accentBlue,
-      unselectedItemColor: AppColors.textSecondary,
+      backgroundColor: navTheme.backgroundColor ?? colorScheme.surface,
+      selectedItemColor: navTheme.selectedItemColor ?? colorScheme.primary,
+      unselectedItemColor:
+          navTheme.unselectedItemColor ?? colorScheme.onSurfaceVariant,
       selectedLabelStyle: AppTextStyles.caption.copyWith(
         fontWeight: FontWeight.bold,
       ),
       unselectedLabelStyle: AppTextStyles.caption,
       items: [
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.dashboard),
-          label: 'Dashboard',
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.dashboard),
+          label: l10n.parentDashboard,
+        ),
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.people),
+          label: l10n.parentChildren,
+        ),
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.qr_code_scanner),
+          label: l10n.scanQr,
         ),
         BottomNavigationBarItem(
           icon: Stack(
-            children: [
-              const Icon(Icons.people),
-              if (unreadCount > 0)
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 12,
-                      minHeight: 12,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          label: 'Children',
-        ),
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.qr_code_scanner),
-          label: 'Scan QR',
-        ),
-        BottomNavigationBarItem(
-          icon: Stack(
+            clipBehavior: Clip.none,
             children: [
               const Icon(Icons.notifications),
-              if (unreadCount > 0)
+              if ((unreadCount ?? 0) > 0)
                 Positioned(
-                  right: 0,
-                  top: 0,
+                  right: -2,
+                  top: -2,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
+                    decoration: BoxDecoration(
+                      color: colorScheme.error,
                       shape: BoxShape.circle,
                     ),
                     constraints: const BoxConstraints(
@@ -89,25 +73,23 @@ class ParentBottomNav extends ConsumerWidget {
                 ),
             ],
           ),
-          label: 'Notifications',
+          label: l10n.alerts,
         ),
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.person),
-          label: 'Profile',
+        BottomNavigationBarItem(
+          icon: const Icon(Icons.person),
+          label: l10n.profile,
         ),
       ],
     );
   }
 }
 
-/// Parent Navigation Helper
-/// Helps navigate between parent screens
 class ParentNavigationHelper {
   static void navigateToDashboard(BuildContext context) {
     Navigator.pushReplacement<void, void>(
       context,
       MaterialPageRoute<void>(
-        builder: (context) => const ParentDashboardScreen(),
+        builder: (context) => const ParentShellScreen(),
       ),
     );
   }

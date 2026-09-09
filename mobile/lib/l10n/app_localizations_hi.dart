@@ -339,5 +339,36 @@ class AppLocalizationsHi extends AppLocalizations {
   // Phase 4.9: Accessibility Settings
   @override
   String get accessibilitySettings => 'पहुंच सेटिंग्स';
+
+  @override
+  String get loginTagline => 'सुरक्षा सीखें। तैयारी का अभ्यास करें।';
+
+  @override
+  String get signIn => 'साइन इन';
+
+  @override
+  String get joinYourClass => 'अपनी कक्षा से जुड़ें';
+
+  @override
+  String get emergencyHelp => 'आपातकालीन सहायता';
+
+  @override
+  String get askKavach => 'कवच से पूछें';
+
+  @override
+  String get parentDashboard => 'डैशबोर्ड';
+
+  @override
+  String get parentChildren => 'बच्चे';
+
+  @override
+  String get scanQr => 'QR स्कैन';
+
+  @override
+  String get alerts => 'अलर्ट';
+
+  @override
+  String get appearanceOnlyNote =>
+      'केवल दिखावट; इससे घटना शुरू या समाप्त नहीं होती';
 }
 

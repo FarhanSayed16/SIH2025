@@ -340,5 +340,36 @@ class AppLocalizationsPa extends AppLocalizations {
   // Phase 4.9: Accessibility Settings
   @override
   String get accessibilitySettings => 'ਪਹੁੰਚ ਸੈਟਿੰਗਾਂ';
+
+  @override
+  String get loginTagline => 'ਸੁਰੱਖਿਆ ਸਿੱਖੋ। ਤਿਆਰੀ ਦਾ ਅਭਿਆਸ ਕਰੋ।';
+
+  @override
+  String get signIn => 'ਸਾਈਨ ਇਨ';
+
+  @override
+  String get joinYourClass => 'ਆਪਣੀ ਕਲਾਸ ਵਿੱਚ ਸ਼ਾਮਲ ਹੋਵੋ';
+
+  @override
+  String get emergencyHelp => 'ਐਮਰਜੈਂਸੀ ਮਦਦ';
+
+  @override
+  String get askKavach => 'ਕਵਚ ਨੂੰ ਪੁੱਛੋ';
+
+  @override
+  String get parentDashboard => 'ਡੈਸ਼ਬੋਰਡ';
+
+  @override
+  String get parentChildren => 'ਬੱਚੇ';
+
+  @override
+  String get scanQr => 'QR ਸਕੈਨ';
+
+  @override
+  String get alerts => 'ਅਲਰਟ';
+
+  @override
+  String get appearanceOnlyNote =>
+      'ਸਿਰਫ਼ ਦਿੱਖ; ਇਸ ਨਾਲ ਘਟਨਾ ਸ਼ੁਰੂ ਜਾਂ ਖਤਮ ਨਹੀਂ ਹੁੰਦੀ';
 }
 

@@ -8,6 +8,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../core/design/design_system.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../fcm/providers/fcm_provider.dart';
 import '../../badges/providers/badge_provider.dart';
 import '../../badges/screens/badge_collection_screen.dart';
 import '../../badges/screens/badge_detail_screen.dart';
@@ -58,6 +59,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (_versionTapCount >= AppConstants.devMenuTapCount) {
       _versionTapCount = 0;
       _showDeveloperMenu();
+    }
+  }
+
+  String _localeLabel(String code) {
+    switch (code) {
+      case 'hi':
+        return 'हिंदी';
+      case 'mr':
+        return 'मराठी';
+      case 'pa':
+        return 'ਪੰਜਾਬੀ';
+      default:
+        return 'English';
     }
   }
 
@@ -148,6 +162,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final authState = ref.watch(authProvider);
     final user = authState.user;
     final appMode = ref.watch(appModeProvider);
+    final themeMode = ref.watch(themeModeProvider);
     final localeState = ref.watch(localeProvider);
     final l10n = AppLocalizations.of(context);
 
@@ -225,6 +240,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             SizedBox(height: AppSpacing.md),
 
+            // Appearance (light / dark) — separate from peace/crisis product mode
+            Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.md),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppBorders.borderRadiusMd,
+                ),
+                child: ListTile(
+                  leading: Icon(
+                    themeMode == AppThemeMode.dark
+                        ? Icons.dark_mode_outlined
+                        : Icons.light_mode_outlined,
+                    color: AppColors.primaryGreen,
+                  ),
+                  title: Text('Appearance', style: AppTextStyles.h5),
+                  subtitle: Text(
+                    themeMode == AppThemeMode.dark
+                        ? 'Dark — ordinary appearance, not an emergency state'
+                        : 'Light',
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  trailing: Switch(
+                    value: themeMode == AppThemeMode.dark,
+                    onChanged: (value) {
+                      if (value) {
+                        ref.read(themeModeProvider.notifier).setDark();
+                      } else {
+                        ref.read(themeModeProvider.notifier).setLight();
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ),
+
             // Theme Toggle (Crisis Mode) - Phase 3.4.6.4: Only for full access
             if (user == null ||
                 user.role != 'student' ||
@@ -241,9 +292,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         Icon(Icons.color_lens, color: AppColors.primaryGreen),
                     title: Text(l10n.appMode, style: AppTextStyles.h5),
                     subtitle: Text(
-                      appMode == AppMode.peace
-                          ? l10n.peaceMode
-                          : l10n.crisisMode,
+                      '${appMode == AppMode.peace ? l10n.peaceMode : l10n.crisisMode} — ${l10n.appearanceOnlyNote}',
                       style: AppTextStyles.bodySmall,
                     ),
                     trailing: Switch(
@@ -260,18 +309,66 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
 
-            // Language Selector
+            // Language Selector (en → hi → mr → pa)
             Padding(
               padding: EdgeInsets.only(bottom: AppSpacing.md),
               child: ActionCard(
                 title: l10n.language,
-                subtitle: localeState.locale.languageCode == 'hi'
-                    ? '\u0939\u093F\u0902\u0926\u0940'
-                    : 'English',
+                subtitle: _localeLabel(localeState.locale.languageCode),
                 leadingIcon: Icons.language,
                 onTap: () {
-                  ref.read(localeProvider.notifier).toggleLocale();
+                  ref.read(localeProvider.notifier).cycleLocale();
                 },
+              ),
+            ),
+
+            // Alert notifications — contextual permission
+            Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.md),
+              child: ActionCard(
+                title: 'Alert notifications',
+                subtitle: 'Enable push alerts for drills and emergencies',
+                leadingIcon: Icons.notifications_outlined,
+                onTap: () async {
+                  final granted = await ref
+                      .read(fcmProvider.notifier)
+                      .requestAlertPermission();
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        granted
+                            ? 'Alert notifications enabled'
+                            : 'Notification permission was not granted. Learning features still work.',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // Permission states (honest; does not re-prompt until user taps a feature)
+            Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.md),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: AppBorders.borderRadiusMd,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Permissions', style: AppTextStyles.h5),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Camera, microphone, location and notifications are requested only when you use a feature that needs them.',
+                        style: AppTextStyles.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
 

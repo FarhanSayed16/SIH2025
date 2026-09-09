@@ -138,5 +138,17 @@ abstract class AppLocalizations {
 
   // Phase 4.9: Accessibility Settings
   String get accessibilitySettings;
+
+  // B8: Primary chrome / journey labels
+  String get loginTagline;
+  String get signIn;
+  String get joinYourClass;
+  String get emergencyHelp;
+  String get askKavach;
+  String get parentDashboard;
+  String get parentChildren;
+  String get scanQr;
+  String get alerts;
+  String get appearanceOnlyNote;
 }
 

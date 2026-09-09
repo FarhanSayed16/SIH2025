@@ -64,19 +64,8 @@ class LocalScoreCalculator {
       );
     } catch (e) {
       print('❌ Error calculating local score: $e');
-      // Return zero score on error
-      return PreparednessScore(
-        userId: userId,
-        score: 0,
-        breakdown: ScoreBreakdown(
-          module: ScoreComponent(score: 0, weight: 40),
-          game: ScoreComponent(score: 0, weight: 25),
-          quiz: ScoreComponent(score: 0, weight: 20),
-          drill: ScoreComponent(score: 0, weight: 10),
-          streak: ScoreComponent(score: 0, weight: 5),
-        ),
-        lastUpdated: DateTime.now(),
-      );
+      // B4: do not invent a trustworthy zero on calculator failure
+      rethrow;
     }
   }
 

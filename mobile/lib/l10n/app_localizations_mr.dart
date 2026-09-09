@@ -340,5 +340,36 @@ class AppLocalizationsMr extends AppLocalizations {
   // Phase 4.9: Accessibility Settings
   @override
   String get accessibilitySettings => 'प्रवेशयोग्यता सेटिंग्ज';
+
+  @override
+  String get loginTagline => 'सुरक्षा शिका. तयारीचा सराव करा.';
+
+  @override
+  String get signIn => 'साइन इन';
+
+  @override
+  String get joinYourClass => 'तुमच्या वर्गात सामील व्हा';
+
+  @override
+  String get emergencyHelp => 'आपत्कालीन मदत';
+
+  @override
+  String get askKavach => 'कवचला विचारा';
+
+  @override
+  String get parentDashboard => 'डॅशबोर्ड';
+
+  @override
+  String get parentChildren => 'मुले';
+
+  @override
+  String get scanQr => 'QR स्कॅन';
+
+  @override
+  String get alerts => 'अलर्ट';
+
+  @override
+  String get appearanceOnlyNote =>
+      'फक्त दिसणे; यामुळे घटना सुरू किंवा संपत नाही';
 }
 

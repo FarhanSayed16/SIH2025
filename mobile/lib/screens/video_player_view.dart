@@ -2,9 +2,7 @@
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
-// Ensure this import points to the file we just created
-import '../screens/vr_player_screen.dart'; 
-// Import the new AR Viewer
+import '../screens/vr_player_screen.dart';
 import '../screens/ar_360_viewer.dart';
 
 class VideoPlayerView extends StatefulWidget {
@@ -12,7 +10,13 @@ class VideoPlayerView extends StatefulWidget {
   final String title;
   final VoidCallback onVideoCompleted;
   final bool vrPassthroughByDefault;
-  final String? backgroundImagePath; // 360Â° background image
+  final String? backgroundImagePath;
+  /// When false, the learner must tap play (B5 / §11.2).
+  final bool autoPlay;
+  /// Fraction 0.0–1.0 to seek after initialize (NDMA resume, B9 / D06).
+  final double? initialPosition;
+  /// Called periodically and on dispose with current fraction + seconds.
+  final void Function(double position, int watchTimeSeconds)? onPositionSave;
 
   const VideoPlayerView({
     Key? key,
@@ -20,24 +24,39 @@ class VideoPlayerView extends StatefulWidget {
     required this.title,
     required this.onVideoCompleted,
     this.vrPassthroughByDefault = true,
-    this.backgroundImagePath, 
+    this.backgroundImagePath,
+    this.autoPlay = false,
+    this.initialPosition,
+    this.onPositionSave,
   }) : super(key: key);
 
   @override
   State<VideoPlayerView> createState() => _VideoPlayerViewState();
 }
 
-class _VideoPlayerViewState extends State<VideoPlayerView> {
+class _VideoPlayerViewState extends State<VideoPlayerView>
+    with WidgetsBindingObserver {
   VideoPlayerController? _videoPlayerController;
   ChewieController? _chewieController;
 
   bool _isError = false;
   bool _isInitializing = false;
+  bool _completionFired = false;
+  DateTime? _lastSaveAt;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializePlayer();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _persistPosition(force: true);
+    }
   }
 
   Future<void> _initializePlayer() async {
@@ -45,7 +64,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     _isInitializing = true;
 
     try {
-      _disposeControllers();
+      _disposeControllers(savePosition: false);
 
       _videoPlayerController = VideoPlayerController.networkUrl(
         Uri.parse(widget.videoUrl),
@@ -55,11 +74,24 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
       if (!mounted) return;
 
+      final start = widget.initialPosition;
+      if (start != null && start >= 0.02 && start < 0.95) {
+        final duration = _videoPlayerController!.value.duration;
+        if (duration.inMilliseconds > 0) {
+          final target = Duration(
+            milliseconds: (duration.inMilliseconds * start).round(),
+          );
+          await _videoPlayerController!.seekTo(target);
+        }
+      }
+
+      if (!mounted) return;
+
       _videoPlayerController!.addListener(_videoListener);
 
       _chewieController = ChewieController(
         videoPlayerController: _videoPlayerController!,
-        autoPlay: true,
+        autoPlay: widget.autoPlay,
         looping: false,
         aspectRatio: _videoPlayerController!.value.aspectRatio,
         allowedScreenSleep: false,
@@ -71,7 +103,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
               title: 'Experience Modes',
               onTap: (BuildContext ctx) {
                 Navigator.pop(ctx);
-                _showEnvironmentMenu(ctx, isVr: true); // Default action from menu
+                _showEnvironmentMenu(ctx, isVr: true);
               },
             ),
           ];
@@ -124,18 +156,49 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     final controller = _videoPlayerController;
     if (controller == null || !controller.value.isInitialized) return;
 
-    final position = controller.value.position;
-    final duration = controller.value.duration;
+    if (!_completionFired) {
+      final position = controller.value.position;
+      final duration = controller.value.duration;
 
-    if (duration.inMilliseconds > 0 &&
-        position.inMilliseconds >= duration.inMilliseconds * 0.95) {
-      widget.onVideoCompleted();
-      controller.removeListener(_videoListener);
+      if (duration.inMilliseconds > 0 &&
+          position.inMilliseconds >= duration.inMilliseconds * 0.95) {
+        _completionFired = true;
+        _persistPosition(force: true);
+        controller.removeListener(_videoListener);
+        widget.onVideoCompleted();
+        return;
+      }
     }
+
+    _persistPosition();
   }
 
-  /// Launch VR Mode (Stereoscopic)
-  void _openVrMode(BuildContext context, {required bool passthrough, String? bgPath}) {
+  void _persistPosition({bool force = false}) {
+    final callback = widget.onPositionSave;
+    final controller = _videoPlayerController;
+    if (callback == null || controller == null) return;
+    if (!controller.value.isInitialized || _completionFired) return;
+
+    final duration = controller.value.duration;
+    if (duration.inMilliseconds <= 0) return;
+
+    final now = DateTime.now();
+    if (!force &&
+        _lastSaveAt != null &&
+        now.difference(_lastSaveAt!) < const Duration(seconds: 3)) {
+      return;
+    }
+    _lastSaveAt = now;
+
+    final position = controller.value.position;
+    final fraction =
+        (position.inMilliseconds / duration.inMilliseconds).clamp(0.0, 1.0);
+    callback(fraction, position.inSeconds);
+  }
+
+  void _openVrMode(BuildContext context,
+      {required bool passthrough, String? bgPath}) {
+    _persistPosition(force: true);
     _videoPlayerController?.pause();
 
     Navigator.push(
@@ -151,8 +214,8 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     );
   }
 
-  /// Launch AR 360 Mode (Monoscopic / Single Screen)
   void _openAr360Mode(BuildContext context, String bgPath) {
+    _persistPosition(force: true);
     _videoPlayerController?.pause();
 
     Navigator.push(
@@ -167,35 +230,33 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     );
   }
 
-  /// Show dialog to pick the environment (Shared by VR Cinematic and AR View)
   void _showEnvironmentMenu(BuildContext context, {required bool isVr}) {
-    // If a background path was forced in constructor, use it directly
     if (widget.backgroundImagePath != null) {
       if (isVr) {
-        _openVrMode(context, passthrough: false, bgPath: widget.backgroundImagePath);
+        _openVrMode(context,
+            passthrough: false, bgPath: widget.backgroundImagePath);
       } else {
         _openAr360Mode(context, widget.backgroundImagePath!);
       }
       return;
     }
 
-    // Otherwise, show selection dialog
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.black87,
         title: Text(
-          isVr ? 'Choose VR Cinematic' : 'Choose AR Environment', 
-          style: const TextStyle(color: Colors.white)
+          isVr ? 'Choose VR Cinematic' : 'Choose AR Environment',
+          style: const TextStyle(color: Colors.white),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-             // Only show Passthrough option if in VR mode selector
             if (isVr) ...[
               ListTile(
                 leading: const Icon(Icons.videocam, color: Colors.greenAccent),
-                title: const Text('AR Passthrough (Camera)', style: TextStyle(color: Colors.white)),
+                title: const Text('AR Passthrough (Camera)',
+                    style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _openVrMode(context, passthrough: true);
@@ -204,19 +265,41 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
               const Divider(color: Colors.white24),
               const Padding(
                 padding: EdgeInsets.all(8.0),
-                child: Text('Or Choose Environment:', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                child: Text('Or Choose Environment:',
+                    style: TextStyle(color: Colors.grey, fontSize: 12)),
               ),
             ],
-            
-          
-            _buildScenarioOption(ctx, context, 'Earthquake', 'assets/360image/EarthQuake_360.png', Icons.vibration, isVr),
-            _buildScenarioOption(ctx, context, 'Flood', 'assets/360image/Flood_360.png', Icons.water, isVr),
-            _buildScenarioOption(ctx, context, 'Fire Disaster', 'assets/360image/FIre_disaster_360.png', Icons.local_fire_department, isVr),
-            _buildScenarioOption(ctx, context, 'Tsunami', 'assets/360image/Tsunami_360.png', Icons.waves, isVr),
-            _buildScenarioOption(ctx, context, 'Pandemic Lockdown', 'assets/360image/Pandamic_Lockdown_360.png', Icons.local_hospital, isVr),
-            _buildScenarioOption(ctx, context, 'Landslide', 'assets/360image/Landslide_360.png', Icons.terrain, isVr),
-            _buildScenarioOption(ctx, context, 'Heatwave', 'assets/360image/Heatwave_360.png', Icons.wb_sunny, isVr),
-            _buildScenarioOption(ctx, context, 'Chemical Disaster', 'assets/360image/chemical_disaster_360.png', Icons.warning_amber, isVr),
+            _buildScenarioOption(ctx, context, 'Earthquake',
+                'assets/360image/EarthQuake_360.png', Icons.vibration, isVr),
+            _buildScenarioOption(ctx, context, 'Flood',
+                'assets/360image/Flood_360.png', Icons.water, isVr),
+            _buildScenarioOption(
+                ctx,
+                context,
+                'Fire Disaster',
+                'assets/360image/FIre_disaster_360.png',
+                Icons.local_fire_department,
+                isVr),
+            _buildScenarioOption(ctx, context, 'Tsunami',
+                'assets/360image/Tsunami_360.png', Icons.waves, isVr),
+            _buildScenarioOption(
+                ctx,
+                context,
+                'Pandemic Lockdown',
+                'assets/360image/Pandamic_Lockdown_360.png',
+                Icons.local_hospital,
+                isVr),
+            _buildScenarioOption(ctx, context, 'Landslide',
+                'assets/360image/Landslide_360.png', Icons.terrain, isVr),
+            _buildScenarioOption(ctx, context, 'Heatwave',
+                'assets/360image/Heatwave_360.png', Icons.wb_sunny, isVr),
+            _buildScenarioOption(
+                ctx,
+                context,
+                'Chemical Disaster',
+                'assets/360image/chemical_disaster_360.png',
+                Icons.warning_amber,
+                isVr),
           ],
         ),
         actions: [
@@ -229,7 +312,9 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     );
   }
 
-  Widget _buildScenarioOption(BuildContext dialogContext, BuildContext parentContext, String name, String path, IconData icon, bool isVr) {
+  Widget _buildScenarioOption(BuildContext dialogContext,
+      BuildContext parentContext, String name, String path, IconData icon,
+      bool isVr) {
     return ListTile(
       leading: Icon(icon, color: Colors.cyan),
       title: Text(name, style: const TextStyle(color: Colors.white)),
@@ -244,7 +329,10 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
     );
   }
 
-  void _disposeControllers() {
+  void _disposeControllers({bool savePosition = true}) {
+    if (savePosition) {
+      _persistPosition(force: true);
+    }
     _videoPlayerController?.removeListener(_videoListener);
     _chewieController?.dispose();
     _chewieController = null;
@@ -254,6 +342,7 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _disposeControllers();
     super.dispose();
   }
@@ -281,7 +370,6 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
               }
             },
             itemBuilder: (BuildContext context) => [
-              // 1. VR Passthrough
               const PopupMenuItem<String>(
                 value: 'passthrough',
                 child: Row(
@@ -292,7 +380,6 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
                   ],
                 ),
               ),
-              // 2. VR Cinematic
               const PopupMenuItem<String>(
                 value: 'cinematic',
                 child: Row(
@@ -303,7 +390,6 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
                   ],
                 ),
               ),
-              // 3. AR View (New Option)
               const PopupMenuItem<String>(
                 value: 'ar_view',
                 child: Row(
@@ -311,8 +397,11 @@ class _VideoPlayerViewState extends State<VideoPlayerView> {
                     Icon(Icons.threesixty, size: 18, color: Colors.cyan),
                     SizedBox(width: 12),
                     Text(
-                      'AR 360Â° View',
-                      style: TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold),
+                      'AR 360° View',
+                      style: TextStyle(
+                        color: Colors.cyan,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),

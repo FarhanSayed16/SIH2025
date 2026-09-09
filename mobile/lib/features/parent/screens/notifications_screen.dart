@@ -10,7 +10,14 @@ import '../models/parent_models.dart';
 import 'child_detail_screen.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
-  const NotificationsScreen({super.key});
+  final bool embedded;
+  final ValueChanged<int>? onSelectTab;
+
+  const NotificationsScreen({
+    super.key,
+    this.embedded = false,
+    this.onSelectTab,
+  });
 
   @override
   ConsumerState<NotificationsScreen> createState() =>
@@ -26,88 +33,113 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notifications'),
+        title: const Text('Alerts'),
+        automaticallyImplyLeading: !widget.embedded,
         actions: [
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              setState(() {
-                _filter = value;
-              });
-              // TODO: Implement filtering
+          IconButton(
+            tooltip: 'Mark all as read',
+            icon: const Icon(Icons.done_all),
+            onPressed: () async {
+              final service = ref.read(parentServiceProvider);
+              try {
+                await service.markAllNotificationsRead();
+                ref.invalidate(notificationsProvider);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('All notifications marked as read'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Could not mark all read: $e')),
+                  );
+                }
+              }
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All')),
-              const PopupMenuItem(value: 'unread', child: Text('Unread')),
-              const PopupMenuItem(value: 'drill', child: Text('Drills')),
-              const PopupMenuItem(
-                  value: 'achievement', child: Text('Achievements')),
-              const PopupMenuItem(
-                  value: 'attendance', child: Text('Attendance')),
-              const PopupMenuItem(value: 'emergency', child: Text('Emergency')),
-            ],
           ),
         ],
       ),
-      body: notificationsAsync.when(
-        data: (notifications) {
-          final filteredNotifications = _filter == 'all'
-              ? notifications
-              : _filter == 'unread'
-                  ? notifications.where((n) => !n.read).toList()
-                  : notifications.where((n) => n.type == _filter).toList();
-
-          if (filteredNotifications.isEmpty) {
-            return const EmptyState(
-              message: 'You\'re all caught up!',
-              title: 'No Notifications',
-              icon: Icons.notifications_none,
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              ref.invalidate(notificationsProvider);
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filteredNotifications.length,
-              itemBuilder: (context, index) {
-                final notification = filteredNotifications[index];
-                return _buildNotificationCard(notification);
-              },
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                for (final entry in [
+                  ('all', 'All'),
+                  ('unread', 'Unread'),
+                  ('drill', 'Drills'),
+                  ('achievement', 'Achievements'),
+                  ('attendance', 'Attendance'),
+                  ('emergency', 'Emergency'),
+                ])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(entry.$2),
+                      selected: _filter == entry.$1,
+                      onSelected: (_) => setState(() => _filter = entry.$1),
+                    ),
+                  ),
+              ],
             ),
-          );
-        },
-        loading: () => const LoadingState(),
-        error: (error, stack) => ErrorState(
-          message: error.toString(),
-          onRetry: () {
-            ref.invalidate(notificationsProvider);
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final service = ref.read(parentServiceProvider);
-          try {
-            await service.markAllNotificationsRead();
-            ref.invalidate(notificationsProvider);
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('All notifications marked as read')),
-              );
-            }
-          } catch (e) {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error: $e')),
-              );
-            }
-          }
-        },
-        child: const Icon(Icons.done_all),
-        tooltip: 'Mark all as read',
+          ),
+          Expanded(
+            child: notificationsAsync.when(
+              data: (notifications) {
+                final filteredNotifications = _filter == 'all'
+                    ? notifications
+                    : _filter == 'unread'
+                        ? notifications.where((n) => !n.read).toList()
+                        : notifications
+                            .where((n) => n.type == _filter)
+                            .toList();
+
+                if (notifications.isEmpty) {
+                  return const EmptyState(
+                    message: 'You\'ll see school and safety updates here.',
+                    title: 'No alerts yet',
+                    icon: Icons.notifications_none,
+                  );
+                }
+
+                if (filteredNotifications.isEmpty) {
+                  return EmptyState(
+                    message: 'Nothing in this filter. Try All or another type.',
+                    title: 'No matching alerts',
+                    icon: Icons.filter_list_off,
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(notificationsProvider);
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: filteredNotifications.length,
+                    itemBuilder: (context, index) {
+                      final notification = filteredNotifications[index];
+                      return _buildNotificationCard(notification);
+                    },
+                  ),
+                );
+              },
+              loading: () => const LoadingState(),
+              error: (error, stack) => ErrorState(
+                message: error.toString(),
+                onRetry: () {
+                  ref.invalidate(notificationsProvider);
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

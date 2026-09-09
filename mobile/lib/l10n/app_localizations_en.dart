@@ -339,5 +339,36 @@ class AppLocalizationsEn extends AppLocalizations {
   // Phase 4.9: Accessibility Settings
   @override
   String get accessibilitySettings => 'Accessibility Settings';
+
+  @override
+  String get loginTagline => 'Learn safety. Practise preparedness.';
+
+  @override
+  String get signIn => 'Sign in';
+
+  @override
+  String get joinYourClass => 'Join your class';
+
+  @override
+  String get emergencyHelp => 'Emergency help';
+
+  @override
+  String get askKavach => 'Ask Kavach';
+
+  @override
+  String get parentDashboard => 'Dashboard';
+
+  @override
+  String get parentChildren => 'Children';
+
+  @override
+  String get scanQr => 'Scan QR';
+
+  @override
+  String get alerts => 'Alerts';
+
+  @override
+  String get appearanceOnlyNote =>
+      'Appearance only; does not start or end an incident';
 }
 

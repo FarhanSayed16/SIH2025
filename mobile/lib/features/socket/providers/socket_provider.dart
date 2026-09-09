@@ -120,9 +120,9 @@ class SocketNotifier extends StateNotifier<SocketState> {
     _socketService.on(event, handler);
   }
 
-  /// Emit socket event
-  void emit(String event, Map<String, dynamic> data) {
-    _socketService.emit(event, data);
+  /// Emit socket event. Returns true only when connected.
+  bool emit(String event, Map<String, dynamic> data) {
+    return _socketService.emit(event, data);
   }
 
   /// Acknowledge drill

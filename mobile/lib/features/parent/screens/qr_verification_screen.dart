@@ -12,7 +12,9 @@ import '../models/parent_models.dart';
 import 'child_detail_screen.dart';
 
 class QRVerificationScreen extends ConsumerStatefulWidget {
-  const QRVerificationScreen({super.key});
+  final bool embedded;
+
+  const QRVerificationScreen({super.key, this.embedded = false});
 
   @override
   ConsumerState<QRVerificationScreen> createState() =>

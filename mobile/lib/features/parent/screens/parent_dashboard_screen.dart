@@ -12,17 +12,24 @@ import '../../../core/design/design_system.dart';
 import '../providers/parent_provider.dart';
 import '../models/parent_models.dart';
 import 'child_detail_screen.dart';
-import 'qr_verification_screen.dart';
 import 'notifications_screen.dart';
 import 'children_management_screen.dart';
-import 'parent_profile_screen.dart';
+import 'parent_shell_screen.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../widgets/parent_bottom_nav.dart';
 import '../services/parent_service.dart';
 import '../../../core/providers/api_service_provider.dart';
 
 class ParentDashboardScreen extends ConsumerStatefulWidget {
-  const ParentDashboardScreen({super.key});
+  /// When true, owned by [ParentShellScreen] (no own bottom nav).
+  final bool embedded;
+  final ValueChanged<int>? onSelectTab;
+
+  const ParentDashboardScreen({
+    super.key,
+    this.embedded = false,
+    this.onSelectTab,
+  });
 
   @override
   ConsumerState<ParentDashboardScreen> createState() =>
@@ -31,30 +38,19 @@ class ParentDashboardScreen extends ConsumerStatefulWidget {
 
 class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
   Map<String, Map<String, dynamic>> _childStatuses = {};
-  Map<String, dynamic>? _dashboardSummary;
+  final Set<String> _statusRefreshFailed = {};
   bool _isRefreshingStatus = false;
   Timer? _refreshTimer;
-
-  Timer? _progressRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchStatuses();
-      _fetchDashboardSummary();
       // Set up periodic refresh every 30 seconds for status
       _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
         if (mounted) {
           _fetchStatuses();
-          _fetchDashboardSummary();
-        }
-      });
-      // Set up periodic refresh every 30 seconds for progress data
-      _progressRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
-        if (mounted) {
-          // Invalidate children provider to refresh progress data
-          ref.invalidate(childrenProvider);
         }
       });
     });
@@ -63,7 +59,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
   @override
   void dispose() {
     _refreshTimer?.cancel();
-    _progressRefreshTimer?.cancel();
     super.dispose();
   }
 
@@ -84,53 +79,85 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     try {
       final apiService = ref.read(apiServiceProvider);
       final parentService = ParentService(apiService);
-      final statusMap = <String, Map<String, dynamic>>{};
+      final merged = Map<String, Map<String, dynamic>>.from(_childStatuses);
+      final failed = Set<String>.from(_statusRefreshFailed);
 
       for (final child in children) {
         try {
           final status = await parentService.getChildStatus(child.id);
-          statusMap[child.id] = status;
+          merged[child.id] = status;
+          failed.remove(child.id);
         } catch (e) {
-          print('Error fetching status for ${child.id}: $e');
+          failed.add(child.id);
         }
       }
 
       if (mounted) {
         setState(() {
-          _childStatuses = statusMap;
+          _childStatuses = merged;
+          _statusRefreshFailed
+            ..clear()
+            ..addAll(failed);
           _isRefreshingStatus = false;
         });
       }
     } catch (e) {
-      print('Error fetching statuses: $e');
       if (mounted) {
         setState(() {
           _isRefreshingStatus = false;
         });
       }
-    }
-  }
-
-  Future<void> _fetchDashboardSummary() async {
-    try {
-      final apiService = ref.read(apiServiceProvider);
-      final parentService = ParentService(apiService);
-      final summary = await parentService.getDashboardSummary();
-      if (mounted) {
-        setState(() {
-          _dashboardSummary = summary;
-        });
-      }
-    } catch (e) {
-      print('Error fetching dashboard summary: $e');
     }
   }
 
   String _getChildStatus(ParentChild child) {
-    if (_childStatuses[child.id]?['safetyStatus'] != null) {
-      return _childStatuses[child.id]!['safetyStatus'].toString();
+    // Prefer live status poll (`status`), then stats, then persisted field.
+    // Never invent "safe" when no explicit report exists.
+    final live = _childStatuses[child.id];
+    final liveStatus = live?['status'] ?? live?['safetyStatus'];
+    final raw = liveStatus?.toString() ??
+        child.stats?['status']?.toString() ??
+        child.safetyStatus;
+    if (raw == null || raw.trim().isEmpty || raw == 'unknown') {
+      return 'unavailable';
     }
-    return child.stats?['status']?.toString() ?? child.safetyStatus ?? 'safe';
+    return raw.trim().toLowerCase();
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'safe':
+        return 'Reported safe';
+      case 'in_drill':
+        return 'In drill';
+      case 'missing':
+        return 'Reported missing';
+      case 'at_risk':
+        return 'At risk';
+      case 'evacuating':
+        return 'Evacuating';
+      case 'emergency':
+        return 'Emergency';
+      case 'unavailable':
+      default:
+        return 'Status unavailable';
+    }
+  }
+
+  Color _statusAccent(String status) {
+    switch (status) {
+      case 'safe':
+        return AppColors.success;
+      case 'in_drill':
+        return AppColors.warning;
+      case 'missing':
+      case 'at_risk':
+      case 'evacuating':
+      case 'emergency':
+        return AppColors.error;
+      default:
+        return AppColors.textSecondary;
+    }
   }
 
   @override
@@ -143,9 +170,11 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
 
     return Scaffold(
       appBar: AppBarCustom(
-        title: 'Parent Dashboard',
+        title: widget.embedded ? 'Dashboard' : 'Parent Dashboard',
+        automaticallyImplyLeading: !widget.embedded,
         actions: [
           IconButton(
+            tooltip: 'Refresh',
             icon: _isRefreshingStatus
                 ? const SizedBox(
                     width: 20,
@@ -157,14 +186,14 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               ref.invalidate(childrenProvider);
               ref.invalidate(notificationsProvider);
               await _fetchStatuses();
-              await _fetchDashboardSummary();
             },
           ),
           IconButton(
+            tooltip: 'Alerts',
             icon: Stack(
               children: [
                 const Icon(Icons.notifications_outlined),
-                if (unreadCount > 0)
+                if ((unreadCount ?? 0) > 0)
                   Positioned(
                     right: 0,
                     top: 0,
@@ -179,7 +208,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         minHeight: 16,
                       ),
                       child: Text(
-                        unreadCount > 9 ? '9+' : '$unreadCount',
+                        unreadCount! > 9 ? '9+' : '$unreadCount',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -192,58 +221,35 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               ],
             ),
             onPressed: () {
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const NotificationsScreen(),
-                ),
-              );
+              if (widget.onSelectTab != null) {
+                widget.onSelectTab!(3);
+              } else {
+                Navigator.push<void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => const NotificationsScreen(),
+                  ),
+                );
+              }
             },
           ),
         ],
       ),
-      bottomNavigationBar: ParentBottomNav(
-        currentIndex: 0,
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              // Already on dashboard
-              break;
-            case 1:
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const ChildrenManagementScreen(),
-                ),
-              );
-              break;
-            case 2:
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const QRVerificationScreen(),
-                ),
-              );
-              break;
-            case 3:
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const NotificationsScreen(),
-                ),
-              );
-              break;
-            case 4:
-              Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (context) => const ParentProfileScreen(),
-                ),
-              );
-              break;
-          }
-        },
-      ),
+      bottomNavigationBar: widget.embedded
+          ? null
+          : ParentBottomNav(
+              currentIndex: 0,
+              onTap: (index) {
+                if (index == 0) return;
+                // Standalone fallback: open shell at selected tab
+                Navigator.pushReplacement<void, void>(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (context) => ParentShellScreen(initialTabIndex: index),
+                  ),
+                );
+              },
+            ),
       body: childrenAsync.when(
         data: (children) {
           if (children.isEmpty) {
@@ -260,7 +266,6 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
               ref.invalidate(childrenProvider);
               ref.invalidate(notificationsProvider);
               await _fetchStatuses();
-              await _fetchDashboardSummary();
             },
             child: CustomScrollView(
               slivers: [
@@ -282,7 +287,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Welcome, $parentName!',
+                          'Hello, $parentName',
                           style: AppTextStyles.h3.copyWith(
                             color: AppColors.accentBlue,
                             fontWeight: FontWeight.bold,
@@ -290,7 +295,7 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Monitor your ${children.length} child${children.length > 1 ? 'ren' : ''} progress and safety',
+                          'Linked children and their latest reports',
                           style: AppTextStyles.bodyMedium.copyWith(
                             color: AppColors.textSecondary,
                           ),
@@ -300,41 +305,30 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   ),
                 ),
 
-                // Quick Stats
+                // Compact summary
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
                       children: [
-                        Expanded(
-                          child: StatCard(
-                            label: 'Children',
-                            value: '${children.length}',
-                            icon: Icons.people,
-                            iconColor: AppColors.accentBlue,
-                          ),
+                        _summaryChip(
+                          Icons.people_outline,
+                          '${children.length} linked',
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: StatCard(
-                            label: 'Safe',
-                            value:
-                                '${_dashboardSummary?['safeChildren'] ?? children.where((c) => _getChildStatus(c) == 'safe').length}',
-                            icon: Icons.check_circle,
-                            iconColor: AppColors.success,
-                          ),
+                        _summaryChip(
+                          Icons.notifications_outlined,
+                          unreadCount == null
+                              ? 'Alerts…'
+                              : '${unreadCount} unread',
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: StatCard(
-                            label: 'Alerts',
-                            value: '$unreadCount',
-                            icon: Icons.notifications,
-                            iconColor: unreadCount > 0
-                                ? AppColors.error
-                                : AppColors.success,
+                        if (_statusRefreshFailed.isNotEmpty)
+                          _summaryChip(
+                            Icons.sync_problem,
+                            'Could not refresh ${_statusRefreshFailed.length}',
+                            accent: AppColors.warning,
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -357,20 +351,24 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'Recent Activity',
+                                  'Recent activity',
                                   style: AppTextStyles.h4,
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<dynamic>(
-                                        builder: (context) =>
-                                            const NotificationsScreen(),
-                                      ),
-                                    );
+                                    if (widget.onSelectTab != null) {
+                                      widget.onSelectTab!(3);
+                                    } else {
+                                      Navigator.push<void>(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                          builder: (context) =>
+                                              const NotificationsScreen(),
+                                        ),
+                                      );
+                                    }
                                   },
-                                  child: const Text('View All'),
+                                  child: const Text('View all'),
                                 ),
                               ],
                             ),
@@ -393,9 +391,31 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 8.0),
-                    child: Text(
-                      'My Children',
-                      style: AppTextStyles.h4,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'My children',
+                            style: AppTextStyles.h4,
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            if (widget.onSelectTab != null) {
+                              widget.onSelectTab!(1);
+                            } else {
+                              Navigator.push<void>(
+                                context,
+                                MaterialPageRoute<void>(
+                                  builder: (context) =>
+                                      const ChildrenManagementScreen(),
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text('Manage'),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -414,60 +434,8 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                   ),
                 ),
 
-                // Quick Actions
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Quick Actions',
-                          style: AppTextStyles.h4,
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: PrimaryButton(
-                                label: 'Scan QR Code',
-                                icon: Icons.qr_code_scanner,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<dynamic>(
-                                      builder: (context) =>
-                                          const QRVerificationScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: SecondaryButton(
-                                label: 'Notifications',
-                                icon: Icons.notifications,
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<dynamic>(
-                                      builder: (context) =>
-                                          const NotificationsScreen(),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
                 const SliverToBoxAdapter(
-                  child: SizedBox(height: 80), // Space for FAB
+                  child: SizedBox(height: 24),
                 ),
               ],
             ),
@@ -628,7 +596,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                       ),
                       child: Center(
                         child: Text(
-                          child.name[0].toUpperCase(),
+                          child.name.trim().isNotEmpty
+                              ? child.name.trim()[0].toUpperCase()
+                              : '?',
                           style: AppTextStyles.h4.copyWith(
                             color: AppColors.accentBlue,
                             fontWeight: FontWeight.bold,
@@ -643,7 +613,9 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            child.name,
+                            child.name.trim().isNotEmpty
+                                ? child.name
+                                : 'Unnamed child',
                             style: AppTextStyles.h5.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -666,86 +638,94 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
                         ],
                       ),
                     ),
-                    // Status Indicator
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withOpacity(0.1),
-                        borderRadius: AppBorders.borderRadiusSm,
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: AppColors.success,
-                              shape: BoxShape.circle,
-                            ),
+                    // Status Indicator — driven by explicit report only
+                    Builder(
+                      builder: (context) {
+                        final status = _getChildStatus(child);
+                        final accent = _statusAccent(status);
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Safe',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.success,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          decoration: BoxDecoration(
+                            color: accent.withOpacity(0.1),
+                            borderRadius: AppBorders.borderRadiusSm,
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: accent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _statusLabel(status),
+                                style: AppTextStyles.caption.copyWith(
+                                  color: accent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Quick Stats Row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildChildStat(
-                        Icons.school,
-                        'School',
-                        child.institutionName ?? 'N/A',
-                        AppColors.accentBlue,
-                      ),
-                    ),
-                    if (child.grade != null)
-                      Expanded(
-                        child: _buildChildStat(
-                          Icons.grade,
-                          'Grade',
-                          child.grade!,
-                          AppColors.primaryGreen,
-                        ),
-                      ),
-                  ],
+                // School once + preparedness secondary
+                Text(
+                  [
+                    if (child.institutionName != null &&
+                        child.institutionName!.trim().isNotEmpty)
+                      child.institutionName!.trim(),
+                    if (child.grade != null && child.grade!.trim().isNotEmpty)
+                      child.section != null && child.section!.trim().isNotEmpty
+                          ? 'Grade ${child.grade} · Section ${child.section}'
+                          : 'Grade ${child.grade}',
+                  ].join(' · '),
+                  style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-                const SizedBox(height: 12),
-                // View Details Button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<dynamic>(
-                          builder: (context) =>
-                              ChildDetailScreen(studentId: child.id),
-                        ),
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('View Details'),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.arrow_forward, size: 18),
-                      ],
+                if (_statusRefreshFailed.contains(child.id)) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Could not refresh · showing last known status',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.warning,
                     ),
                   ),
+                ],
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      () {
+                        final score = child.stats?['preparednessScore'];
+                        if (score == null) return 'Preparedness unavailable';
+                        return 'Preparedness $score/100';
+                      }(),
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Open details',
+                      style: AppTextStyles.caption.copyWith(
+                        color: AppColors.accentBlue,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
                 ),
               ],
             ),
@@ -755,43 +735,25 @@ class _ParentDashboardScreenState extends ConsumerState<ParentDashboardScreen> {
     );
   }
 
-  Widget _buildChildStat(
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
+  Widget _summaryChip(IconData icon, String label, {Color? accent}) {
+    final color = accent ?? AppColors.accentBlue;
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: AppBorders.borderRadiusSm,
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: AppTextStyles.caption.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: AppTextStyles.bodySmall.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          Text(
+            label,
+            style: AppTextStyles.caption.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
