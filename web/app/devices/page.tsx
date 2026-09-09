@@ -1,30 +1,35 @@
 /**
  * Devices page - Enhanced IoT Device Monitoring Dashboard
- * Phase 3.4.2
+ * WB7 / WD16 honesty: registration ≠ health; sample vs contact time
  */
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { AppShell } from '@/components/layout/app-shell';
+
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { devicesApi, Device, DeviceHealth, HistoricalSensorData } from '@/lib/api/devices';
+import {
+  registrationLabel,
+  healthLabel,
+  formatAxisValue,
+  resolveSampleVsContact,
+} from '@/lib/api/wb7-honesty';
+import { getInstitutionId } from '@/lib/utils/institution';
 import { socketService, SocketEvent } from '@/lib/services/socket-service';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer
+  ResponsiveContainer,
 } from 'recharts';
 
 export default function DevicesPage() {
@@ -35,7 +40,14 @@ export default function DevicesPage() {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [historicalData, setHistoricalData] = useState<HistoricalSensorData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'list' | 'monitoring' | 'details'>('list');
+  const historyDeviceRef = useRef<string | null>(null);
+  const selectedDeviceRef = useRef<Device | null>(null);
+
+  useEffect(() => {
+    selectedDeviceRef.current = selectedDevice;
+  }, [selectedDevice]);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -43,10 +55,8 @@ export default function DevicesPage() {
       return;
     }
 
-    loadDevices();
-    loadHealthMonitoring();
+    loadAll();
 
-    // Setup Socket.io listeners for real-time updates
     socketService.on('TELEMETRY_UPDATE' as SocketEvent, handleTelemetryUpdate);
     socketService.on('DEVICE_ALERT' as SocketEvent, handleDeviceAlert);
 
@@ -58,39 +68,60 @@ export default function DevicesPage() {
 
   useEffect(() => {
     if (selectedDevice) {
+      setHistoricalData(null);
       loadHistoricalData(selectedDevice.deviceId);
+    } else {
+      historyDeviceRef.current = null;
+      setHistoricalData(null);
     }
-  }, [selectedDevice]);
+  }, [selectedDevice?.deviceId]);
 
   const handleTelemetryUpdate = (data: any) => {
-    // Refresh device list when telemetry updates
-    loadDevices();
+    loadHealthMonitoring();
+    const current = selectedDeviceRef.current;
+    if (current && data?.deviceId === current.deviceId) {
+      loadHistoricalData(current.deviceId);
+    }
+  };
+
+  const handleDeviceAlert = () => {
     loadHealthMonitoring();
   };
 
-  const handleDeviceAlert = (data: any) => {
-    // Show alert notification
-    console.log('Device alert:', data);
-    // Refresh data
-    loadHealthMonitoring();
-  };
+  const institutionId = getInstitutionId(user?.institutionId) || undefined;
 
-  const loadDevices = async () => {
+  const loadAll = async () => {
+    setIsLoading(true);
+    setLoadError(null);
     try {
-      const response = await devicesApi.list(user?.institutionId || undefined);
-      if (response.success && response.data) {
-        setDevices(response.data);
-      }
-    } catch (error) {
-      console.error('Error loading devices:', error);
+      await Promise.all([loadDevices(), loadHealthMonitoring()]);
+    } catch (e: any) {
+      setLoadError(e?.message || 'Failed to load devices');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const loadDevices = async () => {
+    try {
+      const response = await devicesApi.list(institutionId);
+      if (response.success && response.data) {
+        setDevices(response.data);
+      } else {
+        setDevices([]);
+        setLoadError(response.message || 'Failed to load device registry');
+      }
+    } catch (error: any) {
+      console.error('Error loading devices:', error);
+      setDevices([]);
+      setLoadError(error?.message || 'Failed to load devices');
+      throw error;
+    }
+  };
+
   const loadHealthMonitoring = async () => {
     try {
-      const response = await devicesApi.getHealthMonitoring(user?.institutionId || undefined);
+      const response = await devicesApi.getHealthMonitoring(institutionId);
       if (response.success && response.data) {
         setHealthData(response.data.devices || []);
       }
@@ -100,12 +131,13 @@ export default function DevicesPage() {
   };
 
   const loadHistoricalData = async (deviceId: string) => {
+    historyDeviceRef.current = deviceId;
     try {
       const endDate = new Date().toISOString();
-      const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(); // Last 24 hours
+      const startDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       const response = await devicesApi.getHistoricalData(deviceId, startDate, endDate, 'hour', 100);
-      if (response.success && response.data) {
+      if (response.success && response.data && historyDeviceRef.current === deviceId) {
         setHistoricalData(response.data);
       }
     } catch (error) {
@@ -113,15 +145,12 @@ export default function DevicesPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active':
+  const getHealthColor = (health: string) => {
+    switch (health) {
       case 'healthy':
         return 'bg-green-100 text-green-800';
-      case 'inactive':
       case 'offline':
         return 'bg-red-100 text-red-800';
-      case 'maintenance':
       case 'warning':
         return 'bg-yellow-100 text-yellow-800';
       default:
@@ -129,183 +158,153 @@ export default function DevicesPage() {
     }
   };
 
-  // Filter IoT sensor devices (Phase 201: Include multi-sensor)
-  const sensorDevices = devices.filter(d => 
-    d.deviceType?.includes('sensor') || 
-    d.deviceType === 'multi-sensor' ||
-    d.deviceType === 'panic-button' || 
-    d.deviceType === 'siren'
-  );
-
-  // Aggregate health statistics
-  const healthStats = {
-    total: healthData.length,
-    healthy: healthData.filter(d => d.health === 'healthy').length,
-    warning: healthData.filter(d => d.health === 'warning').length,
-    offline: healthData.filter(d => d.health === 'offline').length
+  const getRegistrationColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-gray-100 text-gray-800';
+      case 'inactive':
+      case 'offline':
+        return 'bg-gray-100 text-gray-700';
+      case 'maintenance':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
+  const healthById = Object.fromEntries(healthData.map((h) => [h.deviceId, h]));
+
+  const healthStats = loadError
+    ? null
+    : {
+        total: healthData.length,
+        healthy: healthData.filter((d) => d.health === 'healthy').length,
+        warning: healthData.filter((d) => d.health === 'warning').length,
+        offline: healthData.filter((d) => d.health === 'offline').length,
+      };
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">IoT Device Monitoring</h1>
-            <p className="text-gray-600">Monitor and manage IoT sensors in real-time</p>
-          </div>
-
-          {/* View Tabs */}
-          <div className="flex gap-2 mb-6 border-b">
-            <button
-              onClick={() => setActiveView('list')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                activeView === 'list'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              All Devices
-            </button>
-            <button
-              onClick={() => setActiveView('monitoring')}
-              className={`px-4 py-2 font-medium transition-colors ${
-                activeView === 'monitoring'
-                  ? 'border-b-2 border-blue-500 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              Health Monitoring
-            </button>
-            {selectedDevice && (
-              <button
-                onClick={() => setActiveView('details')}
-                className={`px-4 py-2 font-medium transition-colors ${
-                  activeView === 'details'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {selectedDevice.deviceName || selectedDevice.deviceId}
-              </button>
-            )}
-          </div>
-
-          {/* Content */}
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <>
-              {activeView === 'list' && (
-                <DeviceListView 
-                  devices={devices}
-                  sensorDevices={sensorDevices}
-                  getStatusColor={getStatusColor}
-                  onDeviceSelect={(device) => {
-                    setSelectedDevice(device);
-                    setActiveView('details');
-                  }}
-                />
-              )}
-
-              {activeView === 'monitoring' && (
-                <HealthMonitoringView 
-                  healthData={healthData}
-                  healthStats={healthStats}
-                  getStatusColor={getStatusColor}
-                  onDeviceSelect={(device) => {
-                    const fullDevice = devices.find(d => d.deviceId === device.deviceId);
-                    if (fullDevice) {
-                      setSelectedDevice(fullDevice);
-                      setActiveView('details');
-                    }
-                  }}
-                />
-              )}
-
-              {activeView === 'details' && selectedDevice && (
-                <DeviceDetailsView
-                  device={selectedDevice}
-                  historicalData={historicalData}
-                  onBack={() => {
-                    setSelectedDevice(null);
-                    setActiveView('list');
-                  }}
-                />
-              )}
-            </>
-          )}
-        </main>
+    <AppShell title="Devices">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">IoT Device Monitoring</h1>
+        <p className="text-gray-600">Monitor and manage IoT sensors in real-time</p>
       </div>
-    </div>
+
+      <div className="flex gap-2 mb-6 border-b">
+        <button
+          onClick={() => setActiveView('list')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeView === 'list'
+              ? 'border-b-2 border-blue-500 text-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          All Devices
+        </button>
+        <button
+          onClick={() => setActiveView('monitoring')}
+          className={`px-4 py-2 font-medium transition-colors ${
+            activeView === 'monitoring'
+              ? 'border-b-2 border-blue-500 text-blue-600'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Health Monitoring
+        </button>
+        {selectedDevice && (
+          <button
+            onClick={() => setActiveView('details')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeView === 'details'
+                ? 'border-b-2 border-blue-500 text-blue-600'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {selectedDevice.deviceName || selectedDevice.deviceId}
+          </button>
+        )}
+      </div>
+
+      {loadError && (
+        <Card className="p-4 mb-4 border border-red-200 bg-red-50">
+          <p className="text-red-800 text-sm mb-2">{loadError}</p>
+          <Button variant="outline" onClick={() => loadAll()}>
+            Retry
+          </Button>
+        </Card>
+      )}
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      ) : (
+        <>
+          {activeView === 'list' && (
+            <DeviceListView
+              devices={devices}
+              healthById={healthById}
+              getHealthColor={getHealthColor}
+              getRegistrationColor={getRegistrationColor}
+              onDeviceSelect={(device) => {
+                setSelectedDevice(device);
+                setActiveView('details');
+              }}
+            />
+          )}
+
+          {activeView === 'monitoring' && (
+            <HealthMonitoringView
+              healthData={healthData}
+              healthStats={healthStats}
+              getHealthColor={getHealthColor}
+              onDeviceSelect={(device) => {
+                const fullDevice = devices.find((d) => d.deviceId === device.deviceId);
+                if (fullDevice) {
+                  setSelectedDevice(fullDevice);
+                  setActiveView('details');
+                }
+              }}
+            />
+          )}
+
+          {activeView === 'details' && selectedDevice && (
+            <DeviceDetailsView
+              device={selectedDevice}
+              health={healthById[selectedDevice.deviceId]}
+              historicalData={historicalData}
+              onBack={() => {
+                setSelectedDevice(null);
+                setActiveView('list');
+              }}
+            />
+          )}
+        </>
+      )}
+    </AppShell>
   );
 }
 
-// Device List View
-function DeviceListView({ 
-  devices, 
-  sensorDevices, 
-  getStatusColor, 
-  onDeviceSelect 
-}: { 
+function DeviceListView({
+  devices,
+  healthById,
+  getHealthColor,
+  getRegistrationColor,
+  onDeviceSelect,
+}: {
   devices: Device[];
-  sensorDevices: Device[];
-  getStatusColor: (status: string) => string;
+  healthById: Record<string, DeviceHealth>;
+  getHealthColor: (health: string) => string;
+  getRegistrationColor: (status: string) => string;
   onDeviceSelect: (device: Device) => void;
 }) {
   return (
     <div className="space-y-6">
-      {/* IoT Sensors Section */}
-      {sensorDevices.length > 0 && (
-        <Card className="p-6">
-          <h2 className="text-xl font-semibold mb-4">IoT Sensors ({sensorDevices.length})</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold">Device Name</th>
-                  <th className="text-left py-3 px-4 font-semibold">Type</th>
-                  <th className="text-left py-3 px-4 font-semibold">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold">Last Seen</th>
-                  <th className="text-left py-3 px-4 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sensorDevices.map((device) => (
-                  <tr key={device._id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4">{device.deviceName || device.deviceId}</td>
-                    <td className="py-3 px-4">{device.deviceType}</td>
-                    <td className="py-3 px-4">
-                      <span className={`text-xs px-2 py-1 rounded ${getStatusColor(device.status)}`}>
-                        {device.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'Never'}
-                    </td>
-                    <td className="py-3 px-4">
-                      <Button
-                        onClick={() => onDeviceSelect(device)}
-                        className="text-sm"
-                        variant="outline"
-                      >
-                        View Details
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      {/* All Devices Section */}
       <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">All Devices ({devices.length})</h2>
+        <h2 className="text-xl font-semibold mb-2">Devices ({devices.length})</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          Registration status is not online health. Health comes from recent telemetry when available.
+        </p>
         {devices.length === 0 ? (
           <p className="text-gray-500">No devices registered</p>
         ) : (
@@ -313,27 +312,49 @@ function DeviceListView({
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold">Device ID</th>
+                  <th className="text-left py-3 px-4 font-semibold">Device</th>
                   <th className="text-left py-3 px-4 font-semibold">Type</th>
-                  <th className="text-left py-3 px-4 font-semibold">Status</th>
-                  <th className="text-left py-3 px-4 font-semibold">Last Seen</th>
+                  <th className="text-left py-3 px-4 font-semibold">Registration</th>
+                  <th className="text-left py-3 px-4 font-semibold">Health</th>
+                  <th className="text-left py-3 px-4 font-semibold">Last contact</th>
+                  <th className="text-left py-3 px-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {devices.map((device) => (
-                  <tr key={device._id} className="border-b border-gray-100">
-                    <td className="py-3 px-4">{device.deviceId}</td>
-                    <td className="py-3 px-4">{device.deviceType}</td>
-                    <td className="py-3 px-4">
-                      <span className={`text-xs px-2 py-1 rounded ${getStatusColor(device.status)}`}>
-                        {device.status}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'Never'}
-                    </td>
-                  </tr>
-                ))}
+                {devices.map((device) => {
+                  const health = healthById[device.deviceId];
+                  const times = resolveSampleVsContact({
+                    sampleTimestamp: health?.sampleTimestamp,
+                    receivedAt: health?.receivedAt,
+                    lastSeen: health?.lastContact || health?.lastSeen || device.lastSeen,
+                  });
+                  return (
+                    <tr key={device._id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">{device.deviceName || device.deviceId}</td>
+                      <td className="py-3 px-4">{device.deviceType}</td>
+                      <td className="py-3 px-4">
+                        <span className={`text-xs px-2 py-1 rounded ${getRegistrationColor(device.status)}`}>
+                          {registrationLabel(device.status)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {health ? (
+                          <span className={`text-xs px-2 py-1 rounded ${getHealthColor(health.health)}`}>
+                            {healthLabel(health.health)}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">{healthLabel(null)}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">{times.contactLabel}</td>
+                      <td className="py-3 px-4">
+                        <Button onClick={() => onDeviceSelect(device)} className="text-sm" variant="outline">
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -343,21 +364,27 @@ function DeviceListView({
   );
 }
 
-// Health Monitoring View
 function HealthMonitoringView({
   healthData,
   healthStats,
-  getStatusColor,
-  onDeviceSelect
+  getHealthColor,
+  onDeviceSelect,
 }: {
   healthData: DeviceHealth[];
-  healthStats: { total: number; healthy: number; warning: number; offline: number };
-  getStatusColor: (status: string) => string;
+  healthStats: { total: number; healthy: number; warning: number; offline: number } | null;
+  getHealthColor: (health: string) => string;
   onDeviceSelect: (device: DeviceHealth) => void;
 }) {
+  if (!healthStats) {
+    return (
+      <Card className="p-6">
+        <p className="text-gray-600">Health metrics unavailable — fix the load error above and retry.</p>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Health Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">
           <div className="text-sm text-gray-600">Total Devices</div>
@@ -377,74 +404,79 @@ function HealthMonitoringView({
         </Card>
       </div>
 
-      {/* Device Health List */}
       <Card className="p-6">
         <h2 className="text-xl font-semibold mb-4">Device Health Status</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold">Device</th>
-                <th className="text-left py-3 px-4 font-semibold">Type</th>
-                <th className="text-left py-3 px-4 font-semibold">Health</th>
-                <th className="text-left py-3 px-4 font-semibold">Last Seen</th>
-                <th className="text-left py-3 px-4 font-semibold">Battery</th>
-                <th className="text-left py-3 px-4 font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {healthData.map((device) => (
-                <tr key={device.deviceId} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-3 px-4">{device.deviceName || device.deviceId}</td>
-                  <td className="py-3 px-4">{device.deviceType}</td>
-                  <td className="py-3 px-4">
-                    <span className={`text-xs px-2 py-1 rounded ${getStatusColor(device.health)}`}>
-                      {device.health}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-sm text-gray-600">
-                    {device.minutesSinceLastSeen < 1
-                      ? 'Just now'
-                      : `${device.minutesSinceLastSeen} min ago`}
-                  </td>
-                  <td className="py-3 px-4 text-sm">
-                    {device.batteryLevel !== null && device.batteryLevel !== undefined
-                      ? `${device.batteryLevel}%`
-                      : 'N/A'}
-                  </td>
-                  <td className="py-3 px-4">
-                    <Button
-                      onClick={() => onDeviceSelect(device)}
-                      className="text-sm"
-                      variant="outline"
-                    >
-                      View
-                    </Button>
-                  </td>
+        {healthData.length === 0 ? (
+          <p className="text-gray-500">No health rows returned for this institution.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold">Device</th>
+                  <th className="text-left py-3 px-4 font-semibold">Type</th>
+                  <th className="text-left py-3 px-4 font-semibold">Health</th>
+                  <th className="text-left py-3 px-4 font-semibold">Last contact</th>
+                  <th className="text-left py-3 px-4 font-semibold">Sample time</th>
+                  <th className="text-left py-3 px-4 font-semibold">Battery</th>
+                  <th className="text-left py-3 px-4 font-semibold">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {healthData.map((device) => {
+                  const times = resolveSampleVsContact({
+                    sampleTimestamp: device.sampleTimestamp,
+                    receivedAt: device.receivedAt,
+                    lastSeen: device.lastContact || device.lastSeen,
+                  });
+                  return (
+                    <tr key={device.deviceId} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">{device.deviceName || device.deviceId}</td>
+                      <td className="py-3 px-4">{device.deviceType}</td>
+                      <td className="py-3 px-4">
+                        <span className={`text-xs px-2 py-1 rounded ${getHealthColor(device.health)}`}>
+                          {healthLabel(device.health)}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">{times.contactLabel}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600">{times.sampleLabel}</td>
+                      <td className="py-3 px-4 text-sm">
+                        {device.batteryLevel != null && Number.isFinite(Number(device.batteryLevel))
+                          ? `${device.batteryLevel}%`
+                          : 'Unavailable'}
+                      </td>
+                      <td className="py-3 px-4">
+                        <Button onClick={() => onDeviceSelect(device)} className="text-sm" variant="outline">
+                          View
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );
 }
 
-// Device Details View
 function DeviceDetailsView({
   device,
+  health,
   historicalData,
-  onBack
+  onBack,
 }: {
   device: Device;
+  health?: DeviceHealth;
   historicalData: HistoricalSensorData | null;
   onBack: () => void;
 }) {
   const [latestTelemetry, setLatestTelemetry] = useState<any>(null);
 
   useEffect(() => {
-    // Listen for real-time telemetry updates
+    setLatestTelemetry(null);
     const handleTelemetry = (data: any) => {
       if (data.deviceId === device.deviceId && data.readings) {
         setLatestTelemetry(data.readings);
@@ -458,117 +490,120 @@ function DeviceDetailsView({
     };
   }, [device.deviceId]);
 
-  // Phase 201: Multi-sensor device support
   const isMultiSensor = device.deviceType === 'multi-sensor';
+  const times = resolveSampleVsContact({
+    sampleTimestamp: health?.sampleTimestamp,
+    receivedAt: health?.receivedAt,
+    lastSeen: health?.lastContact || health?.lastSeen || device.lastSeen,
+  });
 
   return (
     <div className="space-y-6">
-      {/* Device Info */}
       <Card className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-bold">{device.deviceName || device.deviceId}</h2>
             <p className="text-gray-600">{device.deviceType}</p>
           </div>
-          <Button onClick={onBack} variant="outline">Back</Button>
+          <Button onClick={onBack} variant="outline">
+            Back
+          </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
           <div>
-            <div className="text-sm text-gray-600">Status</div>
-            <div className="text-lg font-semibold">{device.status}</div>
+            <div className="text-sm text-gray-600">Registration</div>
+            <div className="text-lg font-semibold">{registrationLabel(device.status)}</div>
           </div>
           <div>
-            <div className="text-sm text-gray-600">Last Seen</div>
-            <div className="text-lg font-semibold">
-              {device.lastSeen ? new Date(device.lastSeen).toLocaleString() : 'Never'}
-            </div>
+            <div className="text-sm text-gray-600">Health</div>
+            <div className="text-lg font-semibold">{healthLabel(health?.health)}</div>
           </div>
           <div>
-            <div className="text-sm text-gray-600">Room</div>
-            <div className="text-lg font-semibold">{device.room || 'N/A'}</div>
+            <div className="text-sm text-gray-600">Last contact</div>
+            <div className="text-lg font-semibold">{times.contactLabel}</div>
+          </div>
+          <div>
+            <div className="text-sm text-gray-600">Sample time</div>
+            <div className="text-lg font-semibold">{times.sampleLabel}</div>
           </div>
         </div>
+        <div className="mt-3 text-sm text-gray-500">Room: {device.room || 'Unavailable'}</div>
       </Card>
 
-      {/* Phase 201: Real-time Sensor Readings for Multi-Sensor Devices */}
       {isMultiSensor && latestTelemetry && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Real-Time Sensor Readings</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Fire Sensor */}
             {latestTelemetry.flame !== undefined && (
-              <div className={`p-4 rounded-lg border-2 ${
-                latestTelemetry.flame ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">🔥</span>
-                  <span className="font-semibold">Fire Sensor</span>
+              <div
+                className={`p-4 rounded-lg border-2 ${
+                  latestTelemetry.flame === true
+                    ? 'border-red-500 bg-red-50'
+                    : latestTelemetry.flame === false
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-gray-300 bg-gray-50'
+                }`}
+              >
+                <div className="font-semibold mb-2">Fire Sensor</div>
+                <div
+                  className={`text-xl font-bold ${
+                    latestTelemetry.flame === true
+                      ? 'text-red-600'
+                      : latestTelemetry.flame === false
+                      ? 'text-green-600'
+                      : 'text-gray-700'
+                  }`}
+                >
+                  {latestTelemetry.flame === true
+                    ? 'Flame detected'
+                    : latestTelemetry.flame === false
+                    ? 'No flame (boolean false)'
+                    : 'Reading unavailable'}
                 </div>
-                <div className={`text-xl font-bold ${
-                  latestTelemetry.flame ? 'text-red-600' : 'text-green-600'
-                }`}>
-                  {latestTelemetry.flame ? 'Fire Detected!' : 'No Fire'}
+                <div className="text-sm text-gray-500 mt-1">
+                  Boolean only — no invented “No Fire” from missing data
                 </div>
               </div>
             )}
 
-            {/* Water Level */}
             {latestTelemetry.water !== undefined && (
-              <div className={`p-4 rounded-lg border-2 ${
-                latestTelemetry.water > 2000 ? 'border-orange-500 bg-orange-50' : 'border-blue-500 bg-blue-50'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">🌊</span>
-                  <span className="font-semibold">Water Level</span>
-                </div>
-                <div className={`text-xl font-bold ${
-                  latestTelemetry.water > 2000 ? 'text-orange-600' : 'text-blue-600'
-                }`}>
-                  {latestTelemetry.water}
-                </div>
-                {latestTelemetry.water > 2000 && (
-                  <div className="text-sm text-orange-600 mt-1">⚠️ Flood Alert</div>
-                )}
+              <div className="p-4 rounded-lg border-2 border-gray-300 bg-gray-50">
+                <div className="font-semibold mb-2">Water Level</div>
+                <div className="text-xl font-bold text-blue-600">{latestTelemetry.water}</div>
+                <div className="text-sm text-gray-500 mt-1">Raw telemetry — no client flood threshold applied</div>
               </div>
             )}
 
-            {/* Earthquake/Vibration */}
             {latestTelemetry.magnitude !== undefined && (
-              <div className={`p-4 rounded-lg border-2 ${
-                latestTelemetry.magnitude > 2.5 ? 'border-orange-500 bg-orange-50' : 'border-gray-500 bg-gray-50'
-              }`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">⚠️</span>
-                  <span className="font-semibold">Vibration</span>
+              <div className="p-4 rounded-lg border-2 border-gray-300 bg-gray-50">
+                <div className="font-semibold mb-2">Vibration</div>
+                <div className="text-xl font-bold text-gray-700">
+                  {Number.isFinite(Number(latestTelemetry.magnitude))
+                    ? `${Number(latestTelemetry.magnitude).toFixed(2)} m/s²`
+                    : 'Unavailable'}
                 </div>
-                <div className={`text-xl font-bold ${
-                  latestTelemetry.magnitude > 2.5 ? 'text-orange-600' : 'text-gray-600'
-                }`}>
-                  {latestTelemetry.magnitude.toFixed(2)} m/s²
+                <div className="text-sm text-gray-500 mt-1">
+                  Raw telemetry — no client earthquake threshold applied
                 </div>
-                {latestTelemetry.magnitude > 2.5 && (
-                  <div className="text-sm text-orange-600 mt-1">⚠️ Earthquake Alert</div>
-                )}
               </div>
             )}
 
-            {/* Acceleration */}
             {latestTelemetry.acceleration && (
               <div className="p-4 rounded-lg border-2 border-gray-200 bg-gray-50 col-span-full">
                 <div className="font-semibold mb-2">Acceleration</div>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <div className="text-sm text-gray-600">X</div>
-                    <div className="text-lg font-bold">{latestTelemetry.acceleration.x?.toFixed(2) || '0.00'} m/s²</div>
+                    <div className="text-lg font-bold">{formatAxisValue(latestTelemetry.acceleration.x)} m/s²</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Y</div>
-                    <div className="text-lg font-bold">{latestTelemetry.acceleration.y?.toFixed(2) || '0.00'} m/s²</div>
+                    <div className="text-lg font-bold">{formatAxisValue(latestTelemetry.acceleration.y)} m/s²</div>
                   </div>
                   <div>
                     <div className="text-sm text-gray-600">Z</div>
-                    <div className="text-lg font-bold">{latestTelemetry.acceleration.z?.toFixed(2) || '0.00'} m/s²</div>
+                    <div className="text-lg font-bold">{formatAxisValue(latestTelemetry.acceleration.z)} m/s²</div>
                   </div>
                 </div>
               </div>
@@ -577,7 +612,6 @@ function DeviceDetailsView({
         </Card>
       )}
 
-      {/* Historical Data Charts */}
       {historicalData && historicalData.timeSeries && historicalData.timeSeries.length > 0 && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Historical Sensor Data (Last 24 Hours)</h3>
@@ -589,26 +623,11 @@ function DeviceDetailsView({
               <YAxis yAxisId="right" orientation="right" />
               <Tooltip />
               <Legend />
-              {/* Phase 201: Multi-sensor charts */}
               {historicalData.timeSeries.some((d: any) => d.avgFlame !== undefined) && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="avgFlame"
-                  stroke="#ef4444"
-                  name="Fire Detected"
-                  strokeWidth={2}
-                />
+                <Line yAxisId="left" type="monotone" dataKey="avgFlame" stroke="#ef4444" name="Fire Detected" strokeWidth={2} />
               )}
               {historicalData.timeSeries.some((d: any) => d.avgWater !== undefined) && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="avgWater"
-                  stroke="#3b82f6"
-                  name="Water Level"
-                  strokeWidth={2}
-                />
+                <Line yAxisId="right" type="monotone" dataKey="avgWater" stroke="#3b82f6" name="Water Level" strokeWidth={2} />
               )}
               {historicalData.timeSeries.some((d: any) => d.avgMagnitude !== undefined) && (
                 <Line
@@ -620,30 +639,19 @@ function DeviceDetailsView({
                   strokeWidth={2}
                 />
               )}
-              {historicalData.timeSeries.some(d => d.avgTemperature) && (
-                <Line
-                  yAxisId="left"
-                  type="monotone"
-                  dataKey="avgTemperature"
-                  stroke="#8884d8"
-                  name="Avg Temperature (°C)"
-                />
+              {historicalData.timeSeries.some(
+                (d) => d.avgTemperature !== undefined && d.avgTemperature !== null
+              ) && (
+                <Line yAxisId="left" type="monotone" dataKey="avgTemperature" stroke="#8884d8" name="Avg Temperature (°C)" />
               )}
-              {historicalData.timeSeries.some(d => d.avgSmoke) && (
-                <Line
-                  yAxisId="right"
-                  type="monotone"
-                  dataKey="avgSmoke"
-                  stroke="#82ca9d"
-                  name="Avg Smoke (PPM)"
-                />
+              {historicalData.timeSeries.some((d) => d.avgSmoke !== undefined && d.avgSmoke !== null) && (
+                <Line yAxisId="right" type="monotone" dataKey="avgSmoke" stroke="#82ca9d" name="Avg Smoke (PPM)" />
               )}
             </LineChart>
           </ResponsiveContainer>
         </Card>
       )}
 
-      {/* Statistics */}
       {historicalData && historicalData.statistics && (
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Statistics</h3>
@@ -652,22 +660,26 @@ function DeviceDetailsView({
               <div className="text-sm text-gray-600">Total Readings</div>
               <div className="text-2xl font-bold">{historicalData.statistics.count}</div>
             </div>
-            {historicalData.statistics.avgTemperature && (
-              <div>
-                <div className="text-sm text-gray-600">Avg Temperature</div>
-                <div className="text-2xl font-bold">
-                  {Math.round(historicalData.statistics.avgTemperature)}°C
+            {historicalData.statistics.avgTemperature !== undefined &&
+              historicalData.statistics.avgTemperature !== null && (
+                <div>
+                  <div className="text-sm text-gray-600">Avg Temperature</div>
+                  <div className="text-2xl font-bold">
+                    {Number.isFinite(Number(historicalData.statistics.avgTemperature))
+                      ? `${Math.round(Number(historicalData.statistics.avgTemperature))}°C`
+                      : 'Unavailable'}
+                  </div>
                 </div>
-              </div>
-            )}
-            {historicalData.statistics.thresholdBreaches > 0 && (
-              <div>
-                <div className="text-sm text-gray-600">Threshold Breaches</div>
-                <div className="text-2xl font-bold text-red-600">
-                  {historicalData.statistics.thresholdBreaches}
+              )}
+            {historicalData.statistics.thresholdBreaches != null &&
+              Number(historicalData.statistics.thresholdBreaches) > 0 && (
+                <div>
+                  <div className="text-sm text-gray-600">Threshold Breaches</div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {historicalData.statistics.thresholdBreaches}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </Card>
       )}

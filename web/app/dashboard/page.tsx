@@ -10,7 +10,8 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { socketService, SocketEvent } from '@/lib/services/socket-service';
-import { drillsApi, Drill } from '@/lib/api/drills';
+import Link from 'next/link';
+import { drillsApi, Drill, isDrillInProgress } from '@/lib/api/drills';
 import { alertsApi, Alert } from '@/lib/api/alerts';
 import { usersApi } from '@/lib/api/users';
 import { devicesApi, DeviceHealth } from '@/lib/api/devices';
@@ -18,8 +19,7 @@ import { apiClient } from '@/lib/api/client';
 import { aiApi } from '@/lib/api/ai';
 import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
+import { AppShell } from '@/components/layout/app-shell';
 import { motion } from 'framer-motion';
 import { AnimatedCounter } from '@/components/dashboard/AnimatedCounter';
 import { DrillPerformanceChart } from '@/components/dashboard/DrillPerformanceChart';
@@ -55,8 +55,13 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [iotAlertModal, setIotAlertModal] = useState<any>(null);
-  const [todaysTip, setTodaysTip] = useState<{ tip: string; date: string } | null>(null);
-  const [tipLang, setTipLang] = useState<'en' | 'hi' | 'mr'>('en'); // G1: language for today's tip
+  const [todaysTip, setTodaysTip] = useState<{ tip: string; date: string; lang: 'en' | 'hi' | 'mr' } | null>(null);
+  const [tipLang, setTipLang] = useState<'en' | 'hi' | 'mr'>('en');
+  const [tipLoading, setTipLoading] = useState(false);
+  const [drillsError, setDrillsError] = useState<string | null>(null);
+  const [alertsError, setAlertsError] = useState<string | null>(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
+  const [teacherPendingTotal, setTeacherPendingTotal] = useState<number | null>(null);
   const { showIoTAlert } = useIoTAlertToast();
   const { showToast } = useToast();
 
@@ -86,6 +91,11 @@ export default function DashboardPage() {
       return;
     }
 
+    if (user.role === 'parent') {
+      router.replace('/parent/dashboard');
+      return;
+    }
+
     apiClient.setToken(accessToken);
 
     if (isInitialized) {
@@ -95,27 +105,26 @@ export default function DashboardPage() {
     setIsInitialized(true);
 
     const institutionId = getInstitutionId(user.institutionId);
-    
-    if (institutionId && accessToken) {
-      console.log('🔄 Connecting to Socket.io with institutionId:', institutionId);
-      socketService.connect(institutionId, accessToken);
+    const unsubs: Array<() => void> = [];
 
-      socketService.on('CRISIS_ALERT', (data) => {
+    if (institutionId && accessToken) {
+      // SocketLifecycle owns connect(); pages only subscribe.
+      unsubs.push(socketService.on('CRISIS_ALERT', (data) => {
         loadAlerts();
-      });
+      }));
 
       // Toast + modal for drill scheduled
-      socketService.on('DRILL_SCHEDULED', (data) => {
+      unsubs.push(socketService.on('DRILL_SCHEDULED', (data) => {
         showToast(`Drill scheduled: ${data?.type || 'drill'}`, 'info');
         loadDrills();
-      });
+      }));
 
-      socketService.on('DRILL_SUMMARY', (data) => {
+      unsubs.push(socketService.on('DRILL_SUMMARY', (data) => {
         loadDrills();
-      });
+      }));
 
       // Phase 201: IoT Real-time Alerts
-      socketService.on('DEVICE_ALERT' as SocketEvent, async (data: any) => {
+      unsubs.push(socketService.on('DEVICE_ALERT' as SocketEvent, async (data: any) => {
         const alertType = data.alertType?.toUpperCase() || 'ALERT';
         const severity = data.severity?.toUpperCase() || 'HIGH';
         const isCritical = severity === 'CRITICAL' || alertType === 'FIRE';
@@ -184,10 +193,10 @@ export default function DashboardPage() {
 
         // Refresh device health
         loadData();
-      });
+      }));
 
       // Phase 4.x: Drill start popup
-      socketService.on('DRILL_START' as SocketEvent, async (data: any) => {
+      unsubs.push(socketService.on('DRILL_START' as SocketEvent, async (data: any) => {
         const drillType = data.type?.toUpperCase() || 'DRILL';
         const message = data.message || 'PRACTICE DRILL — This is not a real emergency';
 
@@ -214,16 +223,16 @@ export default function DashboardPage() {
         } catch (error) {
           console.error('Error playing drill sound:', error);
         }
-      });
+      }));
 
       // Phase 201: IoT Telemetry Updates (silent UI update)
-      socketService.on('TELEMETRY_UPDATE' as SocketEvent, (data: any) => {
+      unsubs.push(socketService.on('TELEMETRY_UPDATE' as SocketEvent, (data: any) => {
         // Silent update - just refresh device health
         loadData();
-      });
+      }));
 
       // SOS alerts
-      socketService.on('SOS_ALERT' as SocketEvent, async (data: any) => {
+      unsubs.push(socketService.on('SOS_ALERT' as SocketEvent, async (data: any) => {
         setLiveSos((prev) => {
           const id = data?.userId || data?.timestamp;
           const without = prev.filter((s) => (s.userId || s.timestamp) !== id);
@@ -234,29 +243,37 @@ export default function DashboardPage() {
         const locText =
           loc && loc.lat && loc.lng ? ` (${loc.lat}, ${loc.lng})` : '';
         showToast(`SOS from ${who}${locText}`, 'error');
-      });
+      }));
 
-      socketService.on('SOS_SAFE' as SocketEvent, async (data: any) => {
+      unsubs.push(socketService.on('SOS_SAFE' as SocketEvent, async (data: any) => {
         setLiveSos((prev) => prev.filter((s) => s.userId !== data?.userId));
         const who = data?.userName || data?.role || 'User';
         showToast(`Safe: ${who} marked safe`, 'success');
-      });
+      }));
     }
 
     loadData();
 
     return () => {
-      socketService.disconnect();
+      unsubs.forEach((u) => u());
     };
   }, [isAuthenticated, user, accessToken, router, authLoading, isInitialized]);
 
-  // B2/G1: Load today's tip when initialized or language changes
+  // B2/G1: Load tip; keep prior tip on failure; bind language to loaded content
   useEffect(() => {
     if (!isInitialized || !accessToken) return;
     let cancelled = false;
-    aiApi.getTodaysTip(tipLang).then((tipData) => {
-      if (!cancelled && tipData?.tip) setTodaysTip({ tip: tipData.tip, date: tipData.date || '' });
-    }).catch(() => {});
+    setTipLoading(true);
+    const requestedLang = tipLang;
+    aiApi.getTodaysTip(requestedLang).then((tipData) => {
+      if (!cancelled && tipData?.tip) {
+        setTodaysTip({ tip: tipData.tip, date: tipData.date || '', lang: requestedLang });
+      }
+    }).catch(() => {
+      // Retain previous tip
+    }).finally(() => {
+      if (!cancelled) setTipLoading(false);
+    });
     return () => { cancelled = true; };
   }, [isInitialized, accessToken, tipLang]);
 
@@ -276,28 +293,62 @@ export default function DashboardPage() {
     apiClient.setToken(token);
 
     setIsLoading(true);
-    try {
-      const schoolId = getSchoolId();
-      
-      const [drillsRes, alertsRes] = await Promise.all([
-        drillsApi.list(schoolId),
-        alertsApi.list(schoolId),
-      ]);
+    const schoolId = getSchoolId();
 
-      if (drillsRes.success && drillsRes.data) {
-        setDrills(drillsRes.data);
+    await Promise.all([
+      drillsApi.list(schoolId)
+        .then((drillsRes) => {
+          if (drillsRes.success && drillsRes.data) {
+            setDrills(drillsRes.data);
+            setDrillsError(null);
+          } else {
+            setDrillsError(drillsRes.message || 'Drill list unavailable');
+          }
+        })
+        .catch(() => setDrillsError('Drill status unavailable')),
+      alertsApi.list(schoolId)
+        .then((alertsRes) => {
+          if (alertsRes.success && alertsRes.data) {
+            setAlerts(alertsRes.data);
+            setAlertsError(null);
+          } else {
+            setAlertsError(alertsRes.message || 'Alert status unavailable');
+          }
+        })
+        .catch(() => setAlertsError('Alert status unavailable')),
+      loadSosAlerts().catch(() => {}),
+    ]);
+
+    setLastFetchedAt(new Date().toISOString());
+
+    if (user?.role === 'teacher') {
+      try {
+        const { teacherApi } = await import('@/lib/api/teacher');
+        const classesRes = await teacherApi.getClasses();
+        if (classesRes.success && classesRes.data?.classes) {
+          let total: number | null = 0;
+          let anyFailed = false;
+          for (const c of classesRes.data.classes) {
+            try {
+              const pending = await teacherApi.getPendingStudents(c._id);
+              if (pending.success && pending.data !== undefined) {
+                const students = Array.isArray(pending.data) ? pending.data : pending.data.students || [];
+                total = (total ?? 0) + students.length;
+              } else {
+                anyFailed = true;
+              }
+            } catch {
+              anyFailed = true;
+            }
+          }
+          setTeacherPendingTotal(anyFailed && total === 0 ? null : total);
+        }
+      } catch {
+        setTeacherPendingTotal(null);
       }
-
-      if (alertsRes.success && alertsRes.data) {
-        setAlerts(alertsRes.data);
-      }
-
-      await loadSosAlerts();
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   const getSchoolId = () => getInstitutionId(user?.institutionId);
@@ -330,8 +381,8 @@ export default function DashboardPage() {
   };
 
   const activeAlerts = alerts.filter((a) => a.status === 'active');
-  const activeDrills = drills.filter((d) => d.status === 'active');
-  const scheduledDrills = drills.filter((d) => d.status === 'completed');
+  const activeDrills = drills.filter((d) => isDrillInProgress(d.status));
+  const scheduledDrills = drills.filter((d) => d.status === 'scheduled');
   const completedDrills = drills.filter((d) => d.status === 'completed');
   const latestSos = [
     ...liveSos,
@@ -370,87 +421,56 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      <div className="flex h-screen overflow-hidden relative">
-        {/* Animated Background Gradient */}
-        <div className="fixed inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 animate-gradient-xy"></div>
-        <style jsx>{`
-          @keyframes gradient-xy {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-          .animate-gradient-xy {
-            background-size: 200% 200%;
-            animation: gradient-xy 15s ease infinite;
-          }
-        `}</style>
-        
-        {/* Sidebar */}
-        <aside className="w-64 hidden md:block h-full overflow-y-auto z-10">
-          <Sidebar />
-        </aside>
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden relative z-10">
-          <Header />
-          
-          <main className="flex-1 overflow-y-auto p-6 lg:p-8 scroll-smooth">
-            {/* Welcome Banner */}
-            <div className="mb-8">
+      <AppShell title="Dashboard" mainClassName="relative bg-gradient-to-br from-blue-50 via-indigo-50 to-slate-50">
+            {/* Welcome */}
+            <div className="mb-6">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-                    Welcome to <span className="text-blue-600">Kavach</span> Dashboard
-                  </h1>
-                  <p className="text-gray-600 text-base">
-                    Disaster Management & Safety Training System for Students
+                  <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900 mb-1">
+                    Dashboard
+                  </h2>
+                  <p className="text-gray-600 text-sm">
+                    {user?.role === 'teacher'
+                      ? 'Your classes, drills, and alerts in scope'
+                      : 'Institution drills and alert records'}
+                    {lastFetchedAt && (
+                      <span className="text-gray-500">
+                        {' '}
+                        · Last successful fetch {new Date(lastFetchedAt).toLocaleString()}
+                      </span>
+                    )}
                   </p>
-                </div>
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg border border-green-200">
-                    <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="font-medium text-green-700">System Active</span>
-                  </div>
                 </div>
               </div>
             </div>
 
-            {/* B2: Today's safety tip — G1: language selector */}
-            {todaysTip?.tip && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="mb-6"
-              >
-                <Card className="p-4 bg-amber-50/90 backdrop-blur border-amber-200 border-l-4 border-l-amber-500">
-                  <div className="flex items-start gap-3">
-                    <Lightbulb className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-amber-900 mb-1">Today&apos;s safety tip</p>
-                      <p className="text-sm text-gray-800">{todaysTip.tip}</p>
-                      {todaysTip.date && (
-                        <p className="text-xs text-amber-700 mt-1">{todaysTip.date}</p>
-                      )}
-                      <div className="flex gap-2 mt-2">
-                        {(['en', 'hi', 'mr'] as const).map((lang) => (
-                          <button
-                            key={lang}
-                            type="button"
-                            onClick={() => setTipLang(lang)}
-                            className={`px-2 py-1 rounded text-xs font-medium border ${
-                              tipLang === lang
-                                ? 'bg-amber-600 text-white border-amber-600'
-                                : 'bg-white/80 text-amber-800 border-amber-300 hover:bg-amber-100'
-                            }`}
-                          >
-                            {lang === 'en' ? 'English' : lang === 'hi' ? 'हिंदी' : 'मराठी'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              </motion.div>
+            {/* Action needed — teachers */}
+            {user?.role === 'teacher' &&
+              ((typeof teacherPendingTotal === 'number' && teacherPendingTotal > 0) ||
+                activeDrills.length > 0 ||
+                activeAlerts.length > 0) && (
+              <Card className="mb-6 p-4 border border-amber-200 bg-amber-50/80">
+                <h3 className="text-sm font-semibold text-amber-950 mb-2">Action needed</h3>
+                <ul className="text-sm text-amber-900 space-y-1">
+                  {typeof teacherPendingTotal === 'number' && teacherPendingTotal > 0 && (
+                    <li>
+                      <Link href="/teacher/classes" className="underline font-medium">
+                        {teacherPendingTotal} pending class join request{teacherPendingTotal === 1 ? '' : 's'}
+                      </Link>
+                    </li>
+                  )}
+                  {activeDrills.length > 0 && (
+                    <li>
+                      <Link href="/drills" className="underline font-medium">
+                        {activeDrills.length} drill{activeDrills.length === 1 ? '' : 's'} in progress
+                      </Link>
+                    </li>
+                  )}
+                  {activeAlerts.length > 0 && !alertsError && (
+                    <li>{activeAlerts.length} active alert record{activeAlerts.length === 1 ? '' : 's'}</li>
+                  )}
+                </ul>
+              </Card>
             )}
 
             {latestSos.length > 0 && (
@@ -491,24 +511,22 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
-                <Card className="bg-white/80 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:scale-105">
+                <Card className="bg-white/90 border border-gray-200 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <motion.div 
-                          className="p-3 rounded-xl bg-blue-100/80 shadow-sm"
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                        >
+                        <div className="p-3 rounded-xl bg-blue-100/80">
                           <ShieldAlert className="h-6 w-6 text-blue-600" />
-                        </motion.div>
-                        <div className="text-sm text-blue-700 font-semibold uppercase tracking-wide">Total Drills</div>
+                        </div>
+                        <div className="text-sm text-blue-700 font-semibold uppercase tracking-wide">Drills in scope</div>
                       </div>
                       <div className="text-4xl font-bold text-blue-900 mb-2">
-                        <AnimatedCounter value={drills.length} />
+                        {drillsError ? '—' : <AnimatedCounter value={drills.length} />}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-blue-700 font-medium">
-                        <div className={`h-2 w-2 rounded-full ${activeDrills.length > 0 ? 'bg-blue-600 animate-pulse' : 'bg-blue-400'}`}></div>
-                        <span>{activeDrills.length} active now</span>
+                      <div className="text-xs text-blue-700 font-medium">
+                        {drillsError
+                          ? 'Drill status unavailable'
+                          : `${activeDrills.length} in progress now`}
                       </div>
                     </div>
                   </div>
@@ -520,32 +538,28 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
               >
-                <Card className="bg-white/80 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:scale-105">
+                <Card className="bg-white/90 border border-gray-200 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <motion.div 
-                          className="p-3 rounded-xl bg-red-100/80 shadow-sm"
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                        >
+                        <div className="p-3 rounded-xl bg-red-100/80">
                           <Siren className="h-6 w-6 text-red-600" />
-                        </motion.div>
-                        <div className="text-sm text-red-700 font-semibold uppercase tracking-wide">Active Alerts</div>
+                        </div>
+                        <div className="text-sm text-red-700 font-semibold uppercase tracking-wide">Active alert records</div>
                       </div>
                       <div className="text-4xl font-bold text-red-900 mb-2">
-                        <AnimatedCounter value={activeAlerts.length} />
+                        {alertsError ? '—' : <AnimatedCounter value={activeAlerts.length} />}
                       </div>
-                      <div className={`flex items-center gap-2 text-xs font-semibold ${activeAlerts.length > 0 ? 'text-red-700' : 'text-green-700'}`}>
-                        {activeAlerts.length > 0 ? (
+                      <div className={`flex items-center gap-2 text-xs font-semibold ${alertsError ? 'text-amber-800' : activeAlerts.length > 0 ? 'text-red-700' : 'text-gray-600'}`}>
+                        {alertsError ? (
+                          <span>Alert status unavailable</span>
+                        ) : activeAlerts.length > 0 ? (
                           <>
-                            <AlertTriangle className="h-3 w-3 animate-pulse" />
-                            <span>Action Required</span>
+                            <AlertTriangle className="h-3 w-3" />
+                            <span>Action required</span>
                           </>
                         ) : (
-                          <>
-                            <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                            <span>All Clear</span>
-                          </>
+                          <span>No active alert records returned</span>
                         )}
                       </div>
                     </div>
@@ -558,29 +572,24 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
               >
-                <Card className="bg-white/80 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:scale-105">
+                <Card className="bg-white/90 border border-gray-200 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <motion.div 
-                          className="p-3 rounded-xl bg-emerald-100/80 shadow-sm"
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                        >
+                        <div className="p-3 rounded-xl bg-emerald-100/80">
                           <CalendarCheck className="h-6 w-6 text-emerald-600" />
-                        </motion.div>
-                        <div className="text-sm text-emerald-700 font-semibold uppercase tracking-wide">Completed Drills</div>
+                        </div>
+                        <div className="text-sm text-emerald-700 font-semibold uppercase tracking-wide">Completed drills</div>
                       </div>
                       <div className="text-4xl font-bold text-emerald-900 mb-2">
-                        <AnimatedCounter value={completedDrills.length} />
+                        {drillsError ? '—' : <AnimatedCounter value={completedDrills.length} />}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-emerald-700 font-medium">
-                        <div className="h-2 w-2 rounded-full bg-emerald-600"></div>
-                        <span>
-                          <AnimatedCounter 
-                            value={drills.length > 0 ? Math.round((completedDrills.length / drills.length) * 100) : 0} 
-                            suffix="%"
-                          /> completion rate
-                        </span>
+                      <div className="text-xs text-emerald-800 font-medium">
+                        {drillsError
+                          ? 'Drill status unavailable'
+                          : drills.length > 0
+                          ? `${completedDrills.length} of ${drills.length} loaded records completed`
+                          : 'No drill records loaded'}
                       </div>
                     </div>
                   </div>
@@ -592,32 +601,23 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
               >
-                <Card className="bg-white/80 backdrop-blur-lg border border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer group hover:scale-105">
+                <Card className="bg-white/90 border border-gray-200 shadow-sm">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        <motion.div 
-                          className="p-3 rounded-xl bg-purple-100/80 shadow-sm"
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                        >
+                        <div className="p-3 rounded-xl bg-purple-100/80">
                           <CalendarCheck className="h-6 w-6 text-purple-600" />
-                        </motion.div>
-                        <div className="text-sm text-purple-700 font-semibold uppercase tracking-wide">Safety Score</div>
+                        </div>
+                        <div className="text-sm text-purple-700 font-semibold uppercase tracking-wide">Scheduled drills</div>
                       </div>
                       <div className="text-4xl font-bold text-purple-900 mb-2">
-                        <AnimatedCounter 
-                          value={drills.length > 0 ? Math.min(100, Math.round((drills.length / 10) * 100)) : 0} 
-                          suffix="%"
-                        />
+                        {drillsError ? '—' : <AnimatedCounter value={scheduledDrills.length} />}
                       </div>
-                      <div className="w-full bg-purple-200/50 rounded-full h-1.5 mt-2 overflow-hidden">
-                        <motion.div 
-                          className="bg-purple-600 h-1.5 rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, drills.length > 0 ? Math.round((drills.length / 10) * 100) : 0)}%` }}
-                          transition={{ duration: 1.5, delay: 0.5 }}
-                        ></motion.div>
-                      </div>
+                      <p className="text-xs text-purple-700/80 mt-1">
+                        {drillsError
+                          ? 'Drill status unavailable'
+                          : `${activeDrills.length} in progress · ${drills.length} total loaded`}
+                      </p>
                     </div>
                   </div>
                 </Card>
@@ -676,7 +676,11 @@ export default function DashboardPage() {
                       ? 'bg-red-100 text-red-800 border border-red-200 animate-pulse' 
                       : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                   }`}>
-                    {activeAlerts.length > 0 ? '⚠ Active' : '✅ All Clear'}
+                    {alertsError
+                      ? 'Status unavailable'
+                      : activeAlerts.length > 0
+                      ? 'Active records'
+                      : 'No active records'}
                   </span>
                 </div>
 
@@ -690,7 +694,9 @@ export default function DashboardPage() {
                       <Bell className="h-8 w-8 text-blue-600" />
                     </div>
                     <p className="text-gray-700 font-medium">No alerts reported</p>
-                    <p className="text-sm text-gray-500 mt-1">Safety status is normal</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Empty list only — not an all-clear or normal safety claim
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
@@ -769,7 +775,7 @@ export default function DashboardPage() {
                   <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
                     {drills.slice(0, 6).map((drill) => {
                       const drillId = drill._id;
-                      const isActive = drill.status === 'active';
+                      const isActive = isDrillInProgress(drill.status);
                       const isCompleted = drill.status === 'completed';
                       const isScheduled = drill.status === 'scheduled';
                       
@@ -855,28 +861,61 @@ export default function DashboardPage() {
               </motion.div>
             </div>
 
-            {/* Safety Tips Banner - Compact & Powerful */}
+            {/* Safety tip — secondary, below operational content */}
+            {todaysTip?.tip && (
+              <Card className="mt-8 mb-4 p-4 bg-amber-50/90 border-amber-200 border-l-4 border-l-amber-500">
+                <div className="flex items-start gap-3">
+                  <Lightbulb className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-amber-900 mb-1">
+                      Safety tip
+                      {todaysTip.date ? ` · ${todaysTip.date}` : ''}
+                      {tipLoading ? ' · updating…' : ''}
+                    </p>
+                    <p className="text-sm text-gray-800">{todaysTip.tip}</p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      Language: {todaysTip.lang === 'en' ? 'English' : todaysTip.lang === 'hi' ? 'हिंदी' : 'मराठी'}
+                    </p>
+                    <div className="flex gap-2 mt-2">
+                      {(['en', 'hi', 'mr'] as const).map((lang) => (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setTipLang(lang)}
+                          disabled={tipLoading}
+                          className={`min-h-11 px-3 py-1 rounded text-xs font-medium border ${
+                            todaysTip.lang === lang
+                              ? 'bg-amber-600 text-white border-amber-600'
+                              : 'bg-white/80 text-amber-800 border-amber-300 hover:bg-amber-100'
+                          }`}
+                        >
+                          {lang === 'en' ? 'English' : lang === 'hi' ? 'हिंदी' : 'मराठी'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 1.0 }}
-              className="mt-8 p-4 rounded-lg bg-gradient-to-r from-blue-600/90 via-blue-700/90 to-indigo-700/90 backdrop-blur-lg text-white shadow-xl border border-blue-500/30"
+              className="mt-4 p-4 rounded-lg bg-slate-800 text-white border border-slate-700"
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
+                <div className="p-2 rounded-lg bg-white/10">
                   <ShieldAlert className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold leading-tight">
-                    <span className="text-blue-100">Emergency Procedures:</span> 
-                    <span className="ml-2">Fire: Stop, Drop, Roll • Earthquake: Drop, Cover, Hold</span>
+                    <span className="text-slate-300">Reference:</span>
+                    <span className="ml-2">Fire: Stop, Drop, Roll · Earthquake: Drop, Cover, Hold</span>
                   </p>
                 </div>
               </div>
             </motion.div>
-          </main>
-          </div>
-        </div>
 
         {/* Phase 201: IoT Alert Modal */}
         {iotAlertModal && (
@@ -889,6 +928,7 @@ export default function DashboardPage() {
             }}
           />
         )}
+      </AppShell>
       </ProtectedRoute>
     );
   }

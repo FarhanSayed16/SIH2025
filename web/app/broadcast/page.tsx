@@ -5,15 +5,20 @@
 
 'use client';
 
+import { AppShell } from '@/components/layout/app-shell';
+
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
 import { broadcastApi, BroadcastMessage, BroadcastRecipients } from '@/lib/api/broadcast';
+import {
+  resolveComposerChannels,
+  formatDeliveryReceiptLabel,
+  broadcastSuccessMessage,
+} from '@/lib/api/broadcast-honesty';
 import { templatesApi, MessageTemplate } from '@/lib/api/templates';
 import { aiApi } from '@/lib/api/ai';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
 
 type FilterType = 'all' | 'emergency' | 'announcement' | 'drill' | 'general';
@@ -28,6 +33,8 @@ export default function BroadcastPage() {
   const [showComposer, setShowComposer] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isDrafting, setIsDrafting] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [historyLimit] = useState(100);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
@@ -112,17 +119,22 @@ export default function BroadcastPage() {
 
   const loadBroadcasts = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
-      const response = await broadcastApi.getBroadcasts({ limit: 100 });
+      const response = await broadcastApi.getBroadcasts({ limit: historyLimit });
       if (response.success && response.data) {
-        // Handle both formats: { broadcasts: [...] } or direct array
-        const broadcastsList = Array.isArray(response.data) 
-          ? response.data 
+        const broadcastsList = Array.isArray(response.data)
+          ? response.data
           : (response.data.broadcasts || []);
         setBroadcasts(broadcastsList);
+      } else {
+        setBroadcasts([]);
+        setLoadError(response.message || response.error || 'Failed to load broadcasts');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading broadcasts:', error);
+      setBroadcasts([]);
+      setLoadError(error?.message || 'Failed to load broadcasts');
     } finally {
       setIsLoading(false);
     }
@@ -144,19 +156,29 @@ export default function BroadcastPage() {
       alert('Please enter a message');
       return;
     }
+    if (isSending) return;
+
+    const channels = resolveComposerChannels(formData.channels);
+    if (!channels) {
+      alert('Select at least one channel. Channels are not added automatically.');
+      return;
+    }
+    if (scheduled && !formData.scheduledAt) {
+      alert('Choose a schedule time, or use Send now.');
+      return;
+    }
 
     setIsSending(true);
     try {
-      // Force broadcast to everyone with push for reliability (same behavior for admin/teacher)
       const recipients: BroadcastRecipients = {
-        type: 'all',
+        type: formData.recipientType,
       };
 
       const broadcastData: any = {
         type: formData.type,
         priority: formData.priority,
         recipients,
-        channels: ['push'],
+        channels,
         message: formData.message,
       };
 
@@ -173,16 +195,21 @@ export default function BroadcastPage() {
       }
 
       if (response.success) {
-        alert('Broadcast sent successfully!');
+        alert(
+          broadcastSuccessMessage({
+            scheduled: Boolean(scheduled && formData.scheduledAt),
+            status: (response.data as any)?.status || (scheduled ? 'scheduled' : 'sent'),
+          })
+        );
         setShowComposer(false);
         resetForm();
         await loadBroadcasts();
       } else {
-        alert(`Failed to send broadcast: ${response.error || response.message}`);
+        alert(`Failed: ${response.error || response.message || 'Unknown error'}. Your draft is still open.`);
       }
     } catch (error: any) {
       console.error('Error sending broadcast:', error);
-      alert(`Error: ${error.message || 'Failed to send broadcast'}`);
+      alert(`Error: ${error.message || 'Failed to send broadcast'}. Your draft is still open.`);
     } finally {
       setIsSending(false);
     }
@@ -266,21 +293,16 @@ export default function BroadcastPage() {
     return true;
   });
 
-  // Calculate summary stats
-  const totalBroadcasts = broadcasts.length;
+  // Summary stats are scoped to the loaded page only
+  const loadedCount = broadcasts.length;
   const sentCount = broadcasts.filter(b => b.status === 'sent').length;
   const failedCount = broadcasts.filter(b => b.status === 'failed').length;
   const scheduledCount = broadcasts.filter(b => b.status === 'scheduled').length;
   const totalRecipients = broadcasts.reduce((sum, b) => sum + (b.stats?.totalRecipients || 0), 0);
-  const totalDelivered = broadcasts.reduce((sum, b) => sum + (b.stats?.delivered || 0), 0);
-  const totalFailed = broadcasts.reduce((sum, b) => sum + (b.stats?.failed || 0), 0);
+  const totalChannelSends = broadcasts.reduce((sum, b) => sum + (b.stats?.sent || 0), 0);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+    <AppShell title="Broadcasts">
           {/* Header */}
           <div className="mb-6 flex justify-between items-center">
             <div>
@@ -295,43 +317,28 @@ export default function BroadcastPage() {
             </Button>
           </div>
 
-          {/* Summary Stats */}
+          {/* Summary Stats — loaded page only */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-blue-600 font-medium">Total Broadcasts</p>
-                  <p className="text-2xl font-bold text-blue-900">{totalBroadcasts}</p>
-                </div>
-                <div className="text-3xl">📨</div>
-              </div>
+            <Card className="p-4 border border-gray-200">
+              <p className="text-sm text-gray-600 font-medium">Broadcasts loaded</p>
+              <p className="text-2xl font-bold text-gray-900">{loadedCount}</p>
+              <p className="text-xs text-gray-500 mt-1">Latest {historyLimit} records (not all-time)</p>
             </Card>
-            <Card className="p-4 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-green-600 font-medium">Successfully Sent</p>
-                  <p className="text-2xl font-bold text-green-900">{sentCount}</p>
-                </div>
-                <div className="text-3xl">✅</div>
-              </div>
+            <Card className="p-4 border border-gray-200">
+              <p className="text-sm text-gray-600 font-medium">Status in loaded set</p>
+              <p className="text-sm text-gray-900 mt-1">
+                Sent {sentCount} · Scheduled {scheduledCount} · Failed {failedCount}
+              </p>
             </Card>
-            <Card className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-purple-600 font-medium">Total Recipients</p>
-                  <p className="text-2xl font-bold text-purple-900">{totalRecipients}</p>
-                </div>
-                <div className="text-3xl">👥</div>
-              </div>
+            <Card className="p-4 border border-gray-200">
+              <p className="text-sm text-gray-600 font-medium">Recipients (sum of loaded)</p>
+              <p className="text-2xl font-bold text-gray-900">{totalRecipients}</p>
+              <p className="text-xs text-gray-500 mt-1">Addressed users across loaded rows</p>
             </Card>
-            <Card className="p-4 bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-red-600 font-medium">Failed</p>
-                  <p className="text-2xl font-bold text-red-900">{failedCount}</p>
-                </div>
-                <div className="text-3xl">❌</div>
-              </div>
+            <Card className="p-4 border border-gray-200">
+              <p className="text-sm text-gray-600 font-medium">Channel sends recorded</p>
+              <p className="text-2xl font-bold text-gray-900">{totalChannelSends}</p>
+              <p className="text-xs text-gray-500 mt-1">Not the same as delivery receipts</p>
             </Card>
           </div>
 
@@ -419,9 +426,17 @@ export default function BroadcastPage() {
                   </div>
                   {!smsEnabled && (
                     <p className="text-xs text-gray-500 mt-2">
-                      SMS is off until Twilio is configured. This send uses email and push only.
+                      SMS is unavailable until configured. Only the channels you check will be used — nothing is added silently.
                     </p>
                   )}
+                  {formData.channels.length === 0 && (
+                    <p className="text-xs text-amber-800 mt-2">Select at least one channel before send/schedule.</p>
+                  )}
+                  <p className="text-xs text-gray-600 mt-2">
+                    Preview: {formData.recipientType} via{' '}
+                    {formData.channels.length > 0 ? formData.channels.join(', ') : '(none selected)'}
+                    {formData.scheduledAt ? ` · schedule ${formData.scheduledAt} (browser local time)` : ' · send immediately'}
+                  </p>
                 </div>
 
                 <div>
@@ -571,7 +586,9 @@ export default function BroadcastPage() {
                     onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Leave empty to send immediately</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Times use this browser&apos;s local timezone. Leave empty to send immediately (Schedule button appears when set).
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -649,108 +666,119 @@ export default function BroadcastPage() {
           {/* Broadcast History */}
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">📜 Broadcast History</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Broadcast history</h2>
               <span className="text-sm text-gray-500">
-                Showing {filteredBroadcasts.length} of {totalBroadcasts} broadcasts
+                Showing {filteredBroadcasts.length} filtered of {loadedCount} loaded (limit {historyLimit})
               </span>
             </div>
 
-            {isLoading ? (
+            {loadError ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-red-700 text-lg">Could not load broadcasts</p>
+                <p className="text-gray-600 text-sm mt-2">{loadError}</p>
+                <Button className="mt-4" variant="outline" onClick={loadBroadcasts}>
+                  Retry
+                </Button>
+              </div>
+            ) : isLoading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-700 mx-auto"></div>
                 <p className="text-gray-500 mt-4">Loading broadcasts...</p>
               </div>
             ) : filteredBroadcasts.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No broadcasts found</p>
+                <p className="text-gray-500 text-lg">No broadcasts in this view</p>
                 <p className="text-gray-400 text-sm mt-2">
-                  {searchQuery || filterType !== 'all' || filterStatus !== 'all' 
-                    ? 'Try adjusting your filters' 
+                  {searchQuery || filterType !== 'all' || filterStatus !== 'all'
+                    ? 'Try adjusting your filters'
                     : 'Create your first broadcast to get started'}
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {filteredBroadcasts.map((broadcast) => {
-                  const deliveryRate = broadcast.stats?.totalRecipients 
-                    ? ((broadcast.stats.delivered || 0) / broadcast.stats.totalRecipients * 100).toFixed(1)
-                    : '0';
-                  
+                  const receipt = formatDeliveryReceiptLabel(broadcast.stats);
+
                   return (
-                    <div 
-                      key={broadcast._id} 
-                      className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow bg-white"
+                    <div
+                      key={broadcast._id}
+                      className="border border-gray-200 rounded-lg p-5 bg-white"
                     >
-                      {/* Header */}
                       <div className="flex justify-between items-start mb-3">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
                             <span className="text-2xl">{getTypeIcon(broadcast.type)}</span>
                             <h3 className="text-lg font-semibold text-gray-900">
                               {broadcast.title || broadcast.subject || broadcast.type}
                             </h3>
                             <span className={`text-xs px-2 py-1 rounded-full font-medium border ${getPriorityColor(broadcast.priority)}`}>
-                              {broadcast.priority.toUpperCase()}
+                              {broadcast.priority}
                             </span>
                             <span className={`text-xs px-2 py-1 rounded-full font-medium border ${getStatusColor(broadcast.status)}`}>
-                              {broadcast.status.toUpperCase()}
+                              {broadcast.status}
                             </span>
                           </div>
                           <p className="text-gray-700 text-sm mb-2">{broadcast.message}</p>
                         </div>
                       </div>
 
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
-                        <div className="bg-blue-50 rounded-lg p-2 border border-blue-100">
-                          <p className="text-xs text-blue-600 font-medium">Recipients</p>
-                          <p className="text-lg font-bold text-blue-900">{broadcast.stats?.totalRecipients || 0}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                          <p className="text-xs text-gray-600 font-medium">Recipients addressed</p>
+                          <p className="text-lg font-bold text-gray-900">{broadcast.stats?.totalRecipients || 0}</p>
                         </div>
-                        <div className="bg-green-50 rounded-lg p-2 border border-green-100">
-                          <p className="text-xs text-green-600 font-medium">Sent</p>
-                          <p className="text-lg font-bold text-green-900">{broadcast.stats?.sent || 0}</p>
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                          <p className="text-xs text-gray-600 font-medium">Channel sends</p>
+                          <p className="text-lg font-bold text-gray-900">{broadcast.stats?.sent || 0}</p>
                         </div>
-                        <div className="bg-purple-50 rounded-lg p-2 border border-purple-100">
-                          <p className="text-xs text-purple-600 font-medium">Delivered</p>
-                          <p className="text-lg font-bold text-purple-900">{broadcast.stats?.delivered || 0}</p>
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                          <p className="text-xs text-gray-600 font-medium">Send failures</p>
+                          <p className="text-lg font-bold text-gray-900">{broadcast.stats?.failed || 0}</p>
                         </div>
-                        <div className="bg-red-50 rounded-lg p-2 border border-red-100">
-                          <p className="text-xs text-red-600 font-medium">Failed</p>
-                          <p className="text-lg font-bold text-red-900">{broadcast.stats?.failed || 0}</p>
-                        </div>
-                        <div className="bg-yellow-50 rounded-lg p-2 border border-yellow-100">
-                          <p className="text-xs text-yellow-600 font-medium">Delivery Rate</p>
-                          <p className="text-lg font-bold text-yellow-900">{deliveryRate}%</p>
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                          <p className="text-xs text-gray-600 font-medium">{receipt.label}</p>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {receipt.showRate ? receipt.rateText : 'Not tracked yet'}
+                          </p>
                         </div>
                       </div>
 
-                      {/* Footer Info */}
                       <div className="flex flex-wrap items-center gap-4 text-xs text-gray-600 pt-3 border-t border-gray-100">
                         <div className="flex items-center gap-1">
                           <span className="font-medium">Channels:</span>
                           <div className="flex gap-1">
                             {broadcast.channels.map((ch) => (
                               <span key={ch} className="px-2 py-0.5 bg-gray-100 rounded">
-                                {getChannelIcon(ch)} {ch.toUpperCase()}
+                                {getChannelIcon(ch)} {ch}
                               </span>
                             ))}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
-                          <span className="font-medium">Recipients:</span>
+                          <span className="font-medium">Audience:</span>
                           <span className="capitalize">{broadcast.recipients.type}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <span className="font-medium">Created by:</span>
                           <span>{broadcast.createdBy?.name || 'Unknown'}</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <span className="font-medium">Sent:</span>
-                          <span>{broadcast.sentAt 
-                            ? new Date(broadcast.sentAt).toLocaleString() 
-                            : new Date(broadcast.createdAt).toLocaleString()}
-                          </span>
-                        </div>
+                        {broadcast.status === 'scheduled' && broadcast.scheduledAt ? (
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">Scheduled for:</span>
+                            <span>{new Date(broadcast.scheduledAt).toLocaleString()}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="font-medium">
+                              {broadcast.sentAt ? 'Sent at:' : 'Created:'}
+                            </span>
+                            <span>
+                              {broadcast.sentAt
+                                ? new Date(broadcast.sentAt).toLocaleString()
+                                : new Date(broadcast.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -758,8 +786,6 @@ export default function BroadcastPage() {
               </div>
             )}
           </Card>
-        </main>
-      </div>
-    </div>
+        </AppShell>
   );
 }

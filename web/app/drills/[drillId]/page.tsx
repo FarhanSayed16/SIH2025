@@ -5,16 +5,16 @@
 
 'use client';
 
+import { AppShell } from '@/components/layout/app-shell';
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
-import { drillsApi, Drill } from '@/lib/api/drills';
+import { drillsApi, Drill, isDrillInProgress, drillActualDurationMinutes, formatParticipantScope } from '@/lib/api/drills';
 import { socketService } from '@/lib/services/socket-service';
 import { getInstitutionId } from '@/lib/utils/institution';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
 import { useToast } from '@/components/ui/toast';
 import { LoadingSkeleton } from '@/components/ui/loading-skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -64,8 +64,10 @@ export default function DrillDetailPage() {
   const [damageScanError, setDamageScanError] = useState<string | null>(null);
   const [drillSummary, setDrillSummary] = useState<DrillSummaryResult | null>(null);
   const [drillSummaryLoading, setDrillSummaryLoading] = useState(false);
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isInitializedRef = useRef(false);
+  const drillIdRef = useRef(drillId);
+  drillIdRef.current = drillId;
 
   const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -112,7 +114,6 @@ export default function DrillDetailPage() {
 
     if (institutionId && accessToken && !isInitializedRef.current) {
       isInitializedRef.current = true;
-      socketService.connect(institutionId, accessToken);
 
       // Listen for participation updates
       socketService.on('DRILL_PARTICIPATION_UPDATE', (data: any) => {
@@ -145,26 +146,32 @@ export default function DrillDetailPage() {
   }, [isAuthenticated, router, user, accessToken, drillId]);
 
   const loadDrillData = useCallback(async () => {
+    const requestId = drillId;
     try {
-      const response = await drillsApi.getById(drillId);
+      const response = await drillsApi.getById(requestId);
+      if (requestId !== drillIdRef.current) return;
       if (response.success && response.data) {
         setDrill(response.data);
       }
     } catch (error) {
+      if (requestId !== drillIdRef.current) return;
       console.error('Error loading drill:', error);
       showToast('Failed to load drill data', 'error');
     } finally {
-      setIsLoading(false);
+      if (requestId === drillIdRef.current) setIsLoading(false);
     }
   }, [drillId, showToast]);
 
   const loadParticipants = useCallback(async () => {
+    const requestId = drillId;
     try {
-      const response = await drillsApi.getParticipants(drillId);
+      const response = await drillsApi.getParticipants(requestId);
+      if (requestId !== drillIdRef.current) return;
       if (response.success && response.data) {
         setParticipants(response.data);
       }
     } catch (error) {
+      if (requestId !== drillIdRef.current) return;
       console.error('Error loading participants:', error);
     }
   }, [drillId]);
@@ -200,17 +207,14 @@ export default function DrillDetailPage() {
         acknowledged.length > 0
           ? Math.round(acknowledged.reduce((s, p) => s + (p.responseTime ?? 0), 0) / acknowledged.length)
           : undefined;
-      const durationMinutes =
-        drill.scheduledAt && drill.completionTime
-          ? Math.round((new Date(drill.completionTime).getTime() - new Date(drill.scheduledAt).getTime()) / 60000)
-          : 5;
+      const durationMinutes = drillActualDurationMinutes(drill);
       const result = await aiApi.summariseDrill({
         drillId,
         type: drill.type,
         participantCount: participants.summary.total,
         acknowledgedCount: participants.summary.acknowledged,
         avgResponseTimeSeconds,
-        durationMinutes,
+        ...(durationMinutes != null ? { durationMinutes } : {}),
       });
       setDrillSummary(result);
       showToast('AI summary generated', 'success');
@@ -228,7 +232,9 @@ export default function DrillDetailPage() {
       ['Type', drill.type, '', ''],
       ['Status', drill.status, '', ''],
       ['Scheduled', formatDateTime(drill.scheduledAt), '', ''],
-      drill.completionTime ? ['Completed', formatDateTime(drill.completionTime), '', ''] : [],
+      drill.completedAt || drill.completionTime
+        ? ['Completed', formatDateTime((drill.completedAt || drill.completionTime)!), '', '']
+        : [],
       [],
       ['Participant', 'Email', 'Acknowledged', 'Acknowledged At'],
       ...participants.participants.map((p) => [
@@ -262,48 +268,32 @@ export default function DrillDetailPage() {
     return new Date(dateString).toLocaleString();
   };
 
-  const formatTime = (seconds?: number) => {
-    if (!seconds) return 'N/A';
+  const formatTime = (seconds?: number | null) => {
+    if (seconds == null || !Number.isFinite(seconds)) return 'Unavailable';
     return `${seconds}s`;
   };
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6">
+      <AppShell title="Drill Detail">
             <LoadingSkeleton />
-          </main>
-        </div>
-      </div>
+          </AppShell>
     );
   }
 
   if (!drill) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
-          <Header />
-          <main className="flex-1 p-6">
+      <AppShell title="Drill Detail">
             <EmptyState
               title="Drill Not Found"
               description="The drill you're looking for doesn't exist or has been removed."
             />
-          </main>
-        </div>
-      </div>
+          </AppShell>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
+    <AppShell title="Drill Detail">
           <div className="mb-6">
             <Button
               variant="outline"
@@ -328,7 +318,7 @@ export default function DrillDetailPage() {
                 <div>
                   <p className="text-sm text-gray-600">Status</p>
                   <span className={`inline-block px-2 py-1 rounded text-sm ${
-                    drill.status === 'active'
+                    isDrillInProgress(drill.status)
                       ? 'bg-red-100 text-red-800'
                       : drill.status === 'completed'
                       ? 'bg-green-100 text-green-800'
@@ -336,17 +326,33 @@ export default function DrillDetailPage() {
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-gray-100 text-gray-800'
                   }`}>
-                    {drill.status}
+                    {isDrillInProgress(drill.status) ? 'in_progress' : drill.status}
                   </span>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Scheduled</p>
                   <p className="font-medium">{formatDateTime(drill.scheduledAt)}</p>
                 </div>
-                {drill.completionTime && (
+                <div>
+                  <p className="text-sm text-gray-600">Actual start</p>
+                  <p className="font-medium">
+                    {drill.actualStart ? formatDateTime(drill.actualStart) : 'Not recorded'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Audience scope</p>
+                  <p className="font-medium">{formatParticipantScope(drill.participantSelection)}</p>
+                </div>
+                {(drill.completedAt || drill.completionTime) && (
                   <div>
                     <p className="text-sm text-gray-600">Completed</p>
-                    <p className="font-medium">{formatDateTime(drill.completionTime)}</p>
+                    <p className="font-medium">{formatDateTime((drill.completedAt || drill.completionTime)!)}</p>
+                  </div>
+                )}
+                {drillActualDurationMinutes(drill) != null && (
+                  <div>
+                    <p className="text-sm text-gray-600">Measured duration</p>
+                    <p className="font-medium">{drillActualDurationMinutes(drill)} min</p>
                   </div>
                 )}
               </div>
@@ -375,7 +381,7 @@ export default function DrillDetailPage() {
                     <p className="text-2xl font-bold text-orange-700">
                       {participants.summary.participationRate}%
                     </p>
-                    <p className="text-sm text-gray-600">Participation Rate</p>
+                    <p className="text-sm text-gray-600">Ack. rate (not completion)</p>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
@@ -389,19 +395,19 @@ export default function DrillDetailPage() {
 
             {/* B1: AI Summary - when drill completed */}
             {drill.status === 'completed' && participants && (
-              <Card className="p-6 border border-emerald-100 bg-emerald-50/50">
+              <Card className="p-6 border border-gray-200">
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-5 h-5 text-emerald-600" />
-                  <h2 className="text-lg font-semibold">AI Summary</h2>
+                  <Sparkles className="w-5 h-5 text-teal-700" />
+                  <h2 className="text-lg font-semibold">Generated explanation</h2>
                 </div>
                 {!drillSummary ? (
                   <div>
                     <p className="text-sm text-gray-600 mb-3">
-                      Get a short AI-generated summary and improvement tip for this drill.
+                      Optional AI text based on recorded counts. It does not create missing participation
+                      or timing facts.
                     </p>
                     <Button
                       variant="primary"
-                      className="bg-emerald-600 hover:bg-emerald-700"
                       onClick={handleGenerateSummary}
                       disabled={drillSummaryLoading}
                     >
@@ -410,13 +416,14 @@ export default function DrillDetailPage() {
                       ) : (
                         <Sparkles className="w-4 h-4 mr-2" />
                       )}
-                      Generate summary
+                      Generate explanation
                     </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
+                    <p className="text-xs text-amber-800">Generated — not a measured drill result</p>
                     <p className="text-sm text-gray-700">{drillSummary.summary}</p>
-                    <p className="text-sm font-medium text-emerald-800">Improvement tip</p>
+                    <p className="text-sm font-medium text-gray-800">Improvement tip (generated)</p>
                     <p className="text-sm text-gray-700">{drillSummary.improvementTip}</p>
                   </div>
                 )}
@@ -427,7 +434,7 @@ export default function DrillDetailPage() {
             <Card className="p-6">
               <h2 className="text-lg font-semibold mb-4">Actions</h2>
               <div className="space-y-2">
-                {(drill.status === 'active') && (
+                {isDrillInProgress(drill.status) && (
                   <Button
                     variant="danger"
                     className="w-full"
@@ -557,9 +564,7 @@ export default function DrillDetailPage() {
               </div>
             )}
           </Card>
-        </main>
-      </div>
-    </div>
+        </AppShell>
   );
 }
 

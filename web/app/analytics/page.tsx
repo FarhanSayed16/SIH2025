@@ -6,6 +6,8 @@
 
 'use client';
 
+import { AppShell } from '@/components/layout/app-shell';
+
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth-store';
@@ -13,9 +15,12 @@ import { AdminRoute } from '@/components/auth/AdminRoute';
 import { analyticsApi, DrillMetrics, StudentProgress, InstitutionAnalytics, ModuleCompletion, GamePerformance, QuizAccuracy } from '@/lib/api/analytics';
 import { apiClient } from '@/lib/api/client';
 import { getInstitutionId } from '@/lib/utils/institution';
+import {
+  analyticsRequestKey,
+  mapTabToReportType,
+  formatMetricOrUnavailable,
+} from '@/lib/api/wb7-honesty';
 import { Card } from '@/components/ui/card';
-import { Header } from '@/components/layout/header';
-import { Sidebar } from '@/components/layout/sidebar';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -70,11 +75,16 @@ function AnalyticsPageContent() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<TabType>('drills');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState({ start: '', end: '' });
+  const [draftDateRange, setDraftDateRange] = useState({ start: '', end: '' });
+  const [appliedDateRange, setAppliedDateRange] = useState({ start: '', end: '' });
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [appliedScopeLabel, setAppliedScopeLabel] = useState('All time (no date filter)');
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const requestSeqRef = useRef(0);
   
   // Data states
   const [drillMetrics, setDrillMetrics] = useState<DrillMetrics | null>(null);
@@ -84,18 +94,25 @@ function AnalyticsPageContent() {
   const [gamePerformance, setGamePerformance] = useState<GamePerformance | null>(null);
   const [quizAccuracy, setQuizAccuracy] = useState<QuizAccuracy | null>(null);
 
-  // Load data based on active tab
-  const loadData = useCallback(async () => {
+  // Load data based on active tab + applied date range only
+  const loadData = useCallback(async (opts?: { soft?: boolean; range?: { start: string; end: string }; tab?: TabType }) => {
     if (!isAuthenticated || !user) return;
-    
-    setIsLoading(true);
+
+    const tab = opts?.tab ?? activeTab;
+    const range = opts?.range ?? appliedDateRange;
+    const soft = opts?.soft === true;
+    const seq = ++requestSeqRef.current;
+    const scopeKey = analyticsRequestKey(tab, range.start, range.end);
+
+    if (soft) setIsRefreshing(true);
+    else setIsLoading(true);
     setLoadError(null);
     const institutionId = getInstitutionId(user.institutionId) || undefined;
-    const startDate = dateRange.start || undefined;
-    const endDate = dateRange.end || undefined;
+    const startDate = range.start || undefined;
+    const endDate = range.end || undefined;
 
     try {
-      switch (activeTab) {
+      switch (tab) {
         case 'drills':
           setDrillMetrics(await analyticsApi.getDrillMetrics(institutionId, undefined, startDate, endDate));
           break;
@@ -115,21 +132,32 @@ function AnalyticsPageContent() {
           setQuizAccuracy(await analyticsApi.getQuizAccuracy(institutionId, undefined, startDate, endDate));
           break;
       }
+      if (seq !== requestSeqRef.current) return;
+      if (scopeKey !== analyticsRequestKey(tab, range.start, range.end)) return;
       setLastUpdated(new Date());
+      setAppliedScopeLabel(
+        range.start || range.end
+          ? `Applied: ${range.start || '…'} → ${range.end || '…'}`
+          : 'All time (no date filter)'
+      );
     } catch (error: any) {
-      console.error(`Error loading ${activeTab} data:`, error);
-      setLoadError(`Failed to load ${activeTab} data. Use Refresh to try again.`);
+      if (seq !== requestSeqRef.current) return;
+      console.error(`Error loading ${tab} data:`, error);
+      setLoadError(`Failed to load ${tab} data. Use Refresh to try again.`);
     } finally {
-      setIsLoading(false);
+      if (seq === requestSeqRef.current) {
+        setIsLoading(false);
+        setIsRefreshing(false);
+      }
     }
-  }, [activeTab, isAuthenticated, user, dateRange]);
+  }, [activeTab, isAuthenticated, user, appliedDateRange]);
 
-  // Auto-refresh functionality
+  // Auto-refresh soft-reloads applied scope
   useEffect(() => {
     if (autoRefresh) {
       refreshIntervalRef.current = setInterval(() => {
-        loadData();
-      }, 30000); // Refresh every 30 seconds
+        loadData({ soft: true });
+      }, 30000);
 
       return () => {
         if (refreshIntervalRef.current) {
@@ -152,18 +180,70 @@ function AnalyticsPageContent() {
     if (accessToken) {
       apiClient.setToken(accessToken);
     }
+  }, [isAuthenticated, accessToken, router]);
 
-    loadData();
-  }, [isAuthenticated, accessToken, router, loadData]);
+  // Load when tab changes or after auth — always uses applied date range
+  useEffect(() => {
+    if (!isAuthenticated || !accessToken) return;
+    loadData({ soft: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, accessToken, activeTab]);
 
-  // Export data
+  const applyDateFilter = () => {
+    setAppliedDateRange({ ...draftDateRange });
+    loadData({ soft: false, range: { ...draftDateRange } });
+  };
+
+  const clearDateFilter = () => {
+    const empty = { start: '', end: '' };
+    setDraftDateRange(empty);
+    setAppliedDateRange(empty);
+    loadData({ soft: false, range: empty });
+  };
+
   const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
     try {
-      const institutionId = getInstitutionId(user?.institutionId);
-      // This would call an export endpoint
-      showToast('Export feature coming soon!', 'info');
-    } catch (error) {
-      showToast('Failed to export data', 'error');
+      const institutionId = getInstitutionId(user?.institutionId) || undefined;
+      const reportType = mapTabToReportType(activeTab);
+      const result = await analyticsApi.generateReport(
+        'csv',
+        reportType,
+        institutionId,
+        appliedDateRange.start || undefined,
+        appliedDateRange.end || undefined
+      );
+      const payload = (result as any)?.data || result;
+      const fileUrl = payload?.fileUrl || payload?.url;
+      const filename = payload?.filename;
+      if (fileUrl) {
+        const absolute = fileUrl.startsWith('http')
+          ? fileUrl
+          : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}${fileUrl.startsWith('/') ? '' : '/'}${fileUrl.replace(/^\/api/, '')}`.replace('/api/api', '/api');
+        // Prefer authorized download route when filename present
+        if (filename) {
+          window.open(
+            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/analytics/reports/${encodeURIComponent(filename)}`,
+            '_blank'
+          );
+        } else {
+          window.open(absolute, '_blank');
+        }
+        showToast('Report generated for the applied filter scope', 'success');
+      } else if (filename) {
+        window.open(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'}/analytics/reports/${encodeURIComponent(filename)}`,
+          '_blank'
+        );
+        showToast('Report generated for the applied filter scope', 'success');
+      } else {
+        showToast('Export unavailable — server did not return a file', 'error');
+      }
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to export data', 'error');
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -179,12 +259,25 @@ function AnalyticsPageContent() {
 
   // Render content based on active tab
   const renderTabContent = () => {
-    if (isLoading) {
+    if (isLoading && !drillMetrics && !studentProgress && !institutionAnalytics && !moduleCompletion && !gamePerformance && !quizAccuracy) {
       return <LoadingSkeleton />;
     }
 
-    if (loadError) {
+    if (loadError && isLoading) {
       return <EmptyState title="Analytics unavailable" description={loadError} />;
+    }
+
+    if (loadError) {
+      return (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            {loadError}{' '}
+            <button type="button" className="underline font-medium" onClick={() => loadData({ soft: true })}>
+              Retry
+            </button>
+          </div>
+        </div>
+      );
     }
 
     switch (activeTab) {
@@ -206,11 +299,7 @@ function AnalyticsPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+    <AppShell title="Institution Analytics">
           <div className="max-w-7xl mx-auto space-y-6">
             {/* Page Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -229,11 +318,13 @@ function AnalyticsPageContent() {
                   </div>
                 </div>
                 {lastUpdated && (
-                  <div className="flex items-center gap-3 text-sm text-gray-500 ml-14">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 ml-14">
                     <Clock className="h-4 w-4" />
                     <span>Last updated: {lastUpdated.toLocaleTimeString()}</span>
+                    <span className="text-xs text-gray-500">{appliedScopeLabel}</span>
+                    {isRefreshing && <span className="text-xs">Refreshing…</span>}
                     {autoRefresh && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium border border-blue-200">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-medium border border-teal-200">
                         <Zap className="h-3 w-3" />
                         Auto-refresh on
                       </span>
@@ -248,72 +339,72 @@ function AnalyticsPageContent() {
                       type="checkbox"
                       checked={autoRefresh}
                       onChange={(e) => setAutoRefresh(e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      className="h-4 w-4 text-teal-700 focus:ring-teal-600 border-gray-300 rounded"
                     />
                     <span className="text-sm text-gray-700 font-medium">Auto-refresh</span>
                   </label>
                 </div>
                 <Button 
-                  onClick={loadData} 
+                  onClick={() => loadData({ soft: true })} 
                   variant="outline"
-                  className="border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm"
+                  disabled={isRefreshing}
                 >
-                  <RefreshCw className="h-4 w-4 mr-2" />
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
                   Refresh
                 </Button>
                 <Button 
                   onClick={handleExport}
-                  className="bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/30"
+                  disabled={isExporting}
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export
+                  {isExporting ? 'Exporting…' : 'Export CSV'}
                 </Button>
               </div>
             </div>
 
-            {/* Date Range Filter */}
+            {/* Date Range Filter — draft until Apply */}
             <Card className="p-6 bg-white border border-gray-200 shadow-sm">
               <div className="flex flex-col md:flex-row md:items-center gap-5">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-lg bg-blue-50">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+                  <div className="p-2.5 rounded-lg bg-teal-50">
+                    <Calendar className="h-5 w-5 text-teal-700" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Date Range Filter</h3>
-                    <p className="text-sm text-gray-500">Select a period to analyze</p>
+                    <h3 className="text-lg font-semibold text-gray-900">Date range</h3>
+                    <p className="text-sm text-gray-500">Draft until you click Apply — charts use the applied scope only</p>
                   </div>
                 </div>
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Start date</label>
                     <input
                       type="date"
-                      value={dateRange.start}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                      value={draftDateRange.start}
+                      onChange={(e) => setDraftDateRange(prev => ({ ...prev, start: e.target.value }))}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600 bg-white text-gray-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End date</label>
                     <input
                       type="date"
-                      value={dateRange.end}
-                      onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                      min={dateRange.start || undefined}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
+                      value={draftDateRange.end}
+                      onChange={(e) => setDraftDateRange(prev => ({ ...prev, end: e.target.value }))}
+                      min={draftDateRange.start || undefined}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-600 bg-white text-gray-900"
                     />
                   </div>
                   <div className="flex items-end gap-2">
                     <Button 
-                      onClick={loadData} 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                      onClick={applyDateFilter} 
+                      className="w-full"
                     >
-                      Apply Filter
+                      Apply filter
                     </Button>
                     <Button
-                      onClick={() => setDateRange({ start: '', end: '' })}
+                      onClick={clearDateFilter}
                       variant="outline"
-                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50"
+                      className="w-full"
                     >
                       Clear
                     </Button>
@@ -388,9 +479,7 @@ function AnalyticsPageContent() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </AppShell>
   );
 }
 
@@ -403,10 +492,6 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
       icon={<Shield className="h-12 w-12 text-gray-400" />}
     />;
   }
-
-  const timeComparison = data.avgEvacuationTime ? 
-    data.avgEvacuationTime < 120 ? 'Excellent' : 
-    data.avgEvacuationTime < 180 ? 'Good' : 'Needs Improvement' : 'No Data';
 
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -459,15 +544,12 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
               <div>
                 <div className="text-sm text-gray-500 font-medium mb-1">Avg Evacuation Time</div>
                 <div className="text-3xl font-bold text-gray-900">
-                  <AnimatedCounter value={data.avgEvacuationTime || 0} decimals={1} suffix="s" />
+                  {formatMetricOrUnavailable(data.avgEvacuationTime, { decimals: 1, suffix: 's' })}
                 </div>
               </div>
             </div>
-            <div className={`mt-4 text-xs font-semibold ${
-              timeComparison === 'Excellent' ? 'text-green-600' :
-              timeComparison === 'Good' ? 'text-yellow-600' : 'text-red-600'
-            }`}>
-              {timeComparison} response time
+            <div className="mt-4 text-xs font-medium text-gray-500">
+              Measured average when recorded (no grade scale configured)
             </div>
           </Card>
         </motion.div>
@@ -506,16 +588,12 @@ function DrillMetricsView({ data }: { data: DrillMetrics | null }) {
               <div>
                 <div className="text-sm text-gray-500 font-medium mb-1">Average Drill Score</div>
                 <div className="text-3xl font-bold text-gray-900">
-                  <AnimatedCounter 
-                    value={data.avgScore || 0}
-                    decimals={0} 
-                    suffix="%" 
-                  />
+                  {formatMetricOrUnavailable(data.avgScore, { decimals: 0 })}
                 </div>
               </div>
             </div>
             <div className="mt-4 text-xs text-gray-500 font-medium">
-              Average score from recorded drills
+              From avgScore field when present (scale as returned by API)
             </div>
           </Card>
         </motion.div>
@@ -856,38 +934,33 @@ function InstitutionAnalyticsView({ data }: { data: InstitutionAnalytics | null 
           </div>
         </Card>
 
-        <Card className="p-6 bg-white border border-gray-200 hover:border-amber-300 hover:shadow-md transition-all duration-200">
+        <Card className="p-6 bg-white border border-gray-200">
           <div className="flex items-center">
             <div className="p-3 rounded-xl bg-amber-50 mr-4">
               <Activity className="h-6 w-6 text-amber-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-500 font-medium mb-1">Active Users (30d)</div>
-              <div className="text-3xl font-bold text-gray-900">{(data as any).engagement?.activeUsers30d || 0}</div>
+              <div className="text-sm text-gray-500 font-medium mb-1">Active users (30d)</div>
+              <div className="text-lg font-semibold text-gray-700">Unavailable</div>
             </div>
           </div>
-          <div className={`mt-4 text-xs font-semibold ${
-            ((data as any).engagement?.activeUsers30d || 0) > (data.institution?.totalUsers || 0) * 0.5
-              ? 'text-emerald-600' : 'text-amber-600'
-          }`}>
-            Engaged community members
+          <div className="mt-4 text-xs text-gray-500 font-medium">
+            Engagement metrics are not provided by this analytics contract
           </div>
         </Card>
 
-        <Card className="p-6 bg-white border border-gray-200 hover:border-purple-300 hover:shadow-md transition-all duration-200">
+        <Card className="p-6 bg-white border border-gray-200">
           <div className="flex items-center">
             <div className="p-3 rounded-xl bg-purple-50 mr-4">
               <Target className="h-6 w-6 text-purple-600" />
             </div>
             <div>
-              <div className="text-sm text-gray-500 font-medium mb-1">Retention Rate</div>
-              <div className="text-3xl font-bold text-gray-900">
-                {(data as any).engagement?.retentionRate ? (data as any).engagement.retentionRate.toFixed(1) : '0'}%
-              </div>
+              <div className="text-sm text-gray-500 font-medium mb-1">Retention rate</div>
+              <div className="text-lg font-semibold text-gray-700">Unavailable</div>
             </div>
           </div>
           <div className="mt-4 text-xs text-gray-500 font-medium">
-            Continued engagement rate
+            Not inventing 0% from missing engagement data
           </div>
         </Card>
       </div>
@@ -972,8 +1045,8 @@ function InstitutionAnalyticsView({ data }: { data: InstitutionAnalytics | null 
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Active
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                        Status not provided
                       </span>
                     </td>
                   </tr>
@@ -1593,11 +1666,23 @@ function QuizAccuracyView({ data }: { data: QuizAccuracy | null }) {
           <h3 className="text-lg font-bold text-gray-900 mb-5">Performance by Learning Module</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {data.byModule.map((module, index) => {
-              const performance = module.avgScore || 0;
-              const performanceLevel = performance >= 80 ? 'Excellent' : 
-                                     performance >= 60 ? 'Good' : 'Needs Practice';
-              const performanceColor = performance >= 80 ? 'border-emerald-200 bg-emerald-50/30' : 
-                                     performance >= 60 ? 'border-amber-200 bg-amber-50/30' : 'border-red-200 bg-red-50/30';
+              const hasScore =
+                module.avgScore != null && Number.isFinite(Number(module.avgScore));
+              const performance = hasScore ? Number(module.avgScore) : null;
+              const performanceLevel = !hasScore
+                ? 'Score unavailable'
+                : performance! >= 80
+                ? 'High avg (≥80)'
+                : performance! >= 60
+                ? 'Mid avg (≥60)'
+                : 'Lower avg (<60)';
+              const performanceColor = !hasScore
+                ? 'border-gray-200 bg-gray-50/30'
+                : performance! >= 80
+                ? 'border-emerald-200 bg-emerald-50/30'
+                : performance! >= 60
+                ? 'border-amber-200 bg-amber-50/30'
+                : 'border-red-200 bg-red-50/30';
 
               return (
                 <Card key={index} className={`p-5 border ${performanceColor} hover:shadow-md transition-all`}>
@@ -1606,9 +1691,13 @@ function QuizAccuracyView({ data }: { data: QuizAccuracy | null }) {
                       <BookOpen className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
-                      performance >= 80 ? 'bg-emerald-100 text-emerald-800' :
-                      performance >= 60 ? 'bg-amber-100 text-amber-800' :
-                      'bg-red-100 text-red-800'
+                      !hasScore
+                        ? 'bg-gray-100 text-gray-700'
+                        : performance! >= 80
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : performance! >= 60
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-red-100 text-red-800'
                     }`}>
                       {performanceLevel}
                     </div>
@@ -1619,24 +1708,33 @@ function QuizAccuracyView({ data }: { data: QuizAccuracy | null }) {
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 font-medium">Avg Score</span>
-                      <span className="font-bold text-gray-900">{performance.toFixed(1)}%</span>
+                      <span className="font-bold text-gray-900">
+                        {formatMetricOrUnavailable(performance, { decimals: 1, suffix: '%' })}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 font-medium">Pass Rate</span>
-                      <span className="font-bold text-emerald-600">{module.passRate?.toFixed(1) || '0'}%</span>
+                      <span className="font-bold text-emerald-600">
+                        {formatMetricOrUnavailable(module.passRate, { decimals: 1, suffix: '%' })}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-500 font-medium">Total Quizzes</span>
-                      <span className="font-bold text-blue-600">{module.totalQuizzes || 0}</span>
+                      <span className="font-bold text-blue-600">{module.totalQuizzes ?? 'Unavailable'}</span>
                     </div>
                     <div className="pt-3 border-t border-gray-200">
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
-                        <div 
+                        <div
                           className={`h-2.5 rounded-full transition-all ${
-                            performance >= 80 ? 'bg-emerald-500' :
-                            performance >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                            !hasScore
+                              ? 'bg-gray-300'
+                              : performance! >= 80
+                              ? 'bg-emerald-500'
+                              : performance! >= 60
+                              ? 'bg-amber-500'
+                              : 'bg-red-500'
                           }`}
-                          style={{ width: `${Math.min(100, performance)}%` }}
+                          style={{ width: `${hasScore ? Math.min(100, performance!) : 0}%` }}
                         />
                       </div>
                     </div>

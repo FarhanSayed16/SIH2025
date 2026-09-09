@@ -53,25 +53,31 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --kavach-canvas: #F6F8F7;
+    --kavach-surface: #FFFFFF;
+    --kavach-text: #17221B;
+    --kavach-text-secondary: #526057;
+    --kavach-primary: #216E39;
+    --kavach-danger: #B3261E;
+    --background: 150 14% 97%;
+    --foreground: 140 18% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 140 18% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --popover-foreground: 140 18% 11%;
+    --primary: 142 54% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 150 10% 94%;
+    --secondary-foreground: 140 18% 11%;
+    --muted: 150 10% 94%;
+    --muted-foreground: 140 10% 35%;
+    --accent: 150 10% 94%;
+    --accent-foreground: 140 18% 11%;
+    --destructive: 4 72% 41%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 150 10% 88%;
+    --input: 150 10% 88%;
+    --ring: 142 54% 28%;
     --radius: 0.5rem;
   }
 
@@ -158,6 +164,10 @@
   /* Phase 4.9: Accessibility - Skip to main content */
   .skip-to-main {
     @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg;
+  }
+
+  #main-content {
+    scroll-margin-top: 4.5rem;
   }
 
   /* Phase 4.9: Toast Animation */

@@ -3,11 +3,15 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ToastProvider } from '@/components/ui/toast'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { AppProviders } from '@/components/providers/app-providers'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Kavach - Admin Dashboard',
+  title: {
+    default: 'Kavach',
+    template: '%s · Kavach',
+  },
   description: 'Disaster Preparedness & Response Education System',
   icons: {
     icon: '/kavach-logo.jpeg',
@@ -25,10 +29,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <ErrorBoundary>
           <ToastProvider>
-            <a href="#main-content" className="skip-to-main">
-              Skip to main content
-            </a>
-            {children}
+            <AppProviders>
+              <a href="#main-content" className="skip-to-main">
+                Skip to main content
+              </a>
+              {children}
+            </AppProviders>
           </ToastProvider>
         </ErrorBoundary>
       </body>

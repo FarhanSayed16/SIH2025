@@ -17,7 +17,7 @@ import { BrowserNotificationService } from '@/lib/services/browser-notifications
 import { AlertSoundService } from '@/lib/services/alert-sound-service';
 import { alertsApi, Alert } from '@/lib/api/alerts';
 import { alertStatusApi, AlertStatusSummary } from '@/lib/api/alertStatus';
-import { drillsApi, Drill } from '@/lib/api/drills';
+import { drillsApi, Drill, isDrillInProgress } from '@/lib/api/drills';
 import { devicesApi, Device, HealthMonitoring } from '@/lib/api/devices';
 import { mlPredictionsApi, BatchPredictionsResult, DrillPerformancePrediction, OptimalDrillTiming, DrillAnomaliesResult } from '@/lib/api/mlPredictions';
 import { apiClient } from '@/lib/api/client';
@@ -396,7 +396,7 @@ export default function CrisisDashboardPage() {
       const response = await drillsApi.list(schoolId);
       
       if (response.success && response.data) {
-        const active = response.data.filter((d) => d.status === 'active');
+        const active = response.data.filter((d) => isDrillInProgress(d.status));
         setActiveDrills(active);
       }
     } catch (error) {
