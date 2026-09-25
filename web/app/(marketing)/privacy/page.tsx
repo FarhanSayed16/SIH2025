@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Kavach',
@@ -10,12 +11,12 @@ export default function PrivacyPage() {
     <div className="landing-root">
       <div className="min-h-screen bg-white text-slate-700">
         <div className="landing-container py-24 md:py-32 max-w-3xl">
-          <a
+          <Link
             href="/"
             className="inline-flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-700 transition-colors mb-8"
           >
             ← Back to Kavach
-          </a>
+          </Link>
 
           <h1 className="font-display font-bold text-4xl md:text-5xl text-slate-900 mb-4">
             Privacy Policy
