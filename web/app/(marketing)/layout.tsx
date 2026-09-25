@@ -1,24 +1,12 @@
 /**
  * Marketing layout — dedicated layout for landing/public pages
  * Separate from the authenticated dashboard shell
+ *
+ * Fonts load via stylesheet links (not next/font/google) so Vercel builds
+ * do not fail when Google Fonts fetch returns an empty CSS payload.
  */
 
 import type { Metadata } from 'next';
-import { Space_Grotesk, DM_Sans } from 'next/font/google';
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-display',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const dmSans = DM_Sans({
-  subsets: ['latin'],
-  variable: '--font-body',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
 
 export const metadata: Metadata = {
   title: 'Kavach — School Disaster Preparedness | SIH 2025 First Prize',
@@ -65,11 +53,5 @@ export default function MarketingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <div
-      className={`${spaceGrotesk.variable} ${dmSans.variable} landing-root`}
-    >
-      {children}
-    </div>
-  );
+  return <div className="landing-root">{children}</div>;
 }

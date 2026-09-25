@@ -998,7 +998,10 @@ export default function CrisisDashboardPage() {
                                   </div>
                                   <div className="flex items-center gap-2 text-xs text-gray-600">
                                     <Clock className="h-3 w-3" />
-                                    Started: {new Date(drill.createdAt).toLocaleString()}
+                                    Started:{' '}
+                                    {drill.createdAt
+                                      ? new Date(drill.createdAt).toLocaleString()
+                                      : 'Unavailable'}
                                   </div>
                                   <button
                                     onClick={() => router.push(`/drills/${drill._id}`)}

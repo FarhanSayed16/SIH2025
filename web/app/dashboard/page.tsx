@@ -802,7 +802,9 @@ export default function DashboardPage() {
                               <div>
                                 <span className="font-bold text-gray-900 capitalize">{drill.type} Drill</span>
                                 <div className="text-xs text-gray-600 mt-0.5">
-                                  {new Date(drill.createdAt).toLocaleDateString()}
+                                  {drill.createdAt
+                                    ? new Date(drill.createdAt).toLocaleDateString()
+                                    : 'Date unavailable'}
                                 </div>
                               </div>
                             </div>

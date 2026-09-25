@@ -231,6 +231,8 @@
 /* ===== KAVACH LANDING PAGE STYLES ===== */
 
 .landing-root {
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
   --k-ink: #0b1220;
   --k-ink-soft: #1e293b;
   --k-muted: #64748b;
