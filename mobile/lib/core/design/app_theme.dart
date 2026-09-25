@@ -1,8 +1,5 @@
-/// Phase 101.1: Enhanced Theme Configuration
-/// Comprehensive Material 3 theme configuration using the new design system
-/// 
-/// This file creates complete Material 3 themes for Peace Mode, Crisis Mode,
-/// and Kid Mode, integrating all design system tokens.
+// Enhanced theme configuration — Material 3 themes for Peace, Crisis, and Kid modes.
+// Integrates design-system tokens from colors, typography, spacing, and borders.
 
 import 'package:flutter/material.dart';
 import 'colors.dart';
@@ -33,12 +30,11 @@ class AppThemeEnhanced {
         secondary: AppColors.accentBlue,
         tertiary: AppColors.accentOrange,
         surface: AppColors.backgroundWhite,
-        background: AppColors.backgroundLight,
+        surfaceContainerLowest: AppColors.backgroundLight,
         error: AppColors.error,
         onPrimary: AppColors.textOnPrimary,
         onSecondary: AppColors.textOnSecondary,
         onSurface: AppColors.textPrimary,
-        onBackground: AppColors.textPrimary,
         onError: AppColors.textWhite,
       ),
       
@@ -233,12 +229,11 @@ class AppThemeEnhanced {
         secondary: AppColors.accentYellow,
         tertiary: AppColors.accentOrange,
         surface: AppColors.backgroundDark,
-        background: AppColors.backgroundBlack,
+        surfaceContainerLowest: AppColors.backgroundBlack,
         error: AppColors.error,
         onPrimary: AppColors.textWhite,
         onSecondary: AppColors.textPrimary,
         onSurface: AppColors.textWhite,
-        onBackground: AppColors.textLight,
         onError: AppColors.textWhite,
       ),
       

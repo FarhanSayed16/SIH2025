@@ -2,7 +2,6 @@
 /// A styled bottom navigation bar with badges support
 
 import 'package:flutter/material.dart';
-import '../../design/design_system.dart';
 
 /// Bottom nav item
 class BottomNavItem {

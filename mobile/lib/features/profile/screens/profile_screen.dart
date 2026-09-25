@@ -9,12 +9,9 @@ import '../../../core/widgets/widgets.dart';
 import '../../../core/design/design_system.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../fcm/providers/fcm_provider.dart';
-import '../../badges/providers/badge_provider.dart';
 import '../../badges/screens/badge_collection_screen.dart';
-import '../../badges/screens/badge_detail_screen.dart';
 import '../../certificates/providers/certificate_provider.dart';
 import '../../certificates/screens/certificate_list_screen.dart';
-import '../../certificates/screens/certificate_detail_screen.dart';
 import '../../leaderboard/screens/leaderboard_screen.dart';
 import '../../iot/screens/iot_device_list_screen.dart';
 import '../../student/screens/join_class_screen.dart';
@@ -318,7 +315,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           title: 'Link Parent',
                           subtitle: 'Share access code with parent',
                           onTap: () {
-                            _showParentLinkingDialog(context, user!.qrCode);
+                            _showParentLinkingDialog(context, user.qrCode);
                           },
                         ),
                       ],

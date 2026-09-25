@@ -344,12 +344,12 @@ class _RedAlertScreenState extends ConsumerState<RedAlertScreen>
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Call a national number',
                   style: AppTextStyles.h4.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Campus contacts appear here only when configured. '
                   'Calls start only when you tap a number.',
                   style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
